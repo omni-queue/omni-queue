@@ -1,5 +1,8 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { ChildProcess, fork } from 'child_process';
+import { QueueSandboxConfig } from '../interfaces/queue-config';
+import { deserializeExecutionError } from './error-serialization';
+import { buildSandboxedChildEnv } from './sandbox';
 
 type DeferredJob = {
     task: any;
@@ -13,14 +16,16 @@ type DeferredJob = {
 export class ProcessPool {
     private workerModule: string;
     private size: number;
+    private sandbox?: QueueSandboxConfig;
     private workers: ChildProcess[] = [];
     private idle: ChildProcess[] = [];
     private queue: DeferredJob[] = [];
     private currentJobs = new Map<ChildProcess, DeferredJob>();
 
-    constructor(workerModule: string, size: number = 2) {
+    constructor(workerModule: string, size: number = 2, sandbox?: QueueSandboxConfig) {
         this.workerModule = workerModule;
         this.size = size;
+        this.sandbox = sandbox;
 
         for (let i = 0; i < size; i++) {
             const child = this.createWorker(i + 1);
@@ -75,7 +80,7 @@ export class ProcessPool {
             clearTimeout(job.timeoutHandle);
         }
 
-        msg?.error ? job.reject(new Error(msg.error)) : job.resolve(msg.result);
+        msg?.error ? job.reject(deserializeExecutionError(msg.error)) : job.resolve(msg.result);
 
         this.currentJobs.delete(worker);
         this.idle.push(worker);
@@ -121,6 +126,7 @@ export class ProcessPool {
     private createWorker(workerId: number): ChildProcess {
         const child = fork(this.workerModule, [], {
             silent: true,
+            env: buildSandboxedChildEnv(process.env, this.sandbox),
         });
 
         child.on('message', (msg) => this.handleResult(child, msg));

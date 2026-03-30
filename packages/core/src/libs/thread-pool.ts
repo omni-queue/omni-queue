@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Worker } from 'worker_threads';
+import { deserializeExecutionError } from './error-serialization';
 
 type DeferredJob = {
     task: any;
@@ -59,7 +60,7 @@ export class ThreadPool {
             return;
         }
 
-        msg?.error ? job.reject(new Error(msg.error)) : job.resolve(msg.result);
+        msg?.error ? job.reject(deserializeExecutionError(msg.error)) : job.resolve(msg.result);
 
         this.currentJobs.delete(worker);
         this.idle.push(worker);

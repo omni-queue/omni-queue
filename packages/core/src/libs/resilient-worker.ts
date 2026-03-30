@@ -1,11 +1,13 @@
 import { QueueConfig } from '../interfaces/queue-config';
 import { QueueStorage } from '../interfaces/queue-storage';
 import { WorkerConfig } from '../interfaces/worker-config';
+import { RateLimitCoordinator } from './rate-limiter';
 import { JobManager } from './worker-runtime';
 import type { LifecycleEventInput } from './lifecycle-events';
 
 export class ResilientWorker {
   private running = false;
+  private rateLimits = new RateLimitCoordinator();
   private backpressureActive = new Map<string, boolean>();
   private circuitState = new Map<
     string,
@@ -62,6 +64,10 @@ export class ResilientWorker {
       }
 
       if (!this.canExecuteByCircuitBreaker(queueName, queueConfig)) {
+        continue;
+      }
+
+      if (!this.canConsumeByRateLimit(queueName, queueConfig)) {
         continue;
       }
 
@@ -176,6 +182,15 @@ export class ResilientWorker {
     }
 
     return true;
+  }
+
+  private canConsumeByRateLimit(queueName: string, queueConfig: QueueConfig): boolean {
+    if (!queueConfig.rateLimit) {
+      return true;
+    }
+
+    const consumerId = this.config.consumerId ?? this.name;
+    return this.rateLimits.canConsume(queueName, consumerId, queueConfig);
   }
 
   private onExecutionSucceeded(queueName: string): void {

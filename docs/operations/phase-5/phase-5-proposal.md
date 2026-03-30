@@ -280,6 +280,13 @@ tokens = rotateScopedBearerTokens(tokens, [
 - Current baseline already provides per-job backoff hooks and queue-level rate limits.
 - Milestone 5.5 closes only the hard parity gaps that remain from the BullMQ comparison.
 
+#### Implementation Status (Completed)
+
+- **Track A delivered** in core with queue/worker sandbox contracts plus process-isolated enforcement through `worker-runtime.ts`, `isolation.ts`, `process-pool.ts`, `isolation-worker.ts`, and `sandbox.ts`.
+- **Track B delivered** in core with `Job.retryPolicy(error, context)`, queue-level retry rules, structured error propagation across isolation boundaries, and backward-compatible handling of existing `retries()` / `backoff()` hooks.
+- **Track C delivered** in core with `consumerId` on workers, `rateLimit.perConsumer` on queues, a core-native `RateLimitCoordinator`, and fairness coverage in runtime tests.
+- Validation completed with targeted core builds and focused Vitest suites: `retry-policy`, `sandbox-policy`, and `per-consumer-rate-limit`.
+
 #### Engineering Breakdown (Implementation-Ready)
 
 **Track A — Strict Sandboxing for Isolated Workers**

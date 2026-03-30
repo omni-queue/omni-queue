@@ -1,5 +1,6 @@
 import { BackOffType, QueuePriority } from '../types';
 import { Plugin } from './plugin';
+import { QueueRetryPolicyRule } from './retry-policy';
 
 export interface QueueBackpressureConfig {
   depthThreshold: number;
@@ -20,6 +21,16 @@ export interface QueuePoisonMessagePolicy {
   maxFailures: number;
   snoozeMs?: number;
   escalationTag?: string;
+}
+
+export interface QueueSandboxConfig {
+  enabled: boolean;
+  envAllowlist?: string[];
+  cwdAllowlist?: string[];
+  networkAllowlist?: string[];
+  denyNetwork?: boolean;
+  denyChildProcessSpawn?: boolean;
+  readOnlyFilesystem?: boolean;
 }
 
 export interface QueueReliabilityConfig {
@@ -59,11 +70,16 @@ export interface QueueConfig {
     maxAttempts: number;
     backoff: BackOffType;
     delay?: number;
+    policy?: QueueRetryPolicyRule[];
   };
 
   rateLimit?: {
     capacity: number;
     refillRate: number;
+    perConsumer?: {
+      capacity: number;
+      refillRate: number;
+    };
   };
 
   // Idempotency and deduplication policy (Phase 4.4)
@@ -78,6 +94,9 @@ export interface QueueConfig {
 
   // Reliability hardening strategy (Phase 5.1)
   reliability?: QueueReliabilityConfig;
+
+  // Strict sandbox controls for process-isolated workers (Phase 5.5)
+  sandbox?: QueueSandboxConfig;
 
   plugins?: Plugin[];
 }

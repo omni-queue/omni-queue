@@ -2,6 +2,8 @@
 import { isMainThread, parentPort, workerData } from 'worker_threads';
 import { Plugin } from '../interfaces/plugin';
 import { StoredJob } from '../types';
+import { serializeExecutionError } from './error-serialization';
+import { applyProcessSandbox, parseSandboxPolicy, SANDBOX_POLICY_ENV } from './sandbox';
 
 type IsolationTask = {
     data: {
@@ -104,7 +106,7 @@ async function execute(task: IsolationTask) {
             await plugin.onFail?.(hookJob, err as Error);
         }
 
-        return { error: err?.message || String(err) };
+        return { error: serializeExecutionError(err) };
     }
 }
 
@@ -120,6 +122,8 @@ if (!isMainThread && parentPort) {
 }
 
 if (typeof process.send === 'function') {
+    applyProcessSandbox(parseSandboxPolicy(process.env[SANDBOX_POLICY_ENV]));
+
     process.on('message', async (task: IsolationTask) => {
         const res = await execute(task);
         process.send?.(res);

@@ -15,6 +15,11 @@ import {
   ScheduledJobHandle,
 } from '../types';
 import { QueueConfig } from '../interfaces/queue-config';
+import {
+  QueueRetryPolicyRule,
+  RetryDecision,
+  RetryDecisionContext,
+} from '../interfaces/retry-policy';
 import { WorkerConfig } from '../interfaces/worker-config';
 import { QueueStorage } from '../interfaces/queue-storage';
 import { priorityScore, sleep } from '../utils';
@@ -23,6 +28,12 @@ import { Plugin } from '../interfaces/plugin';
 import { BatchManager } from './batch-manager';
 import { JobNode } from './job-node';
 import { LifecycleEventBus } from './lifecycle-events';
+
+type ResolvedRetryDecision = {
+  action: 'retry' | 'fail' | 'deadletter';
+  maxAttempts: number;
+  backoffMs?: number;
+};
 
 type FlowRuntimeNode = {
   id: string;
@@ -754,13 +765,12 @@ export class JobManager {
     const executor = this.executors.get(ctx.job.queue);
     const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
     let attempt = ctx.job.attempts || 0;
-    const maxAttempts =
-      queueConfig.maxAttempts ?? ctx.instance.retries?.() ?? queueConfig.retry?.attempts ?? 3;
+    const configuredMaxAttempts = this.resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
 
     if (!executor) throw new Error(`Executor not defined: ${ctx.job.queue}`);
 
     return executor.submit(async () => {
-      while (attempt < maxAttempts) {
+      while (true) {
         const leaseMs = queueConfig.visibilityTimeout || 30000;
         const executionTimeoutMs = this.resolveExecutionTimeoutMs(queueConfig, workerConfig);
         const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
@@ -799,11 +809,17 @@ export class JobManager {
             poolSize?: number;
             registryModule?: string;
             pluginsModule?: string;
+            sandbox?: NonNullable<QueueConfig['sandbox']>;
           } = {
             type: isolationType,
             workerModule: workerConfig.workerModule ?? '',
             timeoutMs: executionTimeoutMs,
           };
+
+          const sandbox = this.resolveSandboxConfig(queueConfig, workerConfig);
+          if (sandbox && isolationType === 'process') {
+            isolationOptions.sandbox = sandbox;
+          }
 
           if (queueConfig.timeoutSignal) {
             isolationOptions.timeoutSignal = queueConfig.timeoutSignal;
@@ -897,69 +913,36 @@ export class JobManager {
           });
 
           if (timeoutStrategy === 'fail' && this.isTimeoutError(err)) {
-            this.batchManager?.markJobFailed(ctx.job, err as Error);
-            for (const plugin of allPlugins) {
-              if (plugin.onFailedPermanently) {
-                await plugin.onFailedPermanently(ctx.job, err as Error);
-              }
-            }
-            const permanentFailureMode = await this.applyPoisonFailurePolicy(
-              ctx.job,
-              queueConfig,
-              storage,
-              attempt
-            );
-            if (permanentFailureMode === 'deadlettered') {
-              this.lifecycleEvents?.emit({
-                type: 'job.deadlettered',
-                queueName: ctx.job.queue,
-                jobId: ctx.job.id,
-                jobName: ctx.job.name,
-                attempt,
-                permanentFailure: true,
-                error: err instanceof Error ? err.message : String(err),
-              });
-            }
-            await this.onJobFailed(ctx.job, err as Error);
+            await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
             throw err;
           }
 
-          if (attempt >= maxAttempts) {
-            this.batchManager?.markJobFailed(ctx.job, err as Error);
-            for (const plugin of allPlugins) {
-              if (plugin.onFailedPermanently) {
-                await plugin.onFailedPermanently(ctx.job, err as Error);
-              }
-            }
-            const permanentFailureMode = await this.applyPoisonFailurePolicy(
-              ctx.job,
-              queueConfig,
-              storage,
-              attempt
-            );
-            if (permanentFailureMode === 'deadlettered') {
-              this.lifecycleEvents?.emit({
-                type: 'job.deadlettered',
-                queueName: ctx.job.queue,
-                jobId: ctx.job.id,
-                jobName: ctx.job.name,
-                attempt,
-                permanentFailure: true,
-                error: err instanceof Error ? err.message : String(err),
-              });
-            }
-            await this.onJobFailed(ctx.job, err as Error);
+          const retryDecision = this.resolveRetryDecision(
+            ctx,
+            queueConfig,
+            err,
+            attempt,
+            configuredMaxAttempts
+          );
+
+          if (retryDecision.action === 'deadletter') {
+            await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err, {
+              forceDeadLetter: true,
+            });
             throw err;
           }
 
-          const backoff =
-            ctx.instance.backoff?.(attempt) ?? this.resolveBackoff(queueConfig, attempt);
+          if (retryDecision.action === 'fail' || attempt >= retryDecision.maxAttempts) {
+            await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
+            throw err;
+          }
+
+          const backoff = this.resolveRetryBackoff(ctx, queueConfig, attempt, retryDecision);
 
           await sleep(backoff);
         }
       }
 
-      throw new Error('Execution exited unexpectedly without result');
     }, priorityScore(ctx.job.priority));
   }
 
@@ -972,10 +955,9 @@ export class JobManager {
     let attempt = ctx.job.attempts || 0;
     const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
 
-    const maxAttempts =
-      queueConfig.maxAttempts ?? ctx.instance.retries?.() ?? queueConfig.retry?.attempts ?? 3;
+    const configuredMaxAttempts = this.resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
 
-    while (attempt < maxAttempts) {
+    while (true) {
       const leaseMs = queueConfig.visibilityTimeout || 30000;
       const executionTimeoutMs = this.resolveExecutionTimeoutMs(queueConfig, workerConfig);
       const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
@@ -1001,11 +983,17 @@ export class JobManager {
           poolSize?: number;
           registryModule?: string;
           pluginsModule?: string;
+          sandbox?: NonNullable<QueueConfig['sandbox']>;
         } = {
           type: isolationType,
           workerModule: workerConfig.workerModule ?? '',
           timeoutMs: executionTimeoutMs,
         };
+
+        const sandbox = this.resolveSandboxConfig(queueConfig, workerConfig);
+        if (sandbox && isolationType === 'process') {
+          isolationOptions.sandbox = sandbox;
+        }
 
         if (queueConfig.timeoutSignal) {
           isolationOptions.timeoutSignal = queueConfig.timeoutSignal;
@@ -1059,37 +1047,35 @@ export class JobManager {
         await storage.updateAttempts(ctx.job.id, attempt);
 
         if (timeoutStrategy === 'fail' && this.isTimeoutError(err)) {
-          this.batchManager?.markJobFailed(ctx.job, err as Error);
-          for (const plugin of allPlugins) {
-            if (plugin.onFailedPermanently) {
-              await plugin.onFailedPermanently(ctx.job, err as Error);
-            }
-          }
-          await this.applyPoisonFailurePolicy(ctx.job, queueConfig, storage, attempt);
-          await this.onJobFailed(ctx.job, err as Error);
+          await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
           throw err;
         }
 
-        if (attempt >= maxAttempts) {
-          this.batchManager?.markJobFailed(ctx.job, err as Error);
-          for (const plugin of allPlugins) {
-            if (plugin.onFailedPermanently) {
-              await plugin.onFailedPermanently(ctx.job, err as Error);
-            }
-          }
-          await this.applyPoisonFailurePolicy(ctx.job, queueConfig, storage, attempt);
-          await this.onJobFailed(ctx.job, err as Error);
+        const retryDecision = this.resolveRetryDecision(
+          ctx,
+          queueConfig,
+          err,
+          attempt,
+          configuredMaxAttempts
+        );
+
+        if (retryDecision.action === 'deadletter') {
+          await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err, {
+            forceDeadLetter: true,
+          });
           throw err;
         }
 
-        const backoff =
-          ctx.instance.backoff?.(attempt) ?? this.resolveBackoff(queueConfig, attempt);
+        if (retryDecision.action === 'fail' || attempt >= retryDecision.maxAttempts) {
+          await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
+          throw err;
+        }
+
+        const backoff = this.resolveRetryBackoff(ctx, queueConfig, attempt, retryDecision);
 
         await sleep(backoff);
       }
     }
-
-    throw new Error('Execution exited unexpectedly without result');
   }
 
   resolveBackoff(queueConfig: any, attempt: number) {
@@ -1104,6 +1090,20 @@ export class JobManager {
     }
 
     return 1000;
+  }
+
+  private resolveConfiguredMaxAttempts(
+    queueConfig: QueueConfig,
+    instance: { retries?: () => number }
+  ): number {
+    return Math.max(
+      1,
+      queueConfig.maxAttempts ??
+        instance.retries?.() ??
+        queueConfig.retry?.maxAttempts ??
+        queueConfig.retry?.attempts ??
+        3
+    );
   }
 
   resolveIsolationType(
@@ -1142,6 +1142,117 @@ export class JobManager {
     return 30000;
   }
 
+  private resolveRetryDecision(
+    ctx: ExecutionContext,
+    queueConfig: QueueConfig,
+    error: unknown,
+    attempt: number,
+    configuredMaxAttempts: number
+  ): ResolvedRetryDecision {
+    const normalizedError = this.toExecutionError(error);
+    const context: RetryDecisionContext = {
+      attempt,
+      maxAttempts: configuredMaxAttempts,
+      queueName: ctx.job.queue,
+      jobId: ctx.job.id,
+      isTimeout: this.isTimeoutError(normalizedError),
+      ...(normalizedError.name ? { errorName: normalizedError.name } : {}),
+      ...(typeof (normalizedError as Error & { code?: string }).code === 'string'
+        ? { errorCode: (normalizedError as Error & { code?: string }).code }
+        : {}),
+      errorMessage: normalizedError.message,
+    };
+
+    const jobDecision = ctx.instance.retryPolicy?.(normalizedError, context);
+    const queueDecision = jobDecision ?? this.matchQueueRetryPolicy(queueConfig, context);
+    const resolved = queueDecision ?? { action: 'retry' as const };
+
+    return {
+      action: resolved.action,
+      maxAttempts: Math.max(1, resolved.maxAttempts ?? configuredMaxAttempts),
+      ...(resolved.backoffMs !== undefined ? { backoffMs: resolved.backoffMs } : {}),
+    };
+  }
+
+  private matchQueueRetryPolicy(
+    queueConfig: QueueConfig,
+    context: RetryDecisionContext
+  ): RetryDecision | undefined {
+    const rules = queueConfig.retry?.policy ?? [];
+    const matched = rules.find((rule) => this.matchesRetryRule(rule, context));
+
+    if (!matched) {
+      return undefined;
+    }
+
+    return {
+      action: matched.action,
+      ...(matched.maxAttempts !== undefined ? { maxAttempts: matched.maxAttempts } : {}),
+      ...(matched.backoffMs !== undefined ? { backoffMs: matched.backoffMs } : {}),
+    };
+  }
+
+  private matchesRetryRule(
+    rule: QueueRetryPolicyRule,
+    context: RetryDecisionContext
+  ): boolean {
+    const match = rule.when;
+
+    if (match.timeout !== undefined && match.timeout !== context.isTimeout) {
+      return false;
+    }
+
+    if (match.name && match.name !== context.errorName) {
+      return false;
+    }
+
+    if (match.code && match.code !== context.errorCode) {
+      return false;
+    }
+
+    if (
+      match.messageIncludes &&
+      !context.errorMessage.toLowerCase().includes(match.messageIncludes.toLowerCase())
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  private resolveRetryBackoff(
+    ctx: ExecutionContext,
+    queueConfig: QueueConfig,
+    attempt: number,
+    decision: ResolvedRetryDecision
+  ): number {
+    if (decision.backoffMs !== undefined) {
+      return Math.max(0, decision.backoffMs);
+    }
+
+    return ctx.instance.backoff?.(attempt) ?? this.resolveBackoff(queueConfig, attempt);
+  }
+
+  private resolveSandboxConfig(
+    queueConfig: QueueConfig,
+    workerConfig: WorkerConfig
+  ): NonNullable<QueueConfig['sandbox']> | undefined {
+    const policy = workerConfig.sandbox ?? queueConfig.sandbox;
+    if (!policy?.enabled) {
+      return undefined;
+    }
+
+    return policy;
+  }
+
+  private toExecutionError(error: unknown): Error {
+    if (error instanceof Error) {
+      return error;
+    }
+
+    return new Error(String(error));
+  }
+
   private isTimeoutError(error: unknown): boolean {
     if (!(error instanceof Error)) {
       return false;
@@ -1151,6 +1262,52 @@ export class JobManager {
       error.name === 'JobTimeoutError' ||
       /timeout/i.test(error.message)
     );
+  }
+
+  private async handlePermanentFailure(
+    job: StoredJob,
+    queueConfig: QueueConfig,
+    storage: QueueStorage,
+    allPlugins: Plugin[],
+    attempt: number,
+    error: unknown,
+    options?: { forceDeadLetter?: boolean }
+  ): Promise<'deadlettered' | 'snoozed'> {
+    const normalizedError = this.toExecutionError(error);
+
+    this.batchManager?.markJobFailed(job, normalizedError);
+    for (const plugin of allPlugins) {
+      if (plugin.onFailedPermanently) {
+        await plugin.onFailedPermanently(job, normalizedError);
+      }
+    }
+
+    let permanentFailureMode: 'deadlettered' | 'snoozed';
+    if (options?.forceDeadLetter) {
+      await storage.moveToDeadLetter({
+        ...job,
+        state: 'failed',
+        updatedAt: Date.now(),
+      });
+      permanentFailureMode = 'deadlettered';
+    } else {
+      permanentFailureMode = await this.applyPoisonFailurePolicy(job, queueConfig, storage, attempt);
+    }
+
+    if (permanentFailureMode === 'deadlettered') {
+      this.lifecycleEvents?.emit({
+        type: 'job.deadlettered',
+        queueName: job.queue,
+        jobId: job.id,
+        jobName: job.name,
+        attempt,
+        permanentFailure: true,
+        error: normalizedError.message,
+      });
+    }
+
+    await this.onJobFailed(job, normalizedError);
+    return permanentFailureMode;
   }
 
   private async applyPoisonFailurePolicy(

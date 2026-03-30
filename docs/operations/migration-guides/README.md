@@ -5,7 +5,7 @@ This directory contains migration-oriented documentation for teams adopting Omni
 ## Available guides
 
 - [From BullMQ](from-bullmq.md) — Migration path with concept mapping and rollout checklist
-- [BullMQ Parity Assessment](bullmq-parity-assessment.md) — Detailed feature-by-feature comparison (75–80% parity)
+- [BullMQ Parity Assessment](bullmq-parity-assessment.md) — Detailed feature-by-feature comparison (~85–90% parity)
 
 ## Recommended workflow
 

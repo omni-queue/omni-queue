@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IsolationType, StoredJob } from '../types';
+import { QueueSandboxConfig } from './queue-config';
 
 export interface IsolationPayload {
   jobName: string;
@@ -15,6 +16,7 @@ export interface IsolationOptions {
   poolSize?: number;
   registryModule?: string;
   pluginsModule?: string;
+  sandbox?: QueueSandboxConfig;
 }
 
 export * from './queue-config';
@@ -22,3 +24,4 @@ export * from './worker-config';
 export * from './queue-storage';
 export * from './plugin';
 export * from './dashboard';
+export * from './retry-policy';

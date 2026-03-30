@@ -2,9 +2,9 @@
 
 This document compares BullMQ's feature set against Omni Queue's actual implementation (code + docs).
 
-## Overall Parity Score: **~75–80%**
+## Overall Parity Score: **~85–90%**
 
-Omni Queue covers the most common BullMQ use cases. Missing features are mostly advanced/niche patterns or Redis-specific optimizations.
+Omni Queue now covers nearly all common BullMQ use cases. Remaining differences are concentrated in execution-model maturity and Redis-native distributed coordination rather than basic queue semantics.
 
 ---
 
@@ -26,7 +26,7 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 | **Retries & Failure Handling** |
 | | Max attempts | ✅ | ✅ | 🟢 Full | Both support configurable retries |
 | | Exponential backoff | ✅ | ✅ | 🟢 Full | Queue-level or job-level |
-| | Custom backoff strategies | ✅ | ⚠️ | 🟡 Partial | Omni supports `Job.backoff(attempt)`; missing richer error-aware policy surface |
+| | Custom backoff strategies | ✅ | ⚠️ | 🟡 Partial | Omni supports `Job.backoff(attempt)`, `Job.retryPolicy()`, and queue-level retry rules, but BullMQ still has built-in jitter and named worker-level custom backoff strategy types |
 | | Dead-letter queue (DLQ) | ✅ | ✅ | 🟢 Full | Both move failed jobs after max attempts |
 | | DLQ replay/retry | ✅ | ✅ | 🟢 Full | Both support rerunning DLQ jobs |
 | | Poison message handling | ❌ | ✅ | 🟢 Advantage | Omni has policies: quarantine, snooze, escalate |
@@ -45,7 +45,7 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 | | Inline execution | ✅ | ✅ | 🟢 Full | Both support in-process jobs |
 | | Worker threads | ⚠️ | ✅ | 🟢 Advantage | BullMQ via Node worker_threads; Omni has first-class ThreadPool |
 | | Child processes | ⚠️ | ✅ | 🟢 Advantage | BullMQ via fork; Omni has first-class ProcessPool |
-| | Sandboxing | ✅ | ⚠️ | 🟡 Partial | BullMQ sandboxed; Omni thread/process less strict |
+| | Sandboxing | ✅ | ⚠️ | 🟡 Partial | Omni now supports explicit sandbox policies for process isolation; thread/inline remain less strict |
 | **Storage Backends** |
 | | Redis | ✅ | ✅ | 🟢 Full | Both fully supported |
 | | PostgreSQL | ❌ | ✅ | 🟢 Advantage | Only in Omni |
@@ -65,7 +65,7 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 | **Reliability** |
 | | Backpressure | ❌ | ✅ | 🟢 Advantage | Only in Omni (queue-depth-aware) |
 | | Circuit breaker | ❌ | ✅ | 🟢 Advantage | Only in Omni (failure-rate-aware) |
-| | Rate limiting | ⚠️ | ⚠️ | 🟡 Partial | BullMQ per-queue; Omni queue-level only (per-consumer planned in Phase 5.5) |
+| | Rate limiting | ⚠️ | ⚠️ | 🟡 Partial | Omni supports queue-level and per-consumer limits; distributed/global coordination is still future work |
 | **Security & Multi-Tenancy** |
 | | RBAC dashboard | ❌ | ✅ | 🟢 Advantage | Only in Omni |
 | | API token scopes | ❌ | ✅ | 🟢 Advantage | Only in Omni |
@@ -114,9 +114,9 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 **Count**: ~28 features
 
 ### 🟡 **Partial Parity** (Usable but different)
-- Custom backoff strategies — Omni has per-job hooks, but not full error-aware policy templates yet
-- Rate limiting — Omni pending per-consumer limits
-- Worker isolation — BullMQ sandboxed; Omni process/thread
+- Custom backoff strategies — Omni covers job-level hooks and queue rules, but BullMQ still has richer built-in backoff ergonomics (for example jitter and named worker strategies)
+- Rate limiting — Omni covers queue + per-consumer limits locally; BullMQ’s limiter is global across workers backed by Redis
+- Worker isolation — Omni has process sandbox policies, but not equivalent strictness for every isolation mode
 
 **Count**: ~3 features
 
@@ -139,10 +139,9 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 **Count**: ~22 features
 
 ### ❌ **Missing from Omni Queue** (BullMQ has)
-- Custom backoff strategies (full flexibility)
-- Job sandboxing (explicit security boundary)
+- No major day-1 parity blocker in the evaluated set; remaining gaps are implementation-depth and distributed-runtime gaps rather than absent core features
 
-**Count**: ~2 features (mostly edge cases)
+**Count**: ~0 hard gaps
 
 ---
 
@@ -170,8 +169,8 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 
 ### **Scenario 5: Microservices with Rate Limits** (controlled throughput)
 - **BullMQ**: ✅ Sufficient (queue-level rate limiting)
-- **Omni Queue**: ⚠️ Queue-level only (per-consumer TBD in Phase 5.5)
-- **Verdict**: BullMQ slightly ahead; Omni catching up
+- **Omni Queue**: ✅ Sufficient (queue-level + per-consumer limits in core)
+- **Verdict**: Equivalent for single-process / single-node workloads; BullMQ still has a meaningful edge for Redis-native global coordination across many workers
 
 ---
 
@@ -185,7 +184,7 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 
 ### **Moderate Migration** (1–3 days)
 - Multi-queue systems with cross-queue coordination
-- Custom backoff strategies (need to refactor)
+- Custom backoff strategies (especially BullMQ jitter / named worker strategies)
 - Dashboard integration (learn Omni dashboard)
 
 ### **Complex Migration** (1–2 weeks)
@@ -198,8 +197,8 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 ## Recommendations
 
 ### **When to Choose BullMQ**
-1. **Strict sandboxing required** — BullMQ's sandboxed workers are more isolated
-2. **Highly custom backoff logic** — Fine-grained per-job retry strategies
+1. **Uniform sandboxing across all isolation modes required** — BullMQ's sandbox model is still more mature end-to-end
+2. **Highly custom backoff ergonomics required** — BullMQ still has named worker strategies and jitter built in
 3. **Pure Redis-only setup** — Redis Cluster management well-tested
 4. **Established ecosystem** — BullMQ has more 3rd-party plugins
 
@@ -217,7 +216,8 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 ## Known Limitations & Not-Implemented
 
 ### **Phase 5 (Current + 5.5 Parity Closure)**
-- Per-consumer rate limiting (targeted for Phase 5.5)
+- Distributed/global per-consumer rate coordination (future hardening beyond the in-process baseline)
+- Built-in jitter / named backoff strategy types (future ergonomics improvement)
 - Consumer groups (Kafka-style, targeted for Phase 7)
 - Distributed tracing integration (OpenTelemetry added, but not first-class)
 
@@ -230,16 +230,16 @@ Omni Queue covers the most common BullMQ use cases. Missing features are mostly 
 
 ## Conclusion
 
-**Omni Queue achieves ~75–80% parity with BullMQ** on feature breadth, with the following profile:
+**Omni Queue achieves ~85–90% parity with BullMQ** on feature breadth, with the following profile:
 
 - **Equivalent**: Core queueing, scheduling, retries, priorities, worker concurrency
 - **Better**: Storage flexibility, observability, workflows, enterprise features, documentation
-- **Worse**: Strict sandboxing policy controls, rich error-aware retry strategies, pure Redis optimization
+- **Worse**: Uniform sandbox maturity across all isolation modes, Redis-native distributed rate coordination, built-in backoff ergonomics
 - **Unique**: Auto-scaling, flows, multi-tenancy, built-in dashboard, batch operations
 
 **Recommended for**: Teams doing microservices/workflows, multi-storage/multi-tenant SaaS, teams wanting better observability, companies adopting open-source with OSS-friendly governance.
 
-**Not recommended for**: Jobs requiring strict sandbox isolation or highly custom retry logic.
+**Not recommended for**: workloads that require Redis-native distributed coordination semantics for rate limits, built-in jittered backoff strategy configuration, or identical sandbox guarantees across every execution mode.
 
 ---
 
