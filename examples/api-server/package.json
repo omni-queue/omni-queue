@@ -1,0 +1,18 @@
+{
+  "name": "api-server",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "server": "npm run build && node dist/server.js",
+    "worker": "npm run build && node dist/worker.js",
+    "dev:server": "npm run build && node dist/server.js",
+    "dev:worker": "node dist/worker.js",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@omni-queue/cli": "*",
+    "@omni-queue/core": "*"
+  }
+}

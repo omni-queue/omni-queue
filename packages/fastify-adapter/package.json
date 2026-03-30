@@ -1,0 +1,40 @@
+{
+  "name": "@omni-queue/fastify-adapter",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Fastify adapter for Omni-Queue dashboard-api",
+  "keywords": [
+    "queue",
+    "dashboard",
+    "fastify",
+    "adapter",
+    "omni-queue"
+  ],
+  "author": "Okojie George",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@omni-queue/dashboard-api": "*"
+  }
+}

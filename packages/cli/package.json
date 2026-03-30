@@ -1,0 +1,26 @@
+{
+  "name": "@omni-queue/cli",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CLI for Omni-Queue runtime operations",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "bin": {
+    "queue": "./dist/index.cjs",
+    "omni": "./dist/index.cjs",
+    "omni-queue": "./dist/index.cjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  }
+}

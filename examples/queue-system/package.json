@@ -1,0 +1,36 @@
+{
+  "name": "queue-system",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "index.ts",
+  "scripts": {
+    "dev": "npm run build && node dist/index.js",
+    "server": "npm run build && node dist/server.js",
+    "server:dev": "vite build && node dist/server.js",
+    "dashboard": "cd ../../packages/dashboard && VITE_API_TARGET=http://localhost:3110 npm run dev",
+    "dev:dashboard": "concurrently \"npm run server:dev\" \"npm run dashboard\"",
+    "start": "npm run dev",
+    "build": "vite build",
+    "test": "vitest run",
+    "lint": "eslint src",
+    "check-types": "tsc --noEmit",
+    "queue:dev": "queue dev",
+    "queue:start": "queue start",
+    "queue:dashboard": "queue dashboard",
+    "queue:workers:list": "queue workers:list",
+    "queue:gen:isolation": "queue gen isolation",
+    "omni:gen:isolation": "queue gen isolation"
+  },
+  "dependencies": {
+    "@omni-queue/cli": "*",
+    "@omni-queue/core": "*",
+    "@omni-queue/dashboard-api": "*",
+    "@omni-queue/otel-plugin": "*",
+    "@omni-queue/plugins": "*",
+    "express": "^4.21.2"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

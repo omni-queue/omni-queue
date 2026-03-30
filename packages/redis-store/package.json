@@ -1,0 +1,45 @@
+{
+  "name": "@omni-queue/redis-store",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Redis storage adapter for Omni-Queue",
+  "keywords": [
+    "queue",
+    "job",
+    "redis",
+    "storage",
+    "omni-queue"
+  ],
+  "author": "Okojie George",
+  "license": "MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:integration": "vitest run tests/redis-store.integration.test.ts",
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "@omni-queue/core": "*",
+    "ioredis": "^5.3.2"
+  },
+  "devDependencies": {
+    "@types/node": "^20.11.5"
+  }
+}

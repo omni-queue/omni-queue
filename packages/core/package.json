@@ -1,0 +1,51 @@
+{
+  "name": "@omni-queue/core",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Core abstractions and interfaces for Omni-Queue",
+  "keywords": [
+    "queue",
+    "job",
+    "worker",
+    "distributed",
+    "task",
+    "background"
+  ],
+  "author": "Okojie George",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/binarygeotech/omni-queue.git",
+    "directory": "packages/core"
+  },
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./libs/isolation-worker": {
+      "types": "./dist/libs/isolation-worker.d.ts",
+      "import": "./dist/libs/isolation-worker.js",
+      "require": "./dist/libs/isolation-worker.cjs"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src",
+    "clean": "rm -rf dist"
+  },
+  "dependencies": {
+    "node-cron": "^4.2.1"
+  }
+}

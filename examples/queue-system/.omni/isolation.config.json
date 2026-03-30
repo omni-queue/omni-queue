@@ -1,0 +1,23 @@
+{
+  "jobs": [
+    {
+      "module": "./src/jobs/send-email.job.js",
+      "export": "SendEmailJob"
+    },
+    {
+      "module": "./src/jobs/generate-report.job.js",
+      "export": "GenerateReportJob"
+    },
+    {
+      "module": "./src/jobs/cleanup.job.js",
+      "export": "CleanupJob"
+    }
+  ],
+  "plugins": [
+    {
+      "module": "@omni-queue/otel-plugin",
+      "export": "TracingPlugin",
+      "constructorArgs": "{ tracerName: 'runtime-inside-isolation' }"
+    }
+  ]
+}
