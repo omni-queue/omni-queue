@@ -25,12 +25,12 @@ export interface QueuePoisonMessagePolicy {
 
 export interface QueueSandboxConfig {
   enabled: boolean;
-  envAllowlist?: string[];
-  cwdAllowlist?: string[];
-  networkAllowlist?: string[];
-  denyNetwork?: boolean;
-  denyChildProcessSpawn?: boolean;
-  readOnlyFilesystem?: boolean;
+  envAllowlist?: string[] | undefined;
+  cwdAllowlist?: string[] | undefined;
+  networkAllowlist?: string[] | undefined;
+  denyNetwork?: boolean | undefined;
+  denyChildProcessSpawn?: boolean | undefined;
+  readOnlyFilesystem?: boolean | undefined;
 }
 
 export interface QueueReliabilityConfig {
@@ -38,6 +38,13 @@ export interface QueueReliabilityConfig {
   circuitBreaker?: QueueCircuitBreakerConfig;
   poisonPolicy?: QueuePoisonMessagePolicy;
 }
+
+export type RetryBackoffStrategyName =
+  | 'fixed'
+  | 'exponential'
+  | 'full-jitter'
+  | 'equal-jitter'
+  | 'decorrelated-jitter';
 
 export interface QueueConfig {
   name: string;
@@ -70,6 +77,9 @@ export interface QueueConfig {
     maxAttempts: number;
     backoff: BackOffType;
     delay?: number;
+    strategyName?: RetryBackoffStrategyName;
+    jitter?: number;
+    maxDelay?: number;
     policy?: QueueRetryPolicyRule[];
   };
 

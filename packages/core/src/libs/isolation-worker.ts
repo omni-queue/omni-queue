@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { isMainThread, parentPort, workerData } from 'worker_threads';
 import { Plugin } from '../interfaces/plugin';
+import { QueueSandboxConfig } from '../interfaces/queue-config';
 import { StoredJob } from '../types';
 import { serializeExecutionError } from './error-serialization';
 import { applyProcessSandbox, parseSandboxPolicy, SANDBOX_POLICY_ENV } from './sandbox';
@@ -13,6 +14,7 @@ type IsolationTask = {
     };
     registryModule?: string;
     pluginsModule?: string;
+    sandbox?: QueueSandboxConfig;
 };
 
 async function loadRegistry(modulePath?: string) {
@@ -78,6 +80,8 @@ function buildHookJob(task: IsolationTask, fallbackJobId: string): StoredJob {
 }
 
 async function execute(task: IsolationTask) {
+    applyProcessSandbox(task.sandbox);
+
     const registry = await loadRegistry(task.registryModule);
     const plugins = await loadPlugins(task.pluginsModule);
 

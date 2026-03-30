@@ -67,7 +67,7 @@ export class ResilientWorker {
         continue;
       }
 
-      if (!this.canConsumeByRateLimit(queueName, queueConfig)) {
+      if (!(await this.canConsumeByRateLimit(queueName, queueConfig))) {
         continue;
       }
 
@@ -184,12 +184,29 @@ export class ResilientWorker {
     return true;
   }
 
-  private canConsumeByRateLimit(queueName: string, queueConfig: QueueConfig): boolean {
+  private async canConsumeByRateLimit(queueName: string, queueConfig: QueueConfig): Promise<boolean> {
     if (!queueConfig.rateLimit) {
       return true;
     }
 
+    const storage = this.storageAdapters[queueConfig.connection];
     const consumerId = this.config.consumerId ?? this.name;
+
+    if (storage?.consumeRateLimitToken) {
+      return storage.consumeRateLimitToken({
+        queueName,
+        consumerId,
+        queueCapacity: Math.max(1, queueConfig.rateLimit.capacity),
+        queueRefillRate: Math.max(0, queueConfig.rateLimit.refillRate),
+        ...(queueConfig.rateLimit.perConsumer
+          ? {
+              consumerCapacity: Math.max(1, queueConfig.rateLimit.perConsumer.capacity),
+              consumerRefillRate: Math.max(0, queueConfig.rateLimit.perConsumer.refillRate),
+            }
+          : {}),
+      });
+    }
+
     return this.rateLimits.canConsume(queueName, consumerId, queueConfig);
   }
 

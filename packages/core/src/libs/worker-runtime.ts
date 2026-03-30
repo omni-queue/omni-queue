@@ -765,6 +765,7 @@ export class JobManager {
     const executor = this.executors.get(ctx.job.queue);
     const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
     let attempt = ctx.job.attempts || 0;
+    let previousBackoff = 0;
     const configuredMaxAttempts = this.resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
 
     if (!executor) throw new Error(`Executor not defined: ${ctx.job.queue}`);
@@ -817,7 +818,12 @@ export class JobManager {
           };
 
           const sandbox = this.resolveSandboxConfig(queueConfig, workerConfig);
-          if (sandbox && isolationType === 'process') {
+          if (sandbox && isolationType === 'inline') {
+            throw new Error(
+              `Sandbox policy requires non-inline isolation for queue '${ctx.job.queue}'. Use 'thread' or 'process'.`
+            );
+          }
+          if (sandbox && isolationType !== 'inline') {
             isolationOptions.sandbox = sandbox;
           }
 
@@ -937,7 +943,14 @@ export class JobManager {
             throw err;
           }
 
-          const backoff = this.resolveRetryBackoff(ctx, queueConfig, attempt, retryDecision);
+          const backoff = this.resolveRetryBackoff(
+            ctx,
+            queueConfig,
+            attempt,
+            retryDecision,
+            previousBackoff
+          );
+          previousBackoff = backoff;
 
           await sleep(backoff);
         }
@@ -953,6 +966,7 @@ export class JobManager {
     storage: QueueStorage
   ) {
     let attempt = ctx.job.attempts || 0;
+    let previousBackoff = 0;
     const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
 
     const configuredMaxAttempts = this.resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
@@ -991,7 +1005,12 @@ export class JobManager {
         };
 
         const sandbox = this.resolveSandboxConfig(queueConfig, workerConfig);
-        if (sandbox && isolationType === 'process') {
+        if (sandbox && isolationType === 'inline') {
+          throw new Error(
+            `Sandbox policy requires non-inline isolation for queue '${ctx.job.queue}'. Use 'thread' or 'process'.`
+          );
+        }
+        if (sandbox && isolationType !== 'inline') {
           isolationOptions.sandbox = sandbox;
         }
 
@@ -1071,25 +1090,59 @@ export class JobManager {
           throw err;
         }
 
-        const backoff = this.resolveRetryBackoff(ctx, queueConfig, attempt, retryDecision);
+        const backoff = this.resolveRetryBackoff(
+          ctx,
+          queueConfig,
+          attempt,
+          retryDecision,
+          previousBackoff
+        );
+        previousBackoff = backoff;
 
         await sleep(backoff);
       }
     }
   }
 
-  resolveBackoff(queueConfig: any, attempt: number) {
-    const strategy = queueConfig.retry?.backoff;
+  resolveBackoff(queueConfig: QueueConfig, attempt: number, previousBackoff = 0): number {
+    const { retry } = queueConfig;
+    const strategyName = retry?.strategyName ?? retry?.backoff ?? 'fixed';
+    const baseDelay = Math.max(0, retry?.delay ?? 1000);
+    const maxDelay = Math.max(baseDelay, retry?.maxDelay ?? 30000);
 
-    if (strategy === 'exponential') {
-      return Math.pow(2, attempt) * 1000;
+    let backoff: number;
+    switch (strategyName) {
+      case 'exponential':
+        backoff = baseDelay * Math.pow(2, attempt);
+        break;
+      case 'full-jitter': {
+        const exponential = baseDelay * Math.pow(2, attempt);
+        backoff = Math.random() * exponential;
+        break;
+      }
+      case 'equal-jitter': {
+        const exponential = baseDelay * Math.pow(2, attempt);
+        backoff = exponential / 2 + Math.random() * (exponential / 2);
+        break;
+      }
+      case 'decorrelated-jitter': {
+        const prior = previousBackoff > 0 ? previousBackoff : baseDelay;
+        backoff = Math.min(maxDelay, baseDelay + Math.random() * Math.max(baseDelay, prior * 3 - baseDelay));
+        break;
+      }
+      case 'fixed':
+      default:
+        backoff = baseDelay;
+        break;
     }
 
-    if (typeof strategy === 'number') {
-      return strategy;
+    const jitter = Math.min(1, Math.max(0, retry?.jitter ?? 0));
+    if (jitter > 0 && strategyName !== 'full-jitter' && strategyName !== 'equal-jitter') {
+      const randomOffset = backoff * jitter * Math.random();
+      backoff -= randomOffset;
     }
 
-    return 1000;
+    return Math.max(0, Math.floor(backoff));
   }
 
   private resolveConfiguredMaxAttempts(
@@ -1224,13 +1277,14 @@ export class JobManager {
     ctx: ExecutionContext,
     queueConfig: QueueConfig,
     attempt: number,
-    decision: ResolvedRetryDecision
+    decision: ResolvedRetryDecision,
+    previousBackoff: number
   ): number {
     if (decision.backoffMs !== undefined) {
       return Math.max(0, decision.backoffMs);
     }
 
-    return ctx.instance.backoff?.(attempt) ?? this.resolveBackoff(queueConfig, attempt);
+    return ctx.instance.backoff?.(attempt) ?? this.resolveBackoff(queueConfig, attempt, previousBackoff);
   }
 
   private resolveSandboxConfig(

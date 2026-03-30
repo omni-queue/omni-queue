@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { Job } from '../src/contracts/job';
 import type { RetryDecisionContext } from '../src/interfaces/retry-policy';
 import type { QueueConfig } from '../src/interfaces/queue-config';
@@ -96,7 +96,7 @@ class LegacyRetryJob extends Job<{ succeedOn: number }> {
 }
 
 function createRuntime(
-  jobs: Array<new (...args: any[]) => Job<any>>,
+  jobs: Array<{ new (...args: any[]): Job<any>; jobName: string }>,
   queueOverrides: Partial<QueueConfig> = {},
   workerOverrides: Partial<WorkerConfig> = {}
 ) {
@@ -181,5 +181,39 @@ describe('retry policy behavior', () => {
     const leased = await storage.dequeue({ queue: 'default', batchSize: 1, leaseMs: 30_000 });
 
     await expect(manager.execute(leased[0]!)).resolves.toBe('legacy-ok');
+  });
+
+  it('supports named jitter backoff strategies', () => {
+    const { manager } = createRuntime([LegacyRetryJob], {
+      retry: {
+        attempts: 3,
+        maxAttempts: 3,
+        backoff: 'fixed',
+        strategyName: 'equal-jitter',
+        delay: 1000,
+      },
+    });
+
+    const randomSpy = vi.spyOn(Math, 'random').mockReturnValue(0.5);
+
+    const backoff = manager.resolveBackoff(
+      {
+        name: 'default',
+        connection: 'memory',
+        concurrency: 1,
+        batchSize: 1,
+        retry: {
+          attempts: 3,
+          maxAttempts: 3,
+          backoff: 'fixed',
+          strategyName: 'equal-jitter',
+          delay: 1000,
+        },
+      },
+      2
+    );
+
+    expect(backoff).toBe(3000);
+    randomSpy.mockRestore();
   });
 });

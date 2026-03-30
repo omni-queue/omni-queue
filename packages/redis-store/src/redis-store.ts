@@ -7,6 +7,7 @@ import type {
   LeaseOptions,
   QueueAdminJobStatus,
   QueueCleanOptions,
+  RateLimitConsumeRequest,
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
@@ -58,6 +59,71 @@ export interface RedisStoreConfig {
 export class RedisStore implements QueueStorage {
   private client: Redis;
   private prefix: string;
+
+  private static readonly RATE_LIMIT_CONSUME_SCRIPT = `
+local queue_key = KEYS[1]
+local consumer_key = KEYS[2]
+
+local now = tonumber(ARGV[1])
+local queue_capacity = tonumber(ARGV[2])
+local queue_refill_rate = tonumber(ARGV[3])
+local has_consumer = tonumber(ARGV[4])
+local consumer_capacity = tonumber(ARGV[5])
+local consumer_refill_rate = tonumber(ARGV[6])
+
+local function read_state(key, capacity, refill_rate, timestamp)
+  local tokens = tonumber(redis.call('HGET', key, 'tokens'))
+  local last = tonumber(redis.call('HGET', key, 'last'))
+
+  if not tokens then
+    tokens = capacity
+  end
+
+  if not last then
+    last = timestamp
+  end
+
+  local elapsed = timestamp - last
+  if elapsed > 0 and refill_rate > 0 then
+    tokens = math.min(capacity, tokens + ((elapsed / 1000) * refill_rate))
+  end
+
+  return tokens
+end
+
+local function ttl_ms(capacity, refill_rate)
+  if refill_rate <= 0 then
+    return 86400000
+  end
+
+  return math.max(1000, math.ceil(((capacity / refill_rate) * 1000) * 2))
+end
+
+local queue_tokens = read_state(queue_key, queue_capacity, queue_refill_rate, now)
+if queue_tokens < 1 then
+  return 0
+end
+
+local consumer_tokens = nil
+if has_consumer == 1 then
+  consumer_tokens = read_state(consumer_key, consumer_capacity, consumer_refill_rate, now)
+  if consumer_tokens < 1 then
+    return 0
+  end
+end
+
+queue_tokens = queue_tokens - 1
+redis.call('HMSET', queue_key, 'tokens', queue_tokens, 'last', now)
+redis.call('PEXPIRE', queue_key, ttl_ms(queue_capacity, queue_refill_rate))
+
+if has_consumer == 1 then
+  consumer_tokens = consumer_tokens - 1
+  redis.call('HMSET', consumer_key, 'tokens', consumer_tokens, 'last', now)
+  redis.call('PEXPIRE', consumer_key, ttl_ms(consumer_capacity, consumer_refill_rate))
+end
+
+return 1
+`;
 
   // Atomic dequeue + lease Lua script
   private static readonly DEQUEUE_SCRIPT = `
@@ -142,6 +208,14 @@ return ids
 
   private completedKey(queue: string) {
     return `${this.prefix}:queue:${queue}:completed`;
+  }
+
+  private queueRateLimitKey(queue: string) {
+    return `${this.prefix}:ratelimit:queue:${queue}`;
+  }
+
+  private consumerRateLimitKey(queue: string, consumerId: string) {
+    return `${this.prefix}:ratelimit:consumer:${queue}:${consumerId}`;
   }
 
   // ---------------------------------------------------------------------------
@@ -271,6 +345,26 @@ return ids
     const updated: StoredJob = { ...job, attempts, updatedAt: Date.now() };
 
     await this.client.set(this.jobKey(id), JSON.stringify(updated));
+  }
+
+  async consumeRateLimitToken(request: RateLimitConsumeRequest): Promise<boolean> {
+    const hasConsumer =
+      request.consumerCapacity !== undefined && request.consumerRefillRate !== undefined ? 1 : 0;
+
+    const result = await this.client.eval(
+      RedisStore.RATE_LIMIT_CONSUME_SCRIPT,
+      2,
+      this.queueRateLimitKey(request.queueName),
+      this.consumerRateLimitKey(request.queueName, request.consumerId),
+      Date.now(),
+      Math.max(1, request.queueCapacity),
+      Math.max(0, request.queueRefillRate),
+      hasConsumer,
+      Math.max(1, request.consumerCapacity ?? 1),
+      Math.max(0, request.consumerRefillRate ?? 0)
+    );
+
+    return Number(result) === 1;
   }
 
   // Delayed/Scheduled job support (Phase 1.1)

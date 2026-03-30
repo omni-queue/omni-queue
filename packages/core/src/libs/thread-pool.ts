@@ -1,5 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { Worker } from 'worker_threads';
+import { QueueSandboxConfig } from '../interfaces/queue-config';
 import { deserializeExecutionError } from './error-serialization';
 
 type DeferredJob = {
@@ -9,12 +10,15 @@ type DeferredJob = {
 };
 
 export class ThreadPool {
+    private sandbox: QueueSandboxConfig | undefined;
     private workers: Worker[] = [];
     private idle: Worker[] = [];
     private queue: DeferredJob[] = [];
     private currentJobs = new Map<Worker, DeferredJob>();
 
-    constructor(workerModule: string, size: number = 4) {
+    constructor(workerModule: string, size: number = 4, sandbox?: QueueSandboxConfig) {
+        this.sandbox = sandbox;
+
         for (let i = 0; i < size; i++) {
             const worker = new Worker(workerModule, {
                 stdout: true,
@@ -33,7 +37,14 @@ export class ThreadPool {
 
     run(task: any): Promise<any> {
         return new Promise((resolve, reject) => {
-            this.queue.push({ task, resolve, reject });
+            this.queue.push({
+                task: {
+                    ...task,
+                    ...(this.sandbox ? { sandbox: this.sandbox } : {}),
+                },
+                resolve,
+                reject,
+            });
             this.schedule();
         });
     }

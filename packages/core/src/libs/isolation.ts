@@ -25,10 +25,11 @@ export async function runWithIsolation(
   }
 
   if (options.type === 'thread') {
-    let pool = threadPools.get(options.workerModule);
+    const threadPoolKey = `${options.workerModule}::${sandboxPolicySignature(options.sandbox)}`;
+    let pool = threadPools.get(threadPoolKey);
     if (!pool) {
-      pool = new ThreadPool(options.workerModule, options.poolSize || 4);
-      threadPools.set(options.workerModule, pool);
+      pool = new ThreadPool(options.workerModule, options.poolSize || 4, options.sandbox);
+      threadPools.set(threadPoolKey, pool);
     }
 
     return withTimeout(
