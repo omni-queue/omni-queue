@@ -2,4 +2,15 @@
 
 Next.js integration adapter for Omni-Queue dashboard API.
 
-Provides a Connect-compatible middleware adapter and a standalone dashboard server bootstrap.
+Use the exported Node handler in a Pages Router API catch-all route and host it within your existing Next application.
+
+## Usage
+
+```ts
+import { omniQueueNextAdapter } from '@omni-queue/next-adapter';
+
+export default omniQueueNextAdapter({
+	supervisor,
+	apiBase: '/api/omni-queue',
+});
+```

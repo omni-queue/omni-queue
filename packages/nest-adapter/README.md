@@ -2,4 +2,17 @@
 
 NestJS integration adapter for Omni-Queue dashboard API.
 
-Use `registerNestAdapter(app, options)` with an Express-based Nest app, or `startNestAdapter` for standalone mode.
+Use the adapter middleware with an Express-based Nest app.
+
+## Usage
+
+```ts
+import { omniQueueNestAdapter } from '@omni-queue/nest-adapter';
+
+app.use(
+	omniQueueNestAdapter({
+		supervisor,
+		apiBase: '/api/omni-queue',
+	})
+);
+```

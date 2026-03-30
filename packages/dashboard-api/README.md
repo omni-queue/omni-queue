@@ -6,9 +6,7 @@ HTTP bindings for Omni Queue dashboard APIs.
 
 `@omni-queue/core` only stores dashboard configuration on `Supervisor`. This package turns that configuration into:
 
-- a standalone Node HTTP server
-- a Node request handler
-- an Express/Connect-style middleware
+- a reusable dashboard route mounting helper
 
 Default framework adapter package: `@omni-queue/express-adapter`.
 
@@ -17,7 +15,7 @@ Default framework adapter package: `@omni-queue/express-adapter`.
 ```ts
 import express from 'express';
 import { Supervisor } from '@omni-queue/core';
-import { createExpressAdapter } from '@omni-queue/express-adapter';
+import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
 
 const supervisor = new Supervisor({
   queues,
@@ -35,5 +33,10 @@ const supervisor = new Supervisor({
 });
 
 const app = express();
-app.use(createExpressAdapter({ supervisor }));
+app.use(
+  omniQueueExpressAdapter({
+    supervisor,
+    apiBase: '/queue-manager',
+  })
+);
 ```

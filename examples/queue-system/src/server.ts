@@ -1,3 +1,4 @@
+import express from 'express';
 import {
   InMemoryQueueStorage,
   JobRegistry,
@@ -6,7 +7,7 @@ import {
   defineWorkers,
   resolveRuntimeModules,
 } from '@omni-queue/core';
-import { APIAdapter } from '@omni-queue/dashboard-api';
+import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
 import { TracingPlugin } from '@omni-queue/otel-plugin';
 import { DAGPlugin, RateLimiterPlugin } from '@omni-queue/plugins';
 import { CleanupJob, GenerateReportJob, SendEmailJob } from './jobs/index.js';
@@ -141,16 +142,14 @@ async function main() {
     }),
   ]);
 
-  const adapter = new APIAdapter({
-    supervisor,
-    port,
-    host: '127.0.0.1',
-    apiBase: '/api/dashboard',
-    streamIntervalMs: 2000,
-    signals: false,
-  });
-
-  const app = adapter.express;
+  const app = express();
+  app.use(
+    omniQueueExpressAdapter({
+      supervisor,
+      apiBase: '/api/dashboard',
+      streamIntervalMs: 2000,
+    })
+  );
 
   // Health check endpoint
   app.get('/health', (req, res) => {
@@ -162,7 +161,9 @@ async function main() {
     res.status(404).json({ error: 'Not found' });
   });
 
-  await adapter.start();
+  const server = await new Promise<import('node:http').Server>((resolve) => {
+    const started = app.listen(port, '127.0.0.1', () => resolve(started));
+  });
   console.log('[server] GET  /health');
   console.log('[server] Dashboard UI: http://localhost:4173 (dev) or http://localhost:3110 (production)');
 
@@ -171,7 +172,15 @@ async function main() {
 
   const shutdown = async () => {
     supervisor.stop();
-    await adapter.stopAsync();
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
     process.exit(0);
   };
 

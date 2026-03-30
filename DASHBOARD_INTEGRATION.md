@@ -104,10 +104,9 @@ Once the dashboard is running, you can:
 ### Dashboard Packages
 
 - **@omni-queue/dashboard-api** - Express middleware providing `/api/dashboard/*` endpoints
-  - `createDashboardRequestHandler()` - Main factory function
-  - Integrates with your Supervisor to expose its data via HTTP/WebSocket
-  - Built-in WebSocket support for live streaming
-  - Automatic HTTP polling fallback when WebSocket unavailable
+   - `createDashboardRequestHandler()` - Route-mounting factory for framework adapters
+   - Integrates with your `Supervisor` while leaving HTTP server ownership to the host app
+   - SSE and polling endpoints are available through the mounted API routes
 
 - **@omni-queue/dashboard** - React + Vite frontend
   - React Router for client-side navigation
@@ -116,7 +115,7 @@ Once the dashboard is running, you can:
 
 ### How It Works
 
-1. **API Server** - Creates a Supervisor instance and mounts dashboard middleware:
+1. **API Server** - Creates a Supervisor instance and mounts dashboard middleware into the app you already own:
    ```typescript
    const supervisor = new Supervisor({ queues, workers, registry, storageAdapters });
    const handler = createDashboardRequestHandler({ supervisor, endpoint: '/api/dashboard' });

@@ -1,7 +1,7 @@
 import express from 'express';
 import { randomUUID } from 'node:crypto';
 import { JobManager, Supervisor } from '@omni-queue/core';
-import { APIAdapter } from '@omni-queue/dashboard-api';
+import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
 import 'dotenv/config';
 import {
   GenerateThumbnailJob,
@@ -62,16 +62,14 @@ async function main() {
     storageAdapters,
   });
 
-  const adapter = new APIAdapter({
-    supervisor,
-    port,
-    host: '127.0.0.1',
-    apiBase: '/api/dashboard',
-    streamIntervalMs: 2000,
-    signals: false,
-  });
-
-  const app = adapter.express;
+  const app = express();
+  app.use(
+    omniQueueExpressAdapter({
+      supervisor,
+      apiBase: '/api/dashboard',
+      streamIntervalMs: 2000,
+    })
+  );
   app.use(express.json());
 
   // Job API endpoints
@@ -303,7 +301,9 @@ async function main() {
     res.status(404).json({ error: 'Not found' });
   });
 
-  await adapter.start();
+  const server = await new Promise<import('node:http').Server>((resolve) => {
+    const started = app.listen(port, '127.0.0.1', () => resolve(started));
+  });
   console.log('[api] GET  /health');
   console.log('[api] POST /jobs/email');
   console.log('[api] POST /jobs/email/schedule');
@@ -315,7 +315,15 @@ async function main() {
 
   const shutdown = async () => {
     jobManager.stopSchedules();
-    await adapter.stopAsync();
+    await new Promise<void>((resolve, reject) => {
+      server.close((error) => {
+        if (error) {
+          reject(error);
+          return;
+        }
+        resolve();
+      });
+    });
     await store.close();
     process.exit(0);
   };

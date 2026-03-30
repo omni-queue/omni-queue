@@ -1,12 +1,14 @@
 import {
-  createDashboardExpressMiddleware,
-  startDashboardServer,
   type DashboardApiOptions,
-  type StandaloneDashboardServerOptions,
 } from '@omni-queue/dashboard-api';
+import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
 
 export interface FastifyLike {
   use?: (...args: unknown[]) => unknown;
+}
+
+export function omniQueueFastifyAdapter(options: DashboardApiOptions) {
+  return omniQueueExpressAdapter(options);
 }
 
 export function registerFastifyAdapter(app: FastifyLike, options: DashboardApiOptions): void {
@@ -16,9 +18,5 @@ export function registerFastifyAdapter(app: FastifyLike, options: DashboardApiOp
     );
   }
 
-  app.use(createDashboardExpressMiddleware(options));
-}
-
-export function startFastifyAdapter(options: StandaloneDashboardServerOptions) {
-  return startDashboardServer(options);
+  app.use(omniQueueFastifyAdapter(options));
 }

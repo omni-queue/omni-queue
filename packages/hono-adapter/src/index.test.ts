@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { startHonoAdapter } from './index';
+import { omniQueueHonoAdapter } from './index';
 
 describe('@omni-queue/hono-adapter exports', () => {
   it('exports adapter functions', () => {
-    expect(startHonoAdapter).toBeTypeOf('function');
+    expect(omniQueueHonoAdapter).toBeTypeOf('function');
   });
 });

@@ -1,6 +1,7 @@
 import type { DashboardOptions } from '@omni-queue/core';
 import { Supervisor } from '@omni-queue/core';
-import { startDashboardServer } from '@omni-queue/dashboard-api';
+import express from 'express';
+import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
 import type http from 'node:http';
 import { createConsumerWorkers, createQueues, createRedisStoreFromEnv, createRegistry } from './runtime';
 
@@ -73,10 +74,20 @@ async function main() {
     await supervisor.start();
 
     if (dashboard?.enabled) {
-        dashboardServer = startDashboardServer({
-            supervisor,
-            host: process.env.DASHBOARD_HOST || '127.0.0.1',
-            port: Number(process.env.DASHBOARD_PORT || '3210'),
+        const dashboardApp = express();
+        dashboardApp.use(
+            omniQueueExpressAdapter({
+                supervisor,
+                apiBase: dashboard.endpoint,
+            })
+        );
+
+        dashboardServer = await new Promise<http.Server>((resolve) => {
+            const started = dashboardApp.listen(
+                Number(process.env.DASHBOARD_PORT || '3210'),
+                process.env.DASHBOARD_HOST || '127.0.0.1',
+                () => resolve(started)
+            );
         });
     }
 
@@ -89,7 +100,14 @@ async function main() {
 
     const shutdown = async () => {
         console.log('\n[worker] shutting down ...');
-        dashboardServer?.close();
+        await new Promise<void>((resolve) => {
+            if (!dashboardServer) {
+                resolve();
+                return;
+            }
+
+            dashboardServer.close(() => resolve());
+        });
         supervisor.stop();
         await store.close();
         process.exit(0);

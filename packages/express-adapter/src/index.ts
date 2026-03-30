@@ -1,19 +1,19 @@
+import express from 'express';
 import {
-  createDashboardExpressMiddleware,
-  startDashboardServer,
+  createDashboardRequestHandler,
   type DashboardApiOptions,
-  type StandaloneDashboardServerOptions,
 } from '@omni-queue/dashboard-api';
 
-export function createExpressAdapter(options: DashboardApiOptions) {
-  return createDashboardExpressMiddleware(options);
+export function omniQueueExpressAdapter(options: DashboardApiOptions): express.RequestHandler {
+  const app = express();
+  createDashboardRequestHandler(options)(app);
+  return app;
 }
 
-export function startExpressAdapter(options: StandaloneDashboardServerOptions) {
-  return startDashboardServer(options);
+export function createExpressAdapter(options: DashboardApiOptions) {
+  return omniQueueExpressAdapter(options);
 }
 
 export {
-  createDashboardExpressMiddleware as createDefaultDashboardMiddleware,
-  startDashboardServer as startDefaultDashboardServer,
+  omniQueueExpressAdapter as createDefaultDashboardMiddleware,
 };

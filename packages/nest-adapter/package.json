@@ -35,6 +35,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/dashboard-api": "*"
+    "@omni-queue/dashboard-api": "*",
+    "@omni-queue/express-adapter": "*"
   }
 }
