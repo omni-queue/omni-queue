@@ -116,8 +116,10 @@ curl -X POST http://localhost:3100/dlq/retry \
 - `DASHBOARD_ROUTE_PREFIX` (default: `/dashboard`)
 - `DASHBOARD_AUTH_TYPE` (`none` | `basic` | `bearer`, default: `none`)
 - `DASHBOARD_AUTH_LOGIN_MODE` (`token` | `custom`, only for `bearer`, default: `token`)
-- `DASHBOARD_BASIC_USERNAME` / `DASHBOARD_BASIC_PASSWORD` (required for `basic`, and also used by `bearer` + `custom` mode)
+- `DASHBOARD_AUTH_USERNAME` / `DASHBOARD_AUTH_PASSWORD` (required for `basic`, and also used by `bearer` + `custom` mode)
 - `DASHBOARD_BEARER_TOKEN` (required for `bearer` + `token` mode)
+
+Backward compatibility: `DASHBOARD_BASIC_USERNAME` / `DASHBOARD_BASIC_PASSWORD` are still accepted as fallbacks.
 
 Example:
 
@@ -130,8 +132,8 @@ REDIS_PASSWORD=your-secret npm run worker
 # Enable Supervisor-owned dashboard with basic auth:
 DASHBOARD_ENABLED=true \
 DASHBOARD_AUTH_TYPE=basic \
-DASHBOARD_BASIC_USERNAME=admin \
-DASHBOARD_BASIC_PASSWORD=secret \
+DASHBOARD_AUTH_USERNAME=admin \
+DASHBOARD_AUTH_PASSWORD=secret \
 npm run worker
 
 # Enable bearer token login mode:
@@ -145,8 +147,8 @@ npm run worker
 DASHBOARD_ENABLED=true \
 DASHBOARD_AUTH_TYPE=bearer \
 DASHBOARD_AUTH_LOGIN_MODE=custom \
-DASHBOARD_BASIC_USERNAME=admin \
-DASHBOARD_BASIC_PASSWORD=secret \
+DASHBOARD_AUTH_USERNAME=admin \
+DASHBOARD_AUTH_PASSWORD=secret \
 npm run worker
 ```
 

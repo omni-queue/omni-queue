@@ -50,6 +50,12 @@ function createDashboardSessionToken(username: string): string {
   return Buffer.from(`omni-queue-dashboard:server:${username}`).toString('base64url');
 }
 
+function resolveDashboardCredentialsFromEnv(): { username?: string; password?: string } {
+  const username = process.env.DASHBOARD_AUTH_USERNAME ?? process.env.DASHBOARD_BASIC_USERNAME;
+  const password = process.env.DASHBOARD_AUTH_PASSWORD ?? process.env.DASHBOARD_BASIC_PASSWORD;
+  return { username, password };
+}
+
 
 async function main() {
   const port = Number(process.env.PORT ?? '3100');
@@ -308,8 +314,7 @@ async function main() {
         return null;
       }
 
-      const username = process.env.DASHBOARD_BASIC_USERNAME;
-      const password = process.env.DASHBOARD_BASIC_PASSWORD;
+      const { username, password } = resolveDashboardCredentialsFromEnv();
       if (
         username === undefined ||
         password === undefined ||
@@ -325,7 +330,7 @@ async function main() {
       };
     },
     sessionValidator: (credentials: { token: string }) => {
-      const username = process.env.DASHBOARD_BASIC_USERNAME;
+      const { username } = resolveDashboardCredentialsFromEnv();
       if (!username) {
         return false;
       }

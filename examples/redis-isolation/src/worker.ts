@@ -19,6 +19,12 @@ function parseBoolean(value: string | undefined): boolean {
     return value === '1' || value?.toLowerCase() === 'true';
 }
 
+function resolveDashboardCredentialsFromEnv(): { username?: string; password?: string } {
+    const username = process.env.DASHBOARD_AUTH_USERNAME ?? process.env.DASHBOARD_BASIC_USERNAME;
+    const password = process.env.DASHBOARD_AUTH_PASSWORD ?? process.env.DASHBOARD_BASIC_PASSWORD;
+    return { username, password };
+}
+
 type DashboardAdapterConfig = {
     apiBase: string;
     auth: DashboardAuthOptions;
@@ -75,8 +81,7 @@ function buildDashboardConfigFromEnv(): DashboardAdapterConfig | undefined {
     const authType = process.env.DASHBOARD_AUTH_TYPE;
 
     if (authType === 'basic') {
-        const username = process.env.DASHBOARD_BASIC_USERNAME;
-        const password = process.env.DASHBOARD_BASIC_PASSWORD;
+        const { username, password } = resolveDashboardCredentialsFromEnv();
         if (username && password) {
             const issuedToken = createSessionToken(`basic:${username}`);
             return {
@@ -94,8 +99,7 @@ function buildDashboardConfigFromEnv(): DashboardAdapterConfig | undefined {
         const loginMode = process.env.DASHBOARD_AUTH_LOGIN_MODE === 'custom' ? 'custom' : 'token';
 
         if (loginMode === 'custom') {
-            const username = process.env.DASHBOARD_BASIC_USERNAME;
-            const password = process.env.DASHBOARD_BASIC_PASSWORD;
+            const { username, password } = resolveDashboardCredentialsFromEnv();
             if (username && password) {
                 const issuedToken = createSessionToken(`bearer-custom:${username}`);
                 return {
