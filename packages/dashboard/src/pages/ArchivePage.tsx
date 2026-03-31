@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { dashboardFetch } from '../auth';
 import type { JobRow, QueueOverview } from '../types';
 import { API_BASE } from '../types';
 
@@ -48,7 +49,7 @@ export function ArchivePage({ queues }: Props) {
         if (Number.isFinite(asNumber) && asNumber > 0) params.set('toTs', String(Math.floor(asNumber)));
       }
 
-      const res = await fetch(`${API_BASE}/archive?${params.toString()}`);
+      const res = await dashboardFetch(`${API_BASE}/archive?${params.toString()}`);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const payload = (await res.json()) as { jobs: JobRow[] };
       setJobs(payload.jobs ?? []);

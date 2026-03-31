@@ -1,5 +1,9 @@
 import type { DashboardAuthContext, DashboardAuthOptions } from '@omni-queue/core';
-import { authenticateDashboardRequest, hasDashboardPermissionForContext } from './auth';
+import {
+  authenticateDashboardRequest,
+  hasDashboardPermissionForContext,
+  resolveDashboardChallenge,
+} from './auth';
 
 type DashboardPermission = 'read' | 'operate' | 'admin';
 
@@ -35,9 +39,7 @@ export function sendUnauthorized(
   auth: DashboardAuthOptions,
   message = 'Unauthorized'
 ): void {
-  const realm = auth.type === 'none' ? 'omni-queue-dashboard' : (auth.realm ?? 'omni-queue-dashboard');
-  const challenge = auth.type === 'bearer' ? `Bearer realm="${realm}"` : `Basic realm="${realm}"`;
-  res.status(401).set('www-authenticate', challenge).json({ error: message });
+  res.status(401).set('www-authenticate', resolveDashboardChallenge(auth)).json({ error: message });
 }
 
 export async function checkAuth(req: any, res: any, auth: DashboardAuthOptions): Promise<boolean> {

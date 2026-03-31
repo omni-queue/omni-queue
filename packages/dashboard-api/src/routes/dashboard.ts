@@ -1,7 +1,18 @@
 import { createRequire } from 'node:module';
 import type { Request, Response, Router } from 'express';
-import type { DashboardAuthOptions, QueueAdminJobStatus, Supervisor } from '@omni-queue/core';
+import type {
+  DashboardAuthOptions,
+  DashboardLoginRequest,
+  QueueAdminJobStatus,
+  Supervisor,
+} from '@omni-queue/core';
 import { checkAuth, getAllowedQueues, hasDashboardPermission } from '../middleware/request-auth';
+import {
+  authenticateDashboardLogin,
+  authenticateDashboardSession,
+  extractDashboardBearerToken,
+  resolveDashboardLoginMode,
+} from '../middleware/auth';
 import { queryArchive, updateArchiveRetention } from '../services/archive';
 import { getDashboardBatch, listDashboardBatches } from '../services/batches';
 import {
@@ -162,6 +173,138 @@ export function buildDashboardRouter(
 
   router.use(express.json());
   router.use(express.urlencoded({ extended: false }));
+
+  const loginMode = resolveDashboardLoginMode(auth);
+
+  const parseLoginRequest = (req: Request): { value?: DashboardLoginRequest; error?: string } => {
+    if (auth.type === 'none' || !loginMode) {
+      return { error: 'Authentication is disabled' };
+    }
+
+    if (loginMode === 'token') {
+      const token = asString(req.body?.token);
+      if (!token) {
+        return { error: 'Expected payload: { token }' };
+      }
+
+      return {
+        value: {
+          mode: 'token',
+          token,
+          request: req,
+        },
+      };
+    }
+
+    const username = asString(req.body?.username);
+    const password = asString(req.body?.password);
+    if (!username || !password) {
+      return { error: 'Expected payload: { username, password }' };
+    }
+
+    return {
+      value: {
+        mode: loginMode,
+        username,
+        password,
+        request: req,
+      },
+    };
+  };
+
+  const resolveLoginResponseContext = async (req: Request, token: string, providedContext?: unknown) => {
+    if (providedContext && typeof providedContext === 'object') {
+      return providedContext;
+    }
+
+    const authContext = await authenticateDashboardSession({ token, request: req }, auth);
+    return authContext ?? null;
+  };
+
+  router.get('/auth/config', (_req, res) => {
+    res.json({
+      requiresAuth: auth.type !== 'none',
+      authType: auth.type,
+      loginMode,
+    });
+  });
+
+  router.get('/auth/session', async (req, res) => {
+    try {
+      if (auth.type === 'none') {
+        res.json({
+          authenticated: true,
+          authType: auth.type,
+          loginMode,
+          authContext: { role: 'admin' },
+        });
+        return;
+      }
+
+      const token = extractDashboardBearerToken(req);
+      if (!token) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      const authContext = await authenticateDashboardSession({ token, request: req }, auth);
+      if (!authContext) {
+        res.status(401).json({ error: 'Invalid or expired session' });
+        return;
+      }
+
+      res.json({
+        authenticated: true,
+        authType: auth.type,
+        loginMode,
+        authContext,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.post('/auth/login', async (req, res) => {
+    try {
+      const parsed = parseLoginRequest(req);
+      if (!parsed.value) {
+        res.status(400).json({ error: parsed.error ?? 'Invalid login payload' });
+        return;
+      }
+
+      const session = await authenticateDashboardLogin(parsed.value, auth);
+      if (!session || !session.token?.trim()) {
+        res.status(401).json({ error: 'Invalid credentials' });
+        return;
+      }
+
+      const authContext = await resolveLoginResponseContext(req, session.token, session.authContext);
+      res.json({
+        token: session.token,
+        ...(session.expiresAt != null ? { expiresAt: session.expiresAt } : {}),
+        authType: auth.type,
+        loginMode,
+        authContext,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.post('/auth/logout', async (req, res) => {
+    try {
+      if (auth.type !== 'none') {
+        const token = extractDashboardBearerToken(req);
+        if (token && auth.logoutHandler) {
+          await auth.logoutHandler({ token, request: req });
+        }
+      }
+
+      res.status(204).end();
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
 
   router.use(async (req, res, next) => {
     if (req.method === 'OPTIONS') {

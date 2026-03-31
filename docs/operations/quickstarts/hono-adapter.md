@@ -39,7 +39,7 @@ const handler = omniQueueHonoAdapter({
   supervisor,
   apiBase: '/api/omni-queue',
   uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
-  protectUiWithAuth: true,
+  protectUiWithAuth: false,
 });
 
 // If you own the underlying Node server:

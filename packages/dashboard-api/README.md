@@ -33,17 +33,35 @@ const supervisor = new Supervisor({
   storageAdapters,
 });
 
+const dashboardAuth = {
+  type: 'basic' as const,
+  authHandler: async (request) => {
+    if (request.mode === 'token') {
+      return null;
+    }
+
+    if (request.username !== 'test' || request.password !== 'password') {
+      return null;
+    }
+
+    return {
+      token: 'dashboard-session-token',
+      authContext: { role: 'admin' as const },
+    };
+  },
+  sessionValidator: async ({ token }: { token: string }) =>
+    token === 'dashboard-session-token' ? { role: 'admin' as const } : false,
+};
+
 const app = express();
 app.use(
   createExpressAdapter({
     supervisor,
     apiBase: '/queue-manager',
-    auth: {
-      type: 'basic',
-      validator: ({ username, password }) => username === 'test' && password === 'password',
-    },
+    auth: dashboardAuth,
     uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
     uiBase: '/',
+    protectUiWithAuth: false,
   })
 );
 
@@ -51,13 +69,12 @@ const server = app.listen(3210);
 createExpressWebSocketBinding(server, {
   supervisor,
   apiBase: '/queue-manager',
-  auth: {
-    type: 'basic',
-    validator: ({ username, password }) => username === 'test' && password === 'password',
-  },
+  auth: dashboardAuth,
 });
 
 // publish assets first:
 // queue dashboard:publish --out=./public/omni-queue-dashboard
 // (resolved from installed @omni-queue/dashboard in node_modules)
 ```
+
+The dashboard UI now handles login itself. Serve the static shell publicly (`protectUiWithAuth: false`), then protect the API and WebSocket endpoints with `authHandler` + `sessionValidator`.

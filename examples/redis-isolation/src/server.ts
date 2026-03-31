@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
+import type { DashboardAuthContext } from '@omni-queue/core';
 import { JobManager, Supervisor } from '@omni-queue/core';
 import { createExpressAdapter, createExpressWebSocketBinding } from '@omni-queue/express-adapter';
 import 'dotenv/config';
@@ -39,6 +40,14 @@ function asJobPriority(value: unknown): 'critical' | 'high' | 'normal' | 'low' |
     return value;
   }
   return undefined;
+}
+
+function buildAdminContext(): DashboardAuthContext {
+  return { role: 'admin' };
+}
+
+function createDashboardSessionToken(username: string): string {
+  return Buffer.from(`omni-queue-dashboard:server:${username}`).toString('base64url');
 }
 
 
@@ -292,6 +301,41 @@ async function main() {
     res.json({ status: 'ok', service: 'redis-isolation-api' });
   });
 
+  const dashboardAuth = {
+    type: 'basic' as const,
+    authHandler: (request: { mode: 'password' | 'custom' | 'token'; username?: string; password?: string }) => {
+      if (request.mode === 'token') {
+        return null;
+      }
+
+      const username = process.env.DASHBOARD_BASIC_USERNAME;
+      const password = process.env.DASHBOARD_BASIC_PASSWORD;
+      if (
+        username === undefined ||
+        password === undefined ||
+        request.username !== username ||
+        request.password !== password
+      ) {
+        return null;
+      }
+
+      return {
+        token: createDashboardSessionToken(username),
+        authContext: buildAdminContext(),
+      };
+    },
+    sessionValidator: (credentials: { token: string }) => {
+      const username = process.env.DASHBOARD_BASIC_USERNAME;
+      if (!username) {
+        return false;
+      }
+
+      return credentials.token === createDashboardSessionToken(username)
+        ? buildAdminContext()
+        : false;
+    },
+  };
+
   app.use(
     createExpressAdapter({
       supervisor,
@@ -299,7 +343,8 @@ async function main() {
       streamIntervalMs: 2000,
       uiDir: dashboardUiDir,
       uiBase: '/',
-      protectUiWithAuth: true,
+      protectUiWithAuth: false,
+      auth: dashboardAuth,
     })
   );
 
@@ -315,6 +360,7 @@ async function main() {
     supervisor,
     apiBase: '/api/dashboard',
     streamIntervalMs: 2000,
+    auth: dashboardAuth,
   });
 
   console.log('[api] GET  /health');

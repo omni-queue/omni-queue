@@ -22,7 +22,7 @@ const dashboard = registerElysiaAdapter(app, {
   apiBase: '/api/omni-queue',
   uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
   uiBase: '/',
-  protectUiWithAuth: true,
+  protectUiWithAuth: false,
 });
 
 await dashboard.waitUntilReady();

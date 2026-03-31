@@ -16,7 +16,7 @@ const handler = omniQueueHonoAdapter({
   supervisor,
   apiBase: '/api/omni-queue',
   uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
-  protectUiWithAuth: true,
+  protectUiWithAuth: false,
 });
 ```
 

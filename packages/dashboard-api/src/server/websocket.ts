@@ -2,7 +2,11 @@ import http from 'node:http';
 import net from 'node:net';
 import { createRequire } from 'node:module';
 import type { DashboardAuthOptions } from '@omni-queue/core';
-import { authenticateDashboardRequest, hasDashboardPermissionForContext } from '../middleware/auth';
+import {
+  authenticateDashboardRequest,
+  hasDashboardPermissionForContext,
+  resolveDashboardChallenge,
+} from '../middleware/auth';
 import { buildOverview } from '../services/overview';
 import type { DashboardApiOptions, DashboardWebSocketController } from '../types';
 
@@ -63,9 +67,7 @@ function filterOverviewByQueues(
 }
 
 function sendUnauthorized(socket: net.Socket, auth: DashboardAuthOptions): void {
-  const realm = auth.type === 'none' ? 'omni-queue-dashboard' : (auth.realm ?? 'omni-queue-dashboard');
-  const challenge = auth.type === 'bearer' ? `Bearer realm="${realm}"` : `Basic realm="${realm}"`;
-  socket.write(`HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: ${challenge}\r\n\r\n`);
+  socket.write(`HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: ${resolveDashboardChallenge(auth)}\r\n\r\n`);
   socket.destroy();
 }
 

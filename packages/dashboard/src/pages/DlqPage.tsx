@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { dashboardFetch } from '../auth';
 import type { JobRow, QueueOverview } from '../types';
 import { API_BASE } from '../types';
 
@@ -37,7 +38,7 @@ export function DlqPage({ queues }: Props) {
     try {
       const params = new URLSearchParams({ limit: '200' });
       if (queueFilter !== 'all') params.set('queue', queueFilter);
-      const res = await fetch(`${API_BASE}/failed?${params.toString()}`);
+      const res = await dashboardFetch(`${API_BASE}/failed?${params.toString()}`);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const payload = (await res.json()) as { jobs: JobRow[] };
       setJobs(payload.jobs);
@@ -55,7 +56,7 @@ export function DlqPage({ queues }: Props) {
     setSuccess(null);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/failed/retry`, {
+      const res = await dashboardFetch(`${API_BASE}/failed/retry`, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ queueName: job.queue, jobId: job.id }),

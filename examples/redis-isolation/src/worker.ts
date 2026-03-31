@@ -1,4 +1,10 @@
-import type { DashboardAuthOptions } from '@omni-queue/core';
+import type {
+    DashboardAuthContext,
+    DashboardAuthOptions,
+    DashboardAuthSession,
+    DashboardLoginRequest,
+    DashboardSessionCredentials,
+} from '@omni-queue/core';
 import { Supervisor } from '@omni-queue/core';
 import express from 'express';
 import path from 'node:path';
@@ -18,6 +24,47 @@ type DashboardAdapterConfig = {
     auth: DashboardAuthOptions;
 };
 
+function buildAdminContext(): DashboardAuthContext {
+    return { role: 'admin' };
+}
+
+function createSessionToken(subject: string): string {
+    return Buffer.from(`omni-queue-dashboard:${subject}`).toString('base64url');
+}
+
+function createPasswordAuthHandler(
+    username: string,
+    password: string,
+    issuedToken: string
+): (request: DashboardLoginRequest) => DashboardAuthSession | null {
+    return (request) => {
+        if (request.mode === 'token') {
+            return null;
+        }
+
+        if (request.username !== username || request.password !== password) {
+            return null;
+        }
+
+        return {
+            token: issuedToken,
+            authContext: buildAdminContext(),
+        };
+    };
+}
+
+function createStaticSessionValidator(
+    expectedToken: string
+): (credentials: DashboardSessionCredentials) => DashboardAuthContext | false {
+    return (credentials) => {
+        if (credentials.token !== expectedToken) {
+            return false;
+        }
+
+        return buildAdminContext();
+    };
+}
+
 function buildDashboardConfigFromEnv(): DashboardAdapterConfig | undefined {
     const enabled = parseBoolean(process.env.DASHBOARD_ENABLED);
     if (!enabled) {
@@ -31,24 +78,56 @@ function buildDashboardConfigFromEnv(): DashboardAdapterConfig | undefined {
         const username = process.env.DASHBOARD_BASIC_USERNAME;
         const password = process.env.DASHBOARD_BASIC_PASSWORD;
         if (username && password) {
+            const issuedToken = createSessionToken(`basic:${username}`);
             return {
                 apiBase,
                 auth: {
                     type: 'basic',
-                    validator: (credentials) => credentials.username === username && credentials.password === password,
+                    authHandler: createPasswordAuthHandler(username, password, issuedToken),
+                    sessionValidator: createStaticSessionValidator(issuedToken),
                 },
             };
         }
     }
 
     if (authType === 'bearer') {
+        const loginMode = process.env.DASHBOARD_AUTH_LOGIN_MODE === 'custom' ? 'custom' : 'token';
+
+        if (loginMode === 'custom') {
+            const username = process.env.DASHBOARD_BASIC_USERNAME;
+            const password = process.env.DASHBOARD_BASIC_PASSWORD;
+            if (username && password) {
+                const issuedToken = createSessionToken(`bearer-custom:${username}`);
+                return {
+                    apiBase,
+                    auth: {
+                        type: 'bearer',
+                        loginMode: 'custom',
+                        authHandler: createPasswordAuthHandler(username, password, issuedToken),
+                        sessionValidator: createStaticSessionValidator(issuedToken),
+                    },
+                };
+            }
+        }
+
         const token = process.env.DASHBOARD_BEARER_TOKEN;
         if (token) {
             return {
                 apiBase,
                 auth: {
                     type: 'bearer',
-                    validator: (credentials) => credentials.token === token,
+                    loginMode: 'token',
+                    authHandler: (request) => {
+                        if (request.mode !== 'token' || request.token !== token) {
+                            return null;
+                        }
+
+                        return {
+                            token,
+                            authContext: buildAdminContext(),
+                        };
+                    },
+                    sessionValidator: createStaticSessionValidator(token),
                 },
             };
         }
@@ -90,7 +169,7 @@ async function main() {
                 auth: dashboardConfig.auth,
                 uiDir: dashboardUiDir,
                 uiBase: '/',
-                protectUiWithAuth: true,
+                protectUiWithAuth: false,
             })
         );
 

@@ -29,7 +29,7 @@ app.use(
     apiBase: '/api/omni-queue',
     uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
     uiBase: '/',
-    protectUiWithAuth: true,
+    protectUiWithAuth: false,
   })
 );
 
@@ -41,7 +41,7 @@ createExpressWebSocketBinding(server, {
 });
 ```
 
-`auth`, `uiDir`, `uiBase`, and `protectUiWithAuth` are all configured through the adapter options.
+`auth`, `uiDir`, `uiBase`, and `protectUiWithAuth` are all configured through the adapter options. When using the built-in dashboard login UI, keep `protectUiWithAuth: false` so the SPA can render its own sign-in screen before calling the protected API routes.
 
 Publish the UI assets into that folder with:
 

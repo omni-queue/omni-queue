@@ -11,11 +11,13 @@ import {
   LayoutDashboard,
   Layers,
   Menu,
+  LogOut,
   RefreshCw,
   BellOff,
   Users,
   X,
 } from 'lucide-react';
+import { useDashboardAuth } from '../contexts/DashboardAuthContext';
 import { useDashboardData } from '../contexts/DashboardDataContext';
 
 const NAV_ITEMS = [
@@ -47,6 +49,7 @@ export function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { overview, refreshOverview, transportMode, wsStatus } = useDashboardData();
+  const { requiresAuth, logout } = useDashboardAuth();
 
   const connectionLabel =
     transportMode === 'polling'
@@ -117,15 +120,28 @@ export function Layout() {
             <Menu className="h-5 w-5" />
           </button>
           <div className="hidden lg:block" />
-          <button
-            onClick={() => {
-              void refreshOverview();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                void refreshOverview();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+            {requiresAuth ? (
+              <button
+                onClick={() => {
+                  void logout();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Logout
+              </button>
+            ) : null}
+          </div>
         </header>
 
         <main id="main-content" className="flex-1 overflow-y-auto p-6">

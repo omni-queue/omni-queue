@@ -1,13 +1,10 @@
 import http from 'node:http';
-import { Buffer } from 'node:buffer';
 import express from 'express';
 import { Elysia } from 'elysia';
 import type {
 	DashboardAuthContext,
 	DashboardAuthDecision,
 	DashboardAuthOptions,
-	DashboardBasicCredentials,
-	DashboardBearerCredentials,
 	DashboardRole,
 	Supervisor,
 } from '@omni-queue/core';
@@ -99,37 +96,41 @@ async function authenticateWithHeaders(
 		return { role: 'admin' };
 	}
 
+	const sessionValidator = auth.sessionValidator ?? auth.authValidator ?? auth.validator;
+	if (!sessionValidator) {
+		return null;
+	}
+
 	const header = headers.authorization;
-	if (!header) {
+	if (typeof header === 'string' && header.startsWith('Bearer ')) {
+		return normalizeDecision(
+			await sessionValidator({
+				token: header.slice(7).trim(),
+				request: requestRef as never,
+			})
+		);
+	}
+
+	const requestUrl =
+		typeof requestRef === 'object' && requestRef && 'url' in requestRef
+			? String((requestRef as { url?: string }).url ?? '')
+			: '';
+	if (!requestUrl) {
 		return null;
 	}
 
-	if (auth.type === 'bearer') {
-		if (!header.startsWith('Bearer ')) {
-			return null;
-		}
+	const parsed = new URL(requestUrl, 'http://localhost');
+	const token = parsed.searchParams.get('access_token') ?? parsed.searchParams.get('token');
+	if (!token) {
+		return null;
+	}
 
-		const credentials: DashboardBearerCredentials = {
-			token: header.slice(7).trim(),
+	return normalizeDecision(
+		await sessionValidator({
+			token,
 			request: requestRef as never,
-		};
-
-		return normalizeDecision(await auth.validator(credentials));
-	}
-
-	if (!header.startsWith('Basic ')) {
-		return null;
-	}
-
-	const decoded = Buffer.from(header.slice(6).trim(), 'base64').toString('utf8');
-	const separatorIndex = decoded.indexOf(':');
-	const credentials: DashboardBasicCredentials = {
-		username: separatorIndex >= 0 ? decoded.slice(0, separatorIndex) : decoded,
-		password: separatorIndex >= 0 ? decoded.slice(separatorIndex + 1) : '',
-		request: requestRef as never,
-	};
-
-	return normalizeDecision(await auth.validator(credentials));
+		})
+	);
 }
 
 function hasDashboardPermissionForContext(
@@ -433,8 +434,7 @@ export function createElysiaAdapter(options: DashboardApiOptions): ElysiaDashboa
 						resolved.auth.type === 'none'
 							? 'omni-queue-dashboard'
 							: (resolved.auth.realm ?? 'omni-queue-dashboard');
-					set.headers['www-authenticate'] =
-						resolved.auth.type === 'bearer' ? `Bearer realm="${realm}"` : `Basic realm="${realm}"`;
+					set.headers['www-authenticate'] = `Bearer realm="${realm}"`;
 					return status(401, { error: 'Unauthorized' });
 				}
 

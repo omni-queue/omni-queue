@@ -9,8 +9,15 @@ export {
   omniQueueAdapter,
 } from './server/adapter';
 export {
+  authenticateDashboardLogin,
   authenticateDashboardRequest,
+  authenticateDashboardSession,
+  extractDashboardBearerToken,
   hasDashboardPermissionForContext,
+  resolveDashboardAuthHandler,
+  resolveDashboardChallenge,
+  resolveDashboardLoginMode,
+  resolveDashboardSessionValidator,
 } from './middleware/auth';
 export {
   checkAuth,

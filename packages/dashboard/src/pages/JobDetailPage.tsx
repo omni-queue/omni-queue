@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock3, Database, Hash, Layers, ShieldAlert } from 'lucide-react';
+import { dashboardFetch } from '../auth';
 import { API_BASE, type JobRow } from '../types';
 
 type JobDetailResponse = {
@@ -33,7 +34,7 @@ export function JobDetailPage() {
     const queue = searchParams.get('queue');
     if (queue) params.set('queue', queue);
 
-    fetch(`${API_BASE}/jobs/${encodeURIComponent(jobId)}?${params.toString()}`)
+    dashboardFetch(`${API_BASE}/jobs/${encodeURIComponent(jobId)}?${params.toString()}`)
       .then(async (response) => {
         if (!response.ok) {
           const payload = (await response.json().catch(() => ({}))) as { error?: string };

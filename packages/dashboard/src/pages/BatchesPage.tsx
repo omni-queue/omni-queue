@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { dashboardFetch } from '../auth';
 import type { BatchRow } from '../types';
 import { API_BASE } from '../types';
 
@@ -31,7 +32,7 @@ export function BatchesPage() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/batches?limit=200`);
+      const res = await dashboardFetch(`${API_BASE}/batches?limit=200`);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const payload = (await res.json()) as { batches: BatchRow[] };
       const nextBatches = payload.batches ?? [];
@@ -58,7 +59,7 @@ export function BatchesPage() {
     setRetrying(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/batches/${encodeURIComponent(selected.id)}/retry-failed`, {
+      const res = await dashboardFetch(`${API_BASE}/batches/${encodeURIComponent(selected.id)}/retry-failed`, {
         method: 'POST',
       });
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);

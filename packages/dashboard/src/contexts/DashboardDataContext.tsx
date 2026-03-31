@@ -1,5 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
+import { dashboardFetch } from '../auth';
 import { API_BASE, DASHBOARD_TRANSPORT, type DashboardTransport, type OverviewResponse } from '../types';
 import { useWebSocket, type WsStatus } from '../hooks/useWebSocket';
 import { overviewToSample } from '../pages/MetricsPage';
@@ -72,7 +73,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
 
   const refreshOverview = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/overview`);
+      const response = await dashboardFetch(`${API_BASE}/overview`);
       if (!response.ok) return;
       const data = (await response.json()) as OverviewResponse;
       handleOverview(data);

@@ -21,7 +21,7 @@ export function resolveDashboardConfig(options: DashboardApiOptions): ResolvedDa
     streamIntervalMs: options.streamIntervalMs ?? options.supervisor.getDashboardOptions()?.streamIntervalMs ?? 2000,
     uiDir: options.uiDir,
     uiBase: normalizeBase(options.uiBase, '/dashboard'),
-    protectUiWithAuth: options.protectUiWithAuth !== false,
+    protectUiWithAuth: options.protectUiWithAuth === true,
   };
 }
 

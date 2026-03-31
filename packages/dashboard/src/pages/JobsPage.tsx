@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { dashboardFetch } from '../auth';
 import type { JobRow, QueueOverview } from '../types';
 import { API_BASE } from '../types';
 
@@ -55,7 +56,7 @@ export function JobsPage({ queues }: Props) {
                 offset: String(page * pageSize),
             });
             if (queueFilter !== 'all') params.set('queue', queueFilter);
-            const res = await fetch(`${API_BASE}/jobs?${params.toString()}`);
+            const res = await dashboardFetch(`${API_BASE}/jobs?${params.toString()}`);
             if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
             const payload = (await res.json()) as { jobs: JobRow[] };
             const hasMore = payload.jobs.length > pageSize;

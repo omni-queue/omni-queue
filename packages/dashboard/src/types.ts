@@ -130,6 +130,46 @@ export type WsMessage =
   | { type: string; data: unknown };
 
 export type DashboardTransport = 'auto' | 'polling';
+export type DashboardAuthType = 'none' | 'basic' | 'bearer';
+export type DashboardLoginMode = 'password' | 'token' | 'custom';
+
+export type DashboardAuthContext = {
+  role?: 'viewer' | 'operator' | 'admin';
+  scopes?: string[];
+  tenantId?: string;
+  allowedQueues?: string[];
+  tokenId?: string;
+};
+
+export type DashboardAuthConfigResponse = {
+  requiresAuth: boolean;
+  authType: DashboardAuthType;
+  loginMode: DashboardLoginMode | null;
+};
+
+export type DashboardAuthSessionResponse = {
+  authenticated: boolean;
+  authType: DashboardAuthType;
+  loginMode: DashboardLoginMode | null;
+  authContext: DashboardAuthContext | null;
+};
+
+export type DashboardLoginResponse = {
+  token: string;
+  expiresAt?: number;
+  authType: Exclude<DashboardAuthType, 'none'>;
+  loginMode: DashboardLoginMode | null;
+  authContext?: DashboardAuthContext | null;
+};
+
+export type DashboardLoginPayload =
+  | {
+      token: string;
+    }
+  | {
+      username: string;
+      password: string;
+    };
 
 type DashboardRuntimeConfig = {
   endpoint?: string;

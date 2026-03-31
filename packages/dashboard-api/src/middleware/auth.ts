@@ -1,12 +1,14 @@
 import http from 'node:http';
-import { Buffer } from 'node:buffer';
 import type {
   DashboardAuthContext,
   DashboardAuthDecision,
+  DashboardAuthHandler,
   DashboardAuthOptions,
-  DashboardBasicCredentials,
-  DashboardBearerCredentials,
+  DashboardLoginMode,
+  DashboardLoginRequest,
   DashboardRole,
+  DashboardSessionCredentials,
+  DashboardSessionValidator,
 } from '@omni-queue/core';
 
 type DashboardPermission = 'read' | 'operate' | 'admin';
@@ -36,6 +38,99 @@ function permissionToLevel(permission: DashboardPermission): number {
   return permission === 'read' ? 1 : permission === 'operate' ? 2 : 3;
 }
 
+export function resolveDashboardLoginMode(auth: DashboardAuthOptions): DashboardLoginMode | null {
+  if (auth.type === 'none') {
+    return null;
+  }
+
+  if (auth.type === 'basic') {
+    return 'password';
+  }
+
+  return auth.loginMode ?? 'token';
+}
+
+export function resolveDashboardSessionValidator(
+  auth: DashboardAuthOptions
+): DashboardSessionValidator | null {
+  if (auth.type === 'none') {
+    return null;
+  }
+
+  return auth.sessionValidator ?? auth.authValidator ?? auth.validator ?? null;
+}
+
+export function resolveDashboardAuthHandler(auth: DashboardAuthOptions): DashboardAuthHandler | null {
+  if (auth.type === 'none') {
+    return null;
+  }
+
+  return auth.authHandler;
+}
+
+export function resolveDashboardChallenge(auth: DashboardAuthOptions): string {
+  const realm = auth.type === 'none' ? 'omni-queue-dashboard' : (auth.realm ?? 'omni-queue-dashboard');
+  return `Bearer realm="${realm}"`;
+}
+
+export function extractDashboardBearerToken(request: http.IncomingMessage): string | null {
+  const header = request.headers.authorization;
+  if (typeof header === 'string' && header.startsWith('Bearer ')) {
+    const token = header.slice(7).trim();
+    return token || null;
+  }
+
+  const requestUrl = request.url;
+  if (!requestUrl) {
+    return null;
+  }
+
+  try {
+    const parsed = new URL(requestUrl, 'http://localhost');
+    const token = parsed.searchParams.get('access_token') ?? parsed.searchParams.get('token');
+    if (!token) {
+      return null;
+    }
+
+    const trimmed = token.trim();
+    return trimmed || null;
+  } catch {
+    return null;
+  }
+}
+
+export async function authenticateDashboardSession(
+  credentials: DashboardSessionCredentials,
+  auth: DashboardAuthOptions
+): Promise<DashboardAuthContext | null> {
+  if (auth.type === 'none') {
+    return { role: 'admin' };
+  }
+
+  const validator = resolveDashboardSessionValidator(auth);
+  if (!validator) {
+    return null;
+  }
+
+  return normalizeDecision(await validator(credentials));
+}
+
+export async function authenticateDashboardLogin(
+  request: DashboardLoginRequest,
+  auth: DashboardAuthOptions
+) {
+  if (auth.type === 'none') {
+    return null;
+  }
+
+  const authHandler = resolveDashboardAuthHandler(auth);
+  if (!authHandler) {
+    return null;
+  }
+
+  return authHandler(request);
+}
+
 export async function authenticateDashboardRequest(
   request: http.IncomingMessage,
   auth: DashboardAuthOptions
@@ -44,37 +139,12 @@ export async function authenticateDashboardRequest(
     return { role: 'admin' };
   }
 
-  const header = request.headers.authorization;
-  if (!header) {
+  const token = extractDashboardBearerToken(request);
+  if (!token) {
     return null;
   }
 
-  if (auth.type === 'bearer') {
-    if (!header.startsWith('Bearer ')) {
-      return null;
-    }
-
-    const credentials: DashboardBearerCredentials = {
-      token: header.slice(7).trim(),
-      request,
-    };
-
-    return normalizeDecision(await auth.validator(credentials));
-  }
-
-  if (!header.startsWith('Basic ')) {
-    return null;
-  }
-
-  const decoded = Buffer.from(header.slice(6).trim(), 'base64').toString('utf8');
-  const separatorIndex = decoded.indexOf(':');
-  const credentials: DashboardBasicCredentials = {
-    username: separatorIndex >= 0 ? decoded.slice(0, separatorIndex) : decoded,
-    password: separatorIndex >= 0 ? decoded.slice(separatorIndex + 1) : '',
-    request,
-  };
-
-  return normalizeDecision(await auth.validator(credentials));
+  return authenticateDashboardSession({ token, request }, auth);
 }
 
 export function hasDashboardPermissionForContext(

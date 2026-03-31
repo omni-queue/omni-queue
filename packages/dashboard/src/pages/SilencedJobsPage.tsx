@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
+import { dashboardFetch } from '../auth';
 import type { JobRow, QueueOverview } from '../types';
 import { API_BASE } from '../types';
 
@@ -35,7 +36,7 @@ export function SilencedJobsPage({ queues }: Props) {
     try {
       const params = new URLSearchParams({ limit: '200' });
       if (queueFilter !== 'all') params.set('queue', queueFilter);
-      const res = await fetch(`${API_BASE}/silenced?${params.toString()}`);
+      const res = await dashboardFetch(`${API_BASE}/silenced?${params.toString()}`);
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
       const payload = (await res.json()) as { jobs: JobRow[] };
       setJobs(payload.jobs);

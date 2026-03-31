@@ -10,6 +10,10 @@ This package hosts the dashboard frontend as a workspace package instead of an e
 
 The UI expects a configurable API base (default: `/api/dashboard`) and uses these endpoints under that base:
 
+- `GET /auth/config`
+- `GET /auth/session`
+- `POST /auth/login`
+- `POST /auth/logout`
 - `GET /overview`
 - `GET /queues`
 - `GET /jobs`
@@ -53,6 +57,16 @@ If your backend runs on a non-default origin/port in local development, set `VIT
 ```bash
 VITE_API_TARGET=http://localhost:3100 npm run dev
 ```
+
+## Interactive auth
+
+The published dashboard now renders its own login UI. Serve the static assets publicly, then protect only the API and WebSocket routes.
+
+- `basic` auth => username/password form posts to `/auth/login`
+- `bearer` + `loginMode: 'token'` => token input posts to `/auth/login`
+- `bearer` + `loginMode: 'custom'` => username/password form posts to `/auth/login`
+
+On success, the backend returns the token that the dashboard should use on subsequent API and WebSocket requests.
 
 ## Transport mode
 

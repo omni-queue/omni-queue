@@ -1,11 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { resolveDashboardWsUrl } from '../auth';
 import type { OverviewResponse, WsMessage } from '../types';
-import { API_BASE, DASHBOARD_TRANSPORT } from '../types';
-
-function resolveWsUrl(): string {
-  const httpBase = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
-  return httpBase.replace(/^http/, 'ws') + '/ws';
-}
+import { DASHBOARD_TRANSPORT } from '../types';
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
 
@@ -27,7 +23,7 @@ export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
     }
 
     setStatus('connecting');
-    const ws = new WebSocket(resolveWsUrl());
+    const ws = new WebSocket(resolveDashboardWsUrl());
     wsRef.current = ws;
 
     ws.onopen = () => {
