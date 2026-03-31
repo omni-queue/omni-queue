@@ -129,6 +129,97 @@ export type WsMessage =
   | { type: 'overview'; data: OverviewResponse }
   | { type: string; data: unknown };
 
+export type DashboardTransport = 'auto' | 'polling';
+export type DashboardAuthType = 'none' | 'basic' | 'bearer';
+export type DashboardLoginMode = 'password' | 'token' | 'custom';
+
+export type DashboardAuthContext = {
+  role?: 'viewer' | 'operator' | 'admin';
+  scopes?: string[];
+  tenantId?: string;
+  allowedQueues?: string[];
+  tokenId?: string;
+};
+
+export type DashboardAuthConfigResponse = {
+  requiresAuth: boolean;
+  authType: DashboardAuthType;
+  loginMode: DashboardLoginMode | null;
+};
+
+export type DashboardAuthSessionResponse = {
+  authenticated: boolean;
+  authType: DashboardAuthType;
+  loginMode: DashboardLoginMode | null;
+  authContext: DashboardAuthContext | null;
+};
+
+export type DashboardLoginResponse = {
+  token: string;
+  expiresAt?: number;
+  authType: Exclude<DashboardAuthType, 'none'>;
+  loginMode: DashboardLoginMode | null;
+  authContext?: DashboardAuthContext | null;
+};
+
+export type DashboardLoginPayload =
+  | {
+      token: string;
+    }
+  | {
+      username: string;
+      password: string;
+    };
+
+type DashboardRuntimeConfig = {
+  endpoint?: string;
+  transport?: string;
+};
+
+declare global {
+  interface Window {
+    __OMNI_QUEUE_DASHBOARD_CONFIG__?: DashboardRuntimeConfig;
+  }
+}
+
+function getRuntimeConfig(): DashboardRuntimeConfig | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return window.__OMNI_QUEUE_DASHBOARD_CONFIG__;
+}
+
 export const API_BASE: string =
+  getRuntimeConfig()?.endpoint ||
   (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
-    ?.VITE_DASHBOARD_ENDPOINT ?? '/api/dashboard';
+    ?.VITE_DASHBOARD_ENDPOINT ||
+  '/api/dashboard';
+
+function normalizeTransport(value: string | undefined): DashboardTransport {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === 'polling') {
+    return 'polling';
+  }
+  return 'auto';
+}
+
+function resolveTransportOverride(): string | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const queryTransport = params.get('transport') ?? undefined;
+  if (queryTransport) {
+    return queryTransport;
+  }
+
+  return getRuntimeConfig()?.transport;
+}
+
+export const DASHBOARD_TRANSPORT: DashboardTransport = normalizeTransport(
+  resolveTransportOverride() ||
+    (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+      ?.VITE_DASHBOARD_TRANSPORT
+);

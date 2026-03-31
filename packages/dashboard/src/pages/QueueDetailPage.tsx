@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { ArrowLeft, Clock3, Layers, ShieldAlert, TimerReset } from 'lucide-react';
+import { dashboardFetch } from '../auth';
 import { API_BASE, type JobRow } from '../types';
 import { useDashboardData } from '../contexts/DashboardDataContext';
 
 async function fetchJobs(queueName: string, status: string) {
   const params = new URLSearchParams({ queue: queueName, status, limit: '50' });
-  const response = await fetch(`${API_BASE}/jobs?${params.toString()}`);
+  const response = await dashboardFetch(`${API_BASE}/jobs?${params.toString()}`);
   if (!response.ok) throw new Error(`${response.status} ${response.statusText}`);
   const payload = (await response.json()) as { jobs: JobRow[] };
   return payload.jobs;

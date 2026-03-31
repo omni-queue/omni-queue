@@ -1,38 +1,24 @@
 import http from 'node:http';
-import { Buffer } from 'node:buffer';
-import { WebSocket, WebSocketServer } from 'ws';
-import type { DashboardAuthContext, DashboardAuthDecision, DashboardAuthOptions, Supervisor } from '@omni-queue/core';
+import net from 'node:net';
+import { createRequire } from 'node:module';
+import type { DashboardAuthOptions } from '@omni-queue/core';
+import {
+  authenticateDashboardRequest,
+  hasDashboardPermissionForContext,
+  resolveDashboardChallenge,
+} from '../middleware/auth';
 import { buildOverview } from '../services/overview';
+import type { DashboardApiOptions, DashboardWebSocketController } from '../types';
 
-function normalizeDecision(decision: DashboardAuthDecision): DashboardAuthContext | null {
-  if (decision === true) {
-    return { role: 'admin' };
-  }
+const require = createRequire(import.meta.url);
 
-  if (!decision) {
-    return null;
-  }
-
-  return {
-    ...decision,
-    ...(decision.role ? {} : { role: 'admin' }),
-  };
+function loadWebSocketRuntime(): { WebSocket: any; WebSocketServer: any } {
+  // eslint-disable-next-line @typescript-eslint/no-require-imports
+  const ws = require('ws');
+  return { WebSocket: ws.WebSocket, WebSocketServer: ws.WebSocketServer };
 }
 
-function canRead(context: DashboardAuthContext): boolean {
-  const role = context.role ?? 'admin';
-  if (role === 'viewer' || role === 'operator' || role === 'admin') {
-    if (!context.scopes || context.scopes.length === 0) {
-      return true;
-    }
-
-    return context.scopes.some((scope) => scope === 'dashboard:read' || scope === 'dashboard:operate' || scope === 'dashboard:admin');
-  }
-
-  return false;
-}
-
-function getAllowedQueues(context: DashboardAuthContext): Set<string> | null {
+function getAllowedQueues(context: { allowedQueues?: string[] }): Set<string> | null {
   if (!context.allowedQueues || context.allowedQueues.length === 0) {
     return null;
   }
@@ -40,7 +26,10 @@ function getAllowedQueues(context: DashboardAuthContext): Set<string> | null {
   return new Set(context.allowedQueues);
 }
 
-function filterOverviewByQueues(overview: Awaited<ReturnType<typeof buildOverview>>, allowedQueues: Set<string> | null) {
+function filterOverviewByQueues(
+  overview: Awaited<ReturnType<typeof buildOverview>>,
+  allowedQueues: Set<string> | null
+) {
   if (!allowedQueues) {
     return overview;
   }
@@ -57,7 +46,9 @@ function filterOverviewByQueues(overview: Awaited<ReturnType<typeof buildOvervie
     { depth: 0, deferred: 0, dlq: 0, completed: 0 }
   );
 
-  const reliabilityQueues = (overview.reliability?.queues ?? []).filter((queue) => allowedQueues.has(queue.queueName));
+  const reliabilityQueues = (overview.reliability?.queues ?? []).filter((queue) =>
+    allowedQueues.has(queue.queueName)
+  );
 
   return {
     ...overview,
@@ -75,46 +66,54 @@ function filterOverviewByQueues(overview: Awaited<ReturnType<typeof buildOvervie
   };
 }
 
-export function attachWebSocket(
+function sendUnauthorized(socket: net.Socket, auth: DashboardAuthOptions): void {
+  socket.write(`HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: ${resolveDashboardChallenge(auth)}\r\n\r\n`);
+  socket.destroy();
+}
+
+export function attachDashboardWebSocket(
   server: http.Server,
-  wsPath: string | string[],
-  supervisor: Supervisor,
+  paths: string[],
+  options: DashboardApiOptions,
   auth: DashboardAuthOptions,
   streamIntervalMs: number
-): WebSocketServer {
-  const paths = Array.isArray(wsPath) ? wsPath : [wsPath];
-
+): DashboardWebSocketController {
+  const { WebSocket, WebSocketServer } = loadWebSocketRuntime();
   const wss = new WebSocketServer({ noServer: true });
 
-  wss.on('connection', (ws: WebSocket, _req: http.IncomingMessage, authContext: DashboardAuthContext) => {
+  wss.on('connection', (ws: any, _req: http.IncomingMessage, authContext: { allowedQueues?: string[] }) => {
     let closed = false;
     const allowedQueues = getAllowedQueues(authContext);
 
-    const send = async () => {
+    const sendOverview = async () => {
       if (closed || ws.readyState !== WebSocket.OPEN) return;
 
       try {
-        const overview = await buildOverview(supervisor);
+        const overview = await buildOverview(options.supervisor);
         ws.send(JSON.stringify({ type: 'overview', data: filterOverviewByQueues(overview, allowedQueues) }));
       } catch {
         // ignore send failures for closing sockets
       }
     };
 
-    void send();
+    void sendOverview();
 
-    const replay = supervisor
+    const replay = options.supervisor
       .getRecentLifecycleEvents(100)
       .filter((event) => !allowedQueues || !event.queueName || allowedQueues.has(event.queueName));
     for (const event of replay) {
       ws.send(JSON.stringify({ type: 'lifecycle', data: event }));
     }
 
-    const unsubscribe = supervisor.subscribeLifecycleEvents((event) => {
+    const unsubscribe = options.supervisor.subscribeLifecycleEvents((event) => {
       if (allowedQueues && event.queueName && !allowedQueues.has(event.queueName)) {
         return;
       }
-      if (closed || ws.readyState !== WebSocket.OPEN) return;
+
+      if (closed || ws.readyState !== WebSocket.OPEN) {
+        return;
+      }
+
       try {
         ws.send(JSON.stringify({ type: 'lifecycle', data: event }));
       } catch {
@@ -123,7 +122,7 @@ export function attachWebSocket(
     });
 
     const timer = setInterval(() => {
-      void send();
+      void sendOverview();
     }, streamIntervalMs);
 
     ws.on('close', () => {
@@ -140,56 +139,47 @@ export function attachWebSocket(
     });
   });
 
-  server.on('upgrade', async (req, socket, head) => {
+  const onUpgrade = async (req: http.IncomingMessage, socket: net.Socket, head: Buffer) => {
     const matchesPath = paths.some((path) => req.url === path || req.url?.startsWith(`${path}?`));
     if (!matchesPath) {
-      socket.destroy();
       return;
     }
 
-    let authContext: DashboardAuthContext = { role: 'admin' };
-
-    if (auth.type !== 'none') {
-      const header = req.headers.authorization ?? '';
-      let allowed = false;
-
-      try {
-        if (auth.type === 'bearer' && header.startsWith('Bearer ')) {
-          const decision = normalizeDecision(await auth.validator({ token: header.slice(7).trim(), request: req }));
-          allowed = Boolean(decision);
-          if (decision) authContext = decision;
-        } else if (auth.type === 'basic' && header.startsWith('Basic ')) {
-          const decoded = Buffer.from(header.slice(6).trim(), 'base64').toString('utf8');
-          const separatorIndex = decoded.indexOf(':');
-          const decision = normalizeDecision(await auth.validator({
-            username: separatorIndex >= 0 ? decoded.slice(0, separatorIndex) : decoded,
-            password: separatorIndex >= 0 ? decoded.slice(separatorIndex + 1) : '',
-            request: req,
-          }));
-          allowed = Boolean(decision);
-          if (decision) authContext = decision;
-        }
-      } catch {
-        allowed = false;
+    try {
+      const authContext = await authenticateDashboardRequest(req, auth);
+      if (!authContext) {
+        sendUnauthorized(socket, auth);
+        return;
       }
 
-      if (!allowed) {
-        socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
+      if (!hasDashboardPermissionForContext(authContext, 'read')) {
+        socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
         socket.destroy();
         return;
       }
-    }
 
-    if (!canRead(authContext)) {
-      socket.write('HTTP/1.1 403 Forbidden\r\n\r\n');
+      wss.handleUpgrade(req, socket, head, (ws: any) => {
+        wss.emit('connection', ws, req, authContext);
+      });
+    } catch {
+      socket.write('HTTP/1.1 500 Internal Server Error\r\n\r\n');
       socket.destroy();
-      return;
     }
+  };
 
-    wss.handleUpgrade(req, socket, head, (ws) => {
-      wss.emit('connection', ws, req, authContext);
-    });
-  });
+  server.on('upgrade', onUpgrade);
 
-  return wss;
+  return {
+    close: () => {
+      server.off('upgrade', onUpgrade);
+      for (const client of wss.clients) {
+        try {
+          client.terminate();
+        } catch {
+          // ignore termination failures during shutdown
+        }
+      }
+      wss.close();
+    },
+  };
 }

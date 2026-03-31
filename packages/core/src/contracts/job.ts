@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+import { RetryDecision, RetryDecisionContext } from '../interfaces/retry-policy';
 
 export abstract class Job<T = any> {
   abstract jobName: string;
@@ -29,6 +30,10 @@ export abstract class Job<T = any> {
 
   backoff(attempt: number): number {
     return Math.min(1000 * Math.pow(2, attempt), 30000);
+  }
+
+  retryPolicy(_error: Error, _context: RetryDecisionContext): RetryDecision | undefined {
+    return undefined;
   }
 
   queue(): string {

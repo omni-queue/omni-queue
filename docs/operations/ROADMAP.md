@@ -125,7 +125,7 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 
 ### 4.3 CLI Tooling
 - [x] `omni-queue init`
-- [x] `omni-queue generate:job`
+- [x] `omni-queue generate job`
 - [x] `omni-queue monitor`
 - [x] `omni-queue dlq:*` commands
 
@@ -158,17 +158,17 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [x] Opinionated templates for API jobs, workflow jobs, and scheduled jobs
 
 ### 5.5 BullMQ Parity Closure (Hard Gaps)
-- [ ] Strict worker sandboxing policy (filesystem/env/network allowlists) for isolated execution
-- [ ] Custom retry logic surface (error-aware retry strategy hooks)
+- [x] Strict worker sandboxing policy (filesystem/env/network allowlists) for isolated execution
+- [x] Custom retry logic surface (error-aware retry strategy hooks)
 - [x] Per-job backoff hooks (`Job.backoff(attempt)`) with runtime precedence
-- [ ] Per-consumer rate limiting (in addition to current queue-level limits)
+- [x] Per-consumer rate limiting (in addition to current queue-level limits)
 
 **Execution checklist (5.5)**
-- [ ] Add config contracts for sandbox policy, retry policy, and per-consumer limits
-- [ ] Wire process-isolation sandbox enforcement path (runtime → isolation → process pool/worker)
-- [ ] Implement retry decision evaluation in worker runtime (backward-compatible)
-- [ ] Add limiter coordinator in resilient worker and fairness tests
-- [ ] Publish migration notes + parity matrix update after implementation
+- [x] Add config contracts for sandbox policy, retry policy, and per-consumer limits
+- [x] Wire process-isolation sandbox enforcement path (runtime → isolation → process pool/worker)
+- [x] Implement retry decision evaluation in worker runtime (backward-compatible)
+- [x] Add limiter coordinator in resilient worker and fairness tests
+- [x] Publish migration notes + parity matrix update after implementation
 
 ## Phase 6: Scaling & Enterprise Features (2027 Q3+)
 
@@ -266,6 +266,6 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 
 ## Current Status
 
-- **Active Phase**: Phase 5.5 planning (BullMQ parity closure)
+- **Active Phase**: Phase 6 planning (Phase 5.5 parity closure implemented)
 - **Last Updated**: March 29, 2026
 - **Tracking**: GitHub Projects (Omni-Queue Evolution)

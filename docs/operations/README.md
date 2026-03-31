@@ -12,6 +12,7 @@ It is organized to help three common audiences:
 
 ### Foundation and getting started
 
+- [Implemented feature catalog](feature-catalog.md)
 - [Phase 0: Core foundation](phase-1/phase-0-foundation.md)
 - [Quick start guide](../../README.md)
 
@@ -36,24 +37,27 @@ It is organized to help three common audiences:
 
 ### If you are migrating from BullMQ
 
-1. Read the [BullMQ migration guide](migration-guides/from-bullmq.md)
-2. Pick the closest [adapter quickstart](quickstarts/README.md)
-3. Generate starter code with the CLI:
-   - `queue generate:api-job --name=send-email`
-   - `queue generate:workflow --name=asset-pipeline`
-   - `queue generate:scheduled --name=daily-digest`
+1. Read the [implemented feature catalog](feature-catalog.md)
+2. Read the [BullMQ migration guide](migration-guides/from-bullmq.md)
+3. Pick the closest [adapter quickstart](quickstarts/README.md)
+4. Generate starter code with the CLI:
+   - `queue generate api-job --name=send-email`
+   - `queue generate workflow --name=asset-pipeline`
+   - `queue generate scheduled --name=daily-digest`
 
 ### If you are starting a greenfield project
 
 1. Read the root [README](../../README.md)
-2. Choose an adapter in [quickstarts](quickstarts/README.md)
-3. Review [capacity planning](phase-5/capacity-planning-toolkit.md) before production rollout
+2. Review the [implemented feature catalog](feature-catalog.md)
+3. Choose an adapter in [quickstarts](quickstarts/README.md)
+4. Review [capacity planning](phase-5/capacity-planning-toolkit.md) before production rollout
 
 ### If you are operating Omni Queue in production
 
-1. Review the [phase 5 proposal](phase-5/phase-5-proposal.md)
-2. Adopt the [incident playbooks](phase-5/incident-playbooks.md)
-3. Use the [capacity planning toolkit](phase-5/capacity-planning-toolkit.md) for worker sizing
+1. Review the [implemented feature catalog](feature-catalog.md)
+2. Review the [phase 5 proposal](phase-5/phase-5-proposal.md)
+3. Adopt the [incident playbooks](phase-5/incident-playbooks.md)
+4. Use the [capacity planning toolkit](phase-5/capacity-planning-toolkit.md) for worker sizing
 
 ## Documentation goals
 

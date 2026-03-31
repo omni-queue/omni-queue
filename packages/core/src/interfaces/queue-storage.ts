@@ -63,6 +63,15 @@ export interface QueueCleanOptions {
   limit?: number;
 }
 
+export interface RateLimitConsumeRequest {
+  queueName: string;
+  consumerId: string;
+  queueCapacity: number;
+  queueRefillRate: number;
+  consumerCapacity?: number;
+  consumerRefillRate?: number;
+}
+
 export interface QueueStorage {
   enqueue(job: StoredJob): Promise<void>;
   dequeue(options: LeaseOptions): Promise<StoredJob[]>;
@@ -96,6 +105,10 @@ export interface QueueStorage {
   // Archive & audit (Phase 2.3)
   queryJobArchive?(query: JobArchiveQuery): Promise<CompletedJobRecord[]>;
   setArchiveRetentionPolicy?(policy: ArchiveRetentionPolicy): void;
+
+  // Optional distributed/global rate limiting primitive.
+  // Implementations should consume queue and consumer tokens atomically.
+  consumeRateLimitToken?(request: RateLimitConsumeRequest): Promise<boolean>;
 
   // Job administration (Phase 4.4.3)
   promoteJob?(queueName: string, jobId: string): Promise<boolean>;

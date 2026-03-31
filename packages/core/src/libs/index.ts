@@ -11,4 +11,7 @@ export * from './worker';
 export * from './worker-runtime';
 export * from './scheduled-job-promoter';
 export * from './lifecycle-events';
+export * from './rate-limiter';
 export * from './reliability';
+export * from './sandbox';
+export * from './error-serialization';

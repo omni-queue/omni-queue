@@ -36,5 +36,9 @@
   },
   "dependencies": {
     "@omni-queue/dashboard-api": "*"
+  },
+  "peerDependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
   }
 }

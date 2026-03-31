@@ -11,11 +11,13 @@ import {
   LayoutDashboard,
   Layers,
   Menu,
+  LogOut,
   RefreshCw,
   BellOff,
   Users,
   X,
 } from 'lucide-react';
+import { useDashboardAuth } from '../contexts/DashboardAuthContext';
 import { useDashboardData } from '../contexts/DashboardDataContext';
 
 const NAV_ITEMS = [
@@ -46,7 +48,17 @@ function ConnectionDot({ connected, connecting }: { connected: boolean; connecti
 export function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { overview, refreshOverview, wsStatus } = useDashboardData();
+  const { overview, refreshOverview, transportMode, wsStatus } = useDashboardData();
+  const { requiresAuth, logout } = useDashboardAuth();
+
+  const connectionLabel =
+    transportMode === 'polling'
+      ? 'Polling mode'
+      : wsStatus === 'connected'
+        ? 'Live'
+        : wsStatus === 'connecting'
+          ? 'Connecting…'
+          : 'Polling (fallback)';
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -98,7 +110,7 @@ export function Layout() {
 
         <div className="px-5 py-4 border-t border-slate-800 flex items-center gap-2 text-xs text-slate-500">
           <ConnectionDot connected={wsStatus === 'connected'} connecting={wsStatus === 'connecting'} />
-          <span>{wsStatus === 'connected' ? 'Live' : wsStatus === 'connecting' ? 'Connecting…' : 'Polling'}</span>
+          <span>{connectionLabel}</span>
         </div>
       </aside>
 
@@ -108,15 +120,28 @@ export function Layout() {
             <Menu className="h-5 w-5" />
           </button>
           <div className="hidden lg:block" />
-          <button
-            onClick={() => {
-              void refreshOverview();
-            }}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-          >
-            <RefreshCw className="h-3.5 w-3.5" />
-            Refresh
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                void refreshOverview();
+              }}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+              Refresh
+            </button>
+            {requiresAuth ? (
+              <button
+                onClick={() => {
+                  void logout();
+                }}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-slate-900 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+              >
+                <LogOut className="h-3.5 w-3.5" />
+                Logout
+              </button>
+            ) : null}
+          </div>
         </header>
 
         <main id="main-content" className="flex-1 overflow-y-auto p-6">

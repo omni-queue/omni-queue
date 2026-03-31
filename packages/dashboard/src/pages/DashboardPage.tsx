@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Activity, Gauge, Layers, ShieldAlert } from 'lucide-react';
+import { dashboardFetch } from '../auth';
 import type { JobRow, OverviewResponse } from '../types';
 import { API_BASE } from '../types';
 
@@ -36,7 +37,7 @@ export function DashboardPage({ overview }: Props) {
 
     const loadFailedJobs = async () => {
       try {
-        const response = await fetch(`${API_BASE}/failed?limit=8`);
+        const response = await dashboardFetch(`${API_BASE}/failed?limit=8`);
         if (!response.ok) return;
         const payload = (await response.json()) as { jobs?: JobRow[] };
         if (!cancelled) {

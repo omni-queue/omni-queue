@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { registerFastifyAdapter, startFastifyAdapter } from './index';
+import { bindOmniQueueFastifyWebSocket, omniQueueFastifyAdapter, registerFastifyAdapter } from './index';
 
 describe('@omni-queue/fastify-adapter exports', () => {
   it('exports adapter functions', () => {
     expect(registerFastifyAdapter).toBeTypeOf('function');
-    expect(startFastifyAdapter).toBeTypeOf('function');
+    expect(omniQueueFastifyAdapter).toBeTypeOf('function');
+    expect(bindOmniQueueFastifyWebSocket).toBeTypeOf('function');
   });
 });

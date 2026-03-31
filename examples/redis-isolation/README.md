@@ -39,6 +39,8 @@ cd examples/redis-isolation
 npm run server
 ```
 
+Stop either process with `Ctrl+C`. The example now performs graceful shutdown (closes dashboard WebSocket/server handles, stops schedulers/workers, and closes Redis) before exit.
+
 ## API
 
 Health:
@@ -113,8 +115,11 @@ curl -X POST http://localhost:3100/dlq/retry \
 - `DASHBOARD_PORT` (default: `3210`)
 - `DASHBOARD_ROUTE_PREFIX` (default: `/dashboard`)
 - `DASHBOARD_AUTH_TYPE` (`none` | `basic` | `bearer`, default: `none`)
-- `DASHBOARD_BASIC_USERNAME` / `DASHBOARD_BASIC_PASSWORD` (required for `basic`)
-- `DASHBOARD_BEARER_TOKEN` (required for `bearer`)
+- `DASHBOARD_AUTH_LOGIN_MODE` (`token` | `custom`, only for `bearer`, default: `token`)
+- `DASHBOARD_AUTH_USERNAME` / `DASHBOARD_AUTH_PASSWORD` (required for `basic`, and also used by `bearer` + `custom` mode)
+- `DASHBOARD_BEARER_TOKEN` (required for `bearer` + `token` mode)
+
+Backward compatibility: `DASHBOARD_BASIC_USERNAME` / `DASHBOARD_BASIC_PASSWORD` are still accepted as fallbacks.
 
 Example:
 
@@ -127,12 +132,27 @@ REDIS_PASSWORD=your-secret npm run worker
 # Enable Supervisor-owned dashboard with basic auth:
 DASHBOARD_ENABLED=true \
 DASHBOARD_AUTH_TYPE=basic \
-DASHBOARD_BASIC_USERNAME=admin \
-DASHBOARD_BASIC_PASSWORD=secret \
+DASHBOARD_AUTH_USERNAME=admin \
+DASHBOARD_AUTH_PASSWORD=secret \
+npm run worker
+
+# Enable bearer token login mode:
+DASHBOARD_ENABLED=true \
+DASHBOARD_AUTH_TYPE=bearer \
+DASHBOARD_AUTH_LOGIN_MODE=token \
+DASHBOARD_BEARER_TOKEN=replace-me \
+npm run worker
+
+# Enable bearer custom login mode (username/password -> backend-issued session token):
+DASHBOARD_ENABLED=true \
+DASHBOARD_AUTH_TYPE=bearer \
+DASHBOARD_AUTH_LOGIN_MODE=custom \
+DASHBOARD_AUTH_USERNAME=admin \
+DASHBOARD_AUTH_PASSWORD=secret \
 npm run worker
 ```
 
-When enabled, the worker starts the standalone dashboard server from `@omni-queue/dashboard-api` using the dashboard settings defined on `Supervisor`.
+When enabled, the worker starts the standalone dashboard server with the built-in login UI. The static dashboard shell is served publicly, while the API and WebSocket routes are protected by the configured auth handler + session validator.
 
 ## What this demonstrates
 

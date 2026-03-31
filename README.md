@@ -4,11 +4,12 @@
 
 Omni-queue is a TypeScript-first job queue system that gives you flexible worker isolation, pluggable storage backends, and an auto-scaling supervisor — all out of the box.
 
-[![CI](https://github.com/your-org/omni-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/omni-queue/actions)
+[![CI](https://github.com/omni-queue/omni-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/omni-queue/omni-queue/actions)
 [![npm](https://img.shields.io/npm/v/@omni-queue/core)](https://www.npmjs.com/package/@omni-queue/core)
 
 ## Documentation Hub
 
+- [Implemented feature catalog](docs/operations/feature-catalog.md)
 - [Operations roadmap](docs/operations/ROADMAP.md)
 - [Documentation index](docs/operations/README.md)
 - [BullMQ migration guide](docs/operations/migration-guides/from-bullmq.md)
@@ -30,12 +31,12 @@ Choose the entry point that matches your use case:
 | Feature | BullMQ | omni-queue |
 |---------|--------|------------|
 | **Worker Isolation** | Sandboxed only | **Flexible: inline / thread / process** |
-| **Storage Backends** | Redis only | **Pluggable: Redis, Postgres, In-memory** |
+| **Storage Backends** | Redis only | **Pluggable: Redis, Postgres, MySQL, MongoDB, DynamoDB, In-memory** |
 | **Auto-scaling Supervisor** | ❌ | **✅ Built-in** |
 | **Delayed & Scheduled Jobs** | ✅ | **✅ runAt / intervalMs / cron** |
 | **Job Priorities** | ✅ | **✅ critical / high / normal / low** |
 | **Plugin System** | Via events | **✅ First-class lifecycle hooks** |
-| **Dashboard** | Bull Board (3rd-party) | **Planned: Horizon-quality first-party** |
+| **Dashboard** | Bull Board (3rd-party) | **✅ First-party dashboard + API package** |
 
 ---
 
@@ -44,9 +45,21 @@ Choose the entry point that matches your use case:
 | Package | Description |
 |---------|-------------|
 | [`@omni-queue/core`](packages/core) | Core runtime: supervisor, job manager, in-memory storage |
+| [`@omni-queue/cli`](packages/cli) | Project scaffolding, job generators, monitoring, and DLQ commands |
 | [`@omni-queue/metrics`](packages/metrics) | Metrics collector, exporters, and auto-collection plugin |
 | [`@omni-queue/redis-store`](packages/redis-store) | Redis (ioredis) storage adapter |
 | [`@omni-queue/postgres-store`](packages/postgres-store) | Postgres (`pg`) storage adapter |
+| [`@omni-queue/mysql-store`](packages/mysql-store) | MySQL storage adapter |
+| [`@omni-queue/mongo-store`](packages/mongo-store) | MongoDB storage adapter |
+| [`@omni-queue/dynamodb-store`](packages/dynamodb-store) | DynamoDB storage adapter |
+| [`@omni-queue/dashboard-api`](packages/dashboard-api) | Shared dashboard API primitives (routes, auth, websocket binding, config resolution) |
+| [`@omni-queue/dashboard`](packages/dashboard) | First-party dashboard frontend |
+| [`@omni-queue/express-adapter`](packages/express-adapter) | Express adapter (`createExpressAdapter`, `createExpressWebSocketBinding`) |
+| [`@omni-queue/next-adapter`](packages/next-adapter) | Next.js integration |
+| [`@omni-queue/fastify-adapter`](packages/fastify-adapter) | Fastify integration |
+| [`@omni-queue/nest-adapter`](packages/nest-adapter) | Nest integration |
+| [`@omni-queue/hono-adapter`](packages/hono-adapter) | Hono integration |
+| [`@omni-queue/elysia-adapter`](packages/elysia-adapter) | Elysia/Bun integration |
 | [`@omni-queue/otel-plugin`](packages/otel-plugin) | OpenTelemetry tracing plugin |
 | [`@omni-queue/plugins`](packages/plugins) | Built-in plugins: DAG, rate-limiter |
 
@@ -101,10 +114,10 @@ await supervisor.start();
 Use the CLI to generate production-oriented starter files:
 
 ```bash
-queue generate:job --name=send-email
-queue generate:api-job --name=send-email
-queue generate:workflow --name=asset-pipeline
-queue generate:scheduled --name=daily-digest
+queue generate job --name=send-email
+queue generate api-job --name=send-email
+queue generate workflow --name=asset-pipeline
+queue generate scheduled --name=daily-digest
 ```
 
 These templates are intended to give new adopters a clean starting point for typed jobs, HTTP-triggered background work, DAG-style workflows, and scheduled execution.
@@ -202,6 +215,15 @@ const LogPlugin: Plugin = {
 
 ---
 
+## Implemented Features (Consolidated)
+
+For a complete and continuously updated list of implemented capabilities (runtime behavior, reliability/security controls, dashboard/auth, storage adapters, framework adapters, and CLI surfaces), see:
+
+- [Feature catalog](docs/operations/feature-catalog.md)
+- [Core package README](packages/core/README.md)
+
+---
+
 ## Running Tests
 
 ```bash
@@ -234,12 +256,6 @@ For guided setup flows, see [docs/operations/quickstarts/README.md](docs/operati
 See [docs/operations/ROADMAP.md](docs/operations/ROADMAP.md) for the full evolution plan.
 
 For migration and onboarding material, see [docs/operations/README.md](docs/operations/README.md).
-
-**Phase 1 (Q2 2026):**
-- [x] Delayed & Scheduled Jobs
-- [x] Job Priorities & Priority Queues
-- [ ] Job Progress Tracking
-- [ ] Dead Letter Queue (DLQ)
 
 ---
 

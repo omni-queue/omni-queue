@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { DashboardAuthProvider, useDashboardAuth } from './contexts/DashboardAuthContext';
 import { DashboardDataProvider, useDashboardData } from './contexts/DashboardDataContext';
 import { DashboardPage } from './pages/DashboardPage';
 import { JobDetailPage } from './pages/JobDetailPage';
@@ -15,6 +16,7 @@ import { SilencedJobsPage } from './pages/SilencedJobsPage';
 import { BatchesPage } from './pages/BatchesPage';
 import { MonitoringPage } from './pages/MonitoringPage';
 import { ArchivePage } from './pages/ArchivePage';
+import { LoginPage } from './pages/LoginPage';
 
 function DashboardRoute() {
   const { overview } = useDashboardData();
@@ -81,7 +83,7 @@ function ArchiveRoute() {
   return <ArchivePage queues={queues} />;
 }
 
-export function App() {
+function DashboardRoutes() {
   return (
     <DashboardDataProvider>
       <Routes>
@@ -105,6 +107,32 @@ export function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </DashboardDataProvider>
+  );
+}
+
+function AppShell() {
+  const { ready, requiresAuth, isAuthenticated } = useDashboardAuth();
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center text-sm">
+        Loading dashboard…
+      </div>
+    );
+  }
+
+  if (requiresAuth && !isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <DashboardRoutes />;
+}
+
+export function App() {
+  return (
+    <DashboardAuthProvider>
+      <AppShell />
+    </DashboardAuthProvider>
   );
 }
 

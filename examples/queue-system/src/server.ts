@@ -1,3 +1,5 @@
+import path from 'node:path';
+import express from 'express';
 import {
   InMemoryQueueStorage,
   JobRegistry,
@@ -6,14 +8,16 @@ import {
   defineWorkers,
   resolveRuntimeModules,
 } from '@omni-queue/core';
-import { APIAdapter } from '@omni-queue/dashboard-api';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@omni-queue/express-adapter';
 import { TracingPlugin } from '@omni-queue/otel-plugin';
 import { DAGPlugin, RateLimiterPlugin } from '@omni-queue/plugins';
 import { CleanupJob, GenerateReportJob, SendEmailJob } from './jobs/index.js';
+import { registerGracefulShutdown } from './graceful-shutdown.js';
 
 async function main() {
   const port = Number(process.env.PORT ?? '3110');
   const mainModules = resolveRuntimeModules('main');
+  const dashboardUiDir = path.resolve(process.cwd(), 'public/omni-queue-dashboard');
 
   const registry = new JobRegistry();
   registry.registerAll([SendEmailJob, GenerateReportJob, CleanupJob]);
@@ -141,49 +145,68 @@ async function main() {
     }),
   ]);
 
-  const adapter = new APIAdapter({
-    supervisor,
-    port,
-    host: '127.0.0.1',
-    apiBase: '/api/dashboard',
-    streamIntervalMs: 2000,
-    signals: false,
-  });
-
-  const app = adapter.express;
+  const app = express();
 
   // Health check endpoint
-  app.get('/health', (req, res) => {
+  app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'queue-system' });
   });
 
+  app.use(
+    createExpressAdapter({
+      supervisor,
+      apiBase: '/api/dashboard',
+      streamIntervalMs: 2000,
+      uiDir: dashboardUiDir,
+      uiBase: '/',
+      protectUiWithAuth: false,
+    })
+  );
+
   // 404 handler
-  app.use((req, res) => {
+  app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
   });
 
-  await adapter.start();
+  const server = await new Promise<import('node:http').Server>((resolve) => {
+    const started = app.listen(port, '127.0.0.1', () => resolve(started));
+  });
+  const dashboardSocket = createExpressWebSocketBinding(server, {
+    supervisor,
+    apiBase: '/api/dashboard',
+    streamIntervalMs: 2000,
+  });
   console.log('[server] GET  /health');
-  console.log('[server] Dashboard UI: http://localhost:4173 (dev) or http://localhost:3110 (production)');
+  console.log('[server] Dashboard UI: http://localhost:4173 (dev) or http://localhost:3110/ (production)');
 
   // Start the supervisor
   await supervisor.start();
 
-  const shutdown = async () => {
-    supervisor.stop();
-    await adapter.stopAsync();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', () => {
-    void shutdown();
-  });
-  process.on('SIGTERM', () => {
-    void shutdown();
+  registerGracefulShutdown({
+    label: 'server',
+    onShutdown: async () => {
+      supervisor.stop();
+      dashboardSocket.close();
+      server.closeIdleConnections?.();
+      server.closeAllConnections?.();
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+    },
   });
 
   setTimeout(() => {
-    void shutdown();
+    supervisor.stop();
+    dashboardSocket.close();
+    server.closeIdleConnections?.();
+    server.closeAllConnections?.();
+    server.close(() => process.exit(0));
   }, 60000);
 }
 

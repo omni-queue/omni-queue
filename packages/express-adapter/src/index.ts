@@ -1,19 +1,16 @@
 import {
-  createDashboardExpressMiddleware,
-  startDashboardServer,
+  bindOmniQueueWebSocket,
+  createDashboardMiddleware,
   type DashboardApiOptions,
-  type StandaloneDashboardServerOptions,
 } from '@omni-queue/dashboard-api';
 
 export function createExpressAdapter(options: DashboardApiOptions) {
-  return createDashboardExpressMiddleware(options);
+  return createDashboardMiddleware(options);
 }
 
-export function startExpressAdapter(options: StandaloneDashboardServerOptions) {
-  return startDashboardServer(options);
+export function createExpressWebSocketBinding(
+  ...args: Parameters<typeof bindOmniQueueWebSocket>
+) {
+  return bindOmniQueueWebSocket(...args);
 }
 
-export {
-  createDashboardExpressMiddleware as createDefaultDashboardMiddleware,
-  startDashboardServer as startDefaultDashboardServer,
-};

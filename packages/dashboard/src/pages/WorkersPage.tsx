@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
+import { dashboardFetch } from '../auth';
 import type { OverviewResponse, WorkerDefinition } from '../types';
 import { API_BASE } from '../types';
 
@@ -86,7 +87,7 @@ export function WorkersPage({ overview, onRefresh }: Props) {
   const { configured, desiredScaling } = overview.workers;
 
   const handleScale = async (name: string, concurrency: number) => {
-    const res = await fetch(`${API_BASE}/scaling`, {
+    const res = await dashboardFetch(`${API_BASE}/scaling`, {
       method: 'POST',
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ workerName: name, concurrency }),

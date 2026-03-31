@@ -258,9 +258,9 @@ tokens = rotateScopedBearerTokens(tokens, [
 
 **3) CLI starter templates**
 - Extended the queue CLI with starter generators for:
-  - `queue generate:api-job`
-  - `queue generate:workflow`
-  - `queue generate:scheduled`
+  - `queue generate api-job`
+  - `queue generate workflow`
+  - `queue generate scheduled`
 - Added test coverage for each generator in `packages/cli/src/queue.test.ts`.
 
 ### Milestone 5.5 — BullMQ Parity Closure (2-4 weeks)
@@ -279,6 +279,13 @@ tokens = rotateScopedBearerTokens(tokens, [
 **Implementation Notes**
 - Current baseline already provides per-job backoff hooks and queue-level rate limits.
 - Milestone 5.5 closes only the hard parity gaps that remain from the BullMQ comparison.
+
+#### Implementation Status (Completed)
+
+- **Track A delivered** in core with queue/worker sandbox contracts plus process-isolated enforcement through `worker-runtime.ts`, `isolation.ts`, `process-pool.ts`, `isolation-worker.ts`, and `sandbox.ts`.
+- **Track B delivered** in core with `Job.retryPolicy(error, context)`, queue-level retry rules, structured error propagation across isolation boundaries, and backward-compatible handling of existing `retries()` / `backoff()` hooks.
+- **Track C delivered** in core with `consumerId` on workers, `rateLimit.perConsumer` on queues, a core-native `RateLimitCoordinator`, and fairness coverage in runtime tests.
+- Validation completed with targeted core builds and focused Vitest suites: `retry-policy`, `sandbox-policy`, and `per-consumer-rate-limit`.
 
 #### Engineering Breakdown (Implementation-Ready)
 
