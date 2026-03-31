@@ -41,14 +41,19 @@ If you need to force polling mode for specific deployments, prefer runtime overr
 
 ```html
 <script>
-  window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = { transport: 'polling' };
+  window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+    transport: 'polling',          // 'auto' (default) | 'polling'
+    endpoint:  '/api/omni-queue',  // must match the apiBase option above
+  };
 </script>
 ```
 
-For local development only, `VITE_DASHBOARD_TRANSPORT=polling npm run dev` also works.
+You can also test per-request with the URL query param: `?transport=polling`. For local development only, `VITE_DASHBOARD_TRANSPORT=polling npm run dev` also works.
 
 Publish the UI assets into that folder with:
 
 ```bash
 queue dashboard:publish --out=./public/omni-queue-dashboard
 ```
+
+`dashboard:publish` resolves assets from installed `@omni-queue/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.

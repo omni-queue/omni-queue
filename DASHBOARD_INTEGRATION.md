@@ -182,11 +182,16 @@ VITE_DASHBOARD_ENDPOINT=/api/dashboard VITE_API_TARGET=http://localhost:3100 npm
 
    ```html
    <script>
-     window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = { transport: 'polling' };
+     window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+       transport: 'polling',          // 'auto' (default) | 'polling'
+       // endpoint: '/api/omni-queue', // override if your apiBase differs from '/api/dashboard'
+     };
    </script>
    ```
 
-   You can also test quickly with `?transport=polling`.
+   You can also test per-request with `?transport=polling`.
+
+   Both `transport` and `endpoint` are supported at runtime — no dashboard rebuild required.
 
 ### Jobs not appearing in dashboard
 

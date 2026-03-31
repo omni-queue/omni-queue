@@ -63,6 +63,14 @@ async function main() {
     workers: consumerWorkerDefs,
     registry,
     storageAdapters,
+    dashboard: {
+      enabled: false,
+      endpoint: '/sss',
+      auth: {
+        type: 'basic',
+        validator: ({ username, password }) => username === 'test' && password === 'password',
+      },
+    },
   });
 
   const app = express();
@@ -299,7 +307,7 @@ async function main() {
       streamIntervalMs: 2000,
       uiDir: dashboardUiDir,
       uiBase: '/',
-      protectUiWithAuth: false,
+      protectUiWithAuth: true,
     })
   );
 
@@ -316,6 +324,7 @@ async function main() {
     apiBase: '/api/dashboard',
     streamIntervalMs: 2000,
   });
+
   console.log('[api] GET  /health');
   console.log('[api] POST /jobs/email');
   console.log('[api] POST /jobs/email/schedule');
@@ -328,20 +337,20 @@ async function main() {
   registerGracefulShutdown({
     label: 'api',
     onShutdown: async () => {
-    jobManager.stopSchedules();
-    dashboardSocket.close();
-    server.closeIdleConnections?.();
-    server.closeAllConnections?.();
-    await new Promise<void>((resolve, reject) => {
-      server.close((error) => {
-        if (error) {
-          reject(error);
-          return;
-        }
-        resolve();
+      jobManager.stopSchedules();
+      dashboardSocket.close();
+      server.closeIdleConnections?.();
+      server.closeAllConnections?.();
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
       });
-    });
-    await store.close();
+      await store.close();
     },
   });
 }

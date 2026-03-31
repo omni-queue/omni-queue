@@ -4,6 +4,42 @@ import { spawn } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { runGenerateIsolation } from './gen';
 
+// Template written to <outDir>/dashboard-config.example.js by `dashboard:publish`.
+const DASHBOARD_CONFIG_EXAMPLE = `// dashboard-config.example.js
+//
+// Inject this <script> block into the HTML page that hosts the Omni Queue
+// dashboard (e.g. app.html, _document.tsx, layout.ejs) BEFORE the dashboard
+// JS bundle tag.  All keys are optional — omit any you do not need to override.
+//
+// window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+//
+//   // transport
+//   // ─────────────────────────────────────────────────────────────────────
+//   // Controls the real-time data transport used by the dashboard.
+//   //   'auto'    — try WebSocket first, fall back to long-polling (default)
+//   //   'polling' — force long-polling only
+//   //                (use this when WebSocket upgrades are blocked by a
+//   //                 proxy, CDN, serverless platform, or load balancer)
+//   //
+//   // Can also be set per-page-load via URL query param:  ?transport=polling
+//   // Build-time env var (local dev only):  VITE_DASHBOARD_TRANSPORT=polling
+//   //
+//   transport: 'auto',
+//
+//   // endpoint
+//   // ─────────────────────────────────────────────────────────────────────
+//   // The API base URL the dashboard uses to reach the Omni Queue API.
+//   // Must match the \`apiBase\` option you passed to your framework adapter.
+//   //
+//   // Build-time env var (local dev only):  VITE_DASHBOARD_ENDPOINT=/api/omni-queue
+//   //
+//   // Default: '/api/dashboard'
+//   //
+//   endpoint: '/api/dashboard',
+//
+// };
+`;
+
 type WorkerManifest = {
 	workers?: Array<{
 		name: string;
@@ -830,11 +866,16 @@ async function runQueueDashboardPublish(flagArgs: string[]) {
 	emptyDirectory(outDir);
 	copyDirectory(sourceDir, outDir);
 
+	const exampleConfigPath = path.join(outDir, 'dashboard-config.example.js');
+	fs.writeFileSync(exampleConfigPath, DASHBOARD_CONFIG_EXAMPLE, 'utf8');
+
 	console.log('Published dashboard assets');
 	console.log(`- source: ${path.relative(cwd, sourceDir) || sourceDir}`);
 	console.log(`- output: ${path.relative(cwd, outDir) || outDir}`);
 	console.log('Use this path in adapters:');
 	console.log(`  uiDir: path.resolve(process.cwd(), '${path.relative(cwd, outDir).replace(/\\/g, '/')}')`);
+	console.log('Runtime config template:');
+	console.log(`  ${path.relative(cwd, exampleConfigPath)}`);
 }
 
 async function runWorkersList() {
