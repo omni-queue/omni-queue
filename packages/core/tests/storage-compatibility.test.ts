@@ -27,8 +27,8 @@ class LegacyCompatJob extends Job<{ value: string }> {
 describe('legacy storage compatibility', () => {
   it('does not throw when completed-job methods are missing at runtime', async () => {
     const storage = new InMemoryQueueStorage();
-    (storage as InMemoryQueueStorage & { addCompletedJob?: unknown }).addCompletedJob = undefined;
-    (storage as InMemoryQueueStorage & { getCompletedJobs?: unknown }).getCompletedJobs = undefined;
+    (storage as any).addCompletedJob = undefined;
+    (storage as any).getCompletedJobs = undefined;
 
     const registry = new JobRegistry();
     registry.register(LegacyCompatJob);
