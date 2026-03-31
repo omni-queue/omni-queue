@@ -17,7 +17,7 @@ export function resolveDashboardConfig(options: DashboardApiOptions): ResolvedDa
   return {
     base,
     legacyBase: base === '/dashboard' ? undefined : '/dashboard',
-    auth: options.auth ?? options.supervisor.getDashboardOptions()?.auth ?? ({ type: 'none' } satisfies DashboardAuthOptions),
+    auth: options.auth ?? ({ type: 'none' } satisfies DashboardAuthOptions),
     streamIntervalMs: options.streamIntervalMs ?? options.supervisor.getDashboardOptions()?.streamIntervalMs ?? 2000,
     uiDir: options.uiDir,
     uiBase: normalizeBase(options.uiBase, '/dashboard'),

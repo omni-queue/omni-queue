@@ -57,9 +57,6 @@ export type DashboardAuthOptions =
   | DashboardBearerAuthOptions;
 
 export interface DashboardOptions {
-  enabled?: boolean;
-  endpoint?: string;
-  auth?: DashboardAuthOptions;
   streamIntervalMs?: number;
   silencedJobs?: string[];
 }

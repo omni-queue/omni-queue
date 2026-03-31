@@ -63,14 +63,6 @@ async function main() {
     workers: consumerWorkerDefs,
     registry,
     storageAdapters,
-    dashboard: {
-      enabled: false,
-      endpoint: '/sss',
-      auth: {
-        type: 'basic',
-        validator: ({ username, password }) => username === 'test' && password === 'password',
-      },
-    },
   });
 
   const app = express();

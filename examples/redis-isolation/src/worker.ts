@@ -1,4 +1,4 @@
-import type { DashboardOptions } from '@omni-queue/core';
+import type { DashboardAuthOptions } from '@omni-queue/core';
 import { Supervisor } from '@omni-queue/core';
 import express from 'express';
 import path from 'node:path';
@@ -13,43 +13,48 @@ function parseBoolean(value: string | undefined): boolean {
     return value === '1' || value?.toLowerCase() === 'true';
 }
 
-function buildDashboardOptionsFromEnv(): DashboardOptions | undefined {
+type DashboardAdapterConfig = {
+    apiBase: string;
+    auth: DashboardAuthOptions;
+};
+
+function buildDashboardConfigFromEnv(): DashboardAdapterConfig | undefined {
     const enabled = parseBoolean(process.env.DASHBOARD_ENABLED);
     if (!enabled) {
         return undefined;
     }
 
+    const apiBase = process.env.DASHBOARD_ROUTE_PREFIX || '/dashboard';
     const authType = process.env.DASHBOARD_AUTH_TYPE;
-    const base: DashboardOptions = {
-        enabled: true,
-        endpoint: process.env.DASHBOARD_ROUTE_PREFIX || '/dashboard',
-    };
 
     if (authType === 'basic') {
         const username = process.env.DASHBOARD_BASIC_USERNAME;
         const password = process.env.DASHBOARD_BASIC_PASSWORD;
         if (username && password) {
-            base.auth = {
-                type: 'basic',
-                validator: (credentials) => credentials.username === username && credentials.password === password,
+            return {
+                apiBase,
+                auth: {
+                    type: 'basic',
+                    validator: (credentials) => credentials.username === username && credentials.password === password,
+                },
             };
         }
-        return base;
     }
 
     if (authType === 'bearer') {
         const token = process.env.DASHBOARD_BEARER_TOKEN;
         if (token) {
-            base.auth = {
-                type: 'bearer',
-                validator: (credentials) => credentials.token === token,
+            return {
+                apiBase,
+                auth: {
+                    type: 'bearer',
+                    validator: (credentials) => credentials.token === token,
+                },
             };
         }
-        return base;
     }
 
-    base.auth = { type: 'none' };
-    return base;
+    return { apiBase, auth: { type: 'none' } };
 }
 
 async function main() {
@@ -63,7 +68,7 @@ async function main() {
         redis: store,
     };
 
-    const dashboard = buildDashboardOptionsFromEnv();
+    const dashboardConfig = buildDashboardConfigFromEnv();
     let dashboardServer: http.Server | undefined;
     let dashboardSocket: { close: () => void } | undefined;
 
@@ -72,18 +77,17 @@ async function main() {
         workers,
         registry,
         storageAdapters,
-        ...(dashboard ? { dashboard } : {}),
     });
 
     await supervisor.start();
 
-    if (dashboard?.enabled) {
-        const dashboardEndpoint = dashboard.endpoint;
+    if (dashboardConfig) {
         const dashboardApp = express();
         dashboardApp.use(
             createExpressAdapter({
                 supervisor,
-                ...(dashboardEndpoint ? { apiBase: dashboardEndpoint } : {}),
+                apiBase: dashboardConfig.apiBase,
+                auth: dashboardConfig.auth,
                 uiDir: dashboardUiDir,
                 uiBase: '/',
                 protectUiWithAuth: true,
@@ -100,7 +104,8 @@ async function main() {
 
         dashboardSocket = createExpressWebSocketBinding(dashboardServer, {
             supervisor,
-            ...(dashboardEndpoint ? { apiBase: dashboardEndpoint } : {}),
+            apiBase: dashboardConfig.apiBase,
+            auth: dashboardConfig.auth,
         });
     }
 

@@ -31,14 +31,6 @@ const supervisor = new Supervisor({
   workers,
   registry,
   storageAdapters,
-  dashboard: {
-    enabled: true,
-    endpoint: '/queue-manager',
-    auth: {
-      type: 'basic',
-      validator: ({ username, password }) => username === 'test' && password === 'password',
-    },
-  },
 });
 
 const app = express();
@@ -46,6 +38,10 @@ app.use(
   createExpressAdapter({
     supervisor,
     apiBase: '/queue-manager',
+    auth: {
+      type: 'basic',
+      validator: ({ username, password }) => username === 'test' && password === 'password',
+    },
     uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
     uiBase: '/',
   })
@@ -55,6 +51,10 @@ const server = app.listen(3210);
 createExpressWebSocketBinding(server, {
   supervisor,
   apiBase: '/queue-manager',
+  auth: {
+    type: 'basic',
+    validator: ({ username, password }) => username === 'test' && password === 'password',
+  },
 });
 
 // publish assets first:
