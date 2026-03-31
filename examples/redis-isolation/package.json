@@ -9,10 +9,11 @@
     "server:dev": "vite build && node dist/server.js",
     "dashboard": "cd ../../packages/dashboard && VITE_API_TARGET=http://localhost:3100 npm run dev",
     "dev:dashboard": "concurrently \"npm run server:dev\" \"npm run dashboard\"",
-    "worker": "npm run gen:isolation && npm run build && node dist/worker.js",
+    "worker": "npm run generate:isolation && npm run build && node dist/worker.js",
     "dev": "npm run worker",
     "start": "npm run worker",
-    "gen:isolation": "queue gen isolation",
+    "generate:isolation": "queue generate isolation",
+    "dashboard:publish": "queue dashboard:publish",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {

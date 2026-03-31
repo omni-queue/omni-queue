@@ -33,14 +33,15 @@ describe('@omni-queue/cli queue commands', () => {
 			scripts?: Record<string, string>;
 		};
 		expect(pkg.scripts?.['queue:dev']).toBe('queue dev');
-		expect(pkg.scripts?.['queue:generate:job']).toContain('queue generate:job');
+		expect(pkg.scripts?.['queue:generate:isolation']).toBe('queue generate isolation');
+		expect(pkg.scripts?.['queue:generate:job']).toContain('queue generate job');
 	});
 
 	it('generates a typed job file from command flags', async () => {
 		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omni-queue-generate-job-'));
 		process.chdir(tempDir);
 
-		await runQueue(['generate:job', '--name=send-email', '--queue=emails']);
+		await runQueue(['generate', 'job', '--name=send-email', '--queue=emails']);
 
 		const filePath = path.join(tempDir, 'src', 'jobs', 'send-email.job.ts');
 		expect(fs.existsSync(filePath)).toBe(true);
@@ -55,7 +56,7 @@ describe('@omni-queue/cli queue commands', () => {
 		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omni-queue-generate-api-job-'));
 		process.chdir(tempDir);
 
-		await runQueue(['generate:api-job', '--name=send-email', '--queue=api-events']);
+		await runQueue(['generate', 'api-job', '--name=send-email', '--queue=api-events']);
 
 		const filePath = path.join(tempDir, 'src', 'jobs', 'send-email.api-job.ts');
 		expect(fs.existsSync(filePath)).toBe(true);
@@ -71,7 +72,7 @@ describe('@omni-queue/cli queue commands', () => {
 		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omni-queue-generate-workflow-'));
 		process.chdir(tempDir);
 
-		await runQueue(['generate:workflow', '--name=asset-pipeline', '--queue=media']);
+		await runQueue(['generate', 'workflow', '--name=asset-pipeline', '--queue=media']);
 
 		const filePath = path.join(tempDir, 'src', 'workflows', 'asset-pipeline.workflow.ts');
 		expect(fs.existsSync(filePath)).toBe(true);
@@ -88,7 +89,7 @@ describe('@omni-queue/cli queue commands', () => {
 		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omni-queue-generate-scheduled-'));
 		process.chdir(tempDir);
 
-		await runQueue(['generate:scheduled', '--name=daily-digest', '--queue=cron']);
+		await runQueue(['generate', 'scheduled', '--name=daily-digest', '--queue=cron']);
 
 		const filePath = path.join(tempDir, 'src', 'jobs', 'daily-digest.scheduled.ts');
 		expect(fs.existsSync(filePath)).toBe(true);

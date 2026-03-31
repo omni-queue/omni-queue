@@ -32,7 +32,7 @@
 - Run focused core tests: `npm --workspace @omni-queue/core run test -- <pattern>`
 - Dashboard UI local dev: `cd packages/dashboard && npm run dev`
 - End-to-end Redis isolation flow: `cd examples/redis-isolation && npm run dev:dashboard`
-- If thread/process isolation wiring changes, regenerate example isolation artifacts with `queue gen isolation` (already used by `examples/redis-isolation`).
+- If thread/process isolation wiring changes, regenerate example isolation artifacts with `queue generate isolation`.
 
 ## Practical guidance for agents
 - Before changing queue semantics, inspect `worker-runtime.ts`, `supervisor.ts`, and the relevant `QueueStorage` methods together; behavior is often split across all three.

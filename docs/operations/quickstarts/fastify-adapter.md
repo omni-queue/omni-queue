@@ -5,7 +5,7 @@ Use Fastify handlers to validate input and dispatch typed jobs.
 ## Generate a starter
 
 ```bash
-queue generate:api-job --name=sync-customer --queue=fastify-api
+queue generate api-job --name=sync-customer --queue=fastify-api
 ```
 
 ## Example route

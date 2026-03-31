@@ -1,6 +1,6 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { API_BASE, type OverviewResponse } from '../types';
+import { API_BASE, DASHBOARD_TRANSPORT, type DashboardTransport, type OverviewResponse } from '../types';
 import { useWebSocket, type WsStatus } from '../hooks/useWebSocket';
 import { overviewToSample } from '../pages/MetricsPage';
 
@@ -18,6 +18,7 @@ type DashboardDataContextValue = {
   queues: OverviewResponse['queues'];
   samples: MetricSample[];
   wsStatus: WsStatus;
+  transportMode: DashboardTransport;
   refreshOverview: () => Promise<void>;
 };
 
@@ -105,6 +106,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       queues: overview?.queues ?? [],
       samples,
       wsStatus,
+      transportMode: DASHBOARD_TRANSPORT,
       refreshOverview,
     }),
     [overview, refreshOverview, samples, wsStatus]

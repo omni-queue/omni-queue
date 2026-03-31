@@ -125,7 +125,7 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 
 ### 4.3 CLI Tooling
 - [x] `omni-queue init`
-- [x] `omni-queue generate:job`
+- [x] `omni-queue generate job`
 - [x] `omni-queue monitor`
 - [x] `omni-queue dlq:*` commands
 

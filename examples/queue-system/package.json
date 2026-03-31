@@ -19,8 +19,8 @@
     "queue:start": "queue start",
     "queue:dashboard": "queue dashboard",
     "queue:workers:list": "queue workers:list",
-    "queue:gen:isolation": "queue gen isolation",
-    "omni:gen:isolation": "queue gen isolation"
+    "queue:generate:isolation": "queue generate isolation",
+    "omni:generate:isolation": "omni generate isolation"
   },
   "dependencies": {
     "@omni-queue/cli": "*",

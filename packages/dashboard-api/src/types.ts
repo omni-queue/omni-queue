@@ -6,6 +6,13 @@ export interface DashboardApiOptions {
   apiBase?: string;
   auth?: DashboardAuthOptions;
   streamIntervalMs?: number;
+  uiDir?: string;
+  uiBase?: string;
+  protectUiWithAuth?: boolean;
+}
+
+export interface DashboardWebSocketController {
+  close: () => void;
 }
 
 export type { DashboardOptions };

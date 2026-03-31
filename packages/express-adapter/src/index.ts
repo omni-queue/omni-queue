@@ -1,19 +1,16 @@
-import express from 'express';
 import {
-  createDashboardRequestHandler,
+  bindOmniQueueWebSocket,
+  createDashboardMiddleware,
   type DashboardApiOptions,
 } from '@omni-queue/dashboard-api';
 
-export function omniQueueExpressAdapter(options: DashboardApiOptions): express.RequestHandler {
-  const app = express();
-  createDashboardRequestHandler(options)(app);
-  return app;
-}
-
 export function createExpressAdapter(options: DashboardApiOptions) {
-  return omniQueueExpressAdapter(options);
+  return createDashboardMiddleware(options);
 }
 
-export {
-  omniQueueExpressAdapter as createDefaultDashboardMiddleware,
-};
+export function createExpressWebSocketBinding(
+  ...args: Parameters<typeof bindOmniQueueWebSocket>
+) {
+  return bindOmniQueueWebSocket(...args);
+}
+

@@ -41,9 +41,9 @@ It is organized to help three common audiences:
 2. Read the [BullMQ migration guide](migration-guides/from-bullmq.md)
 3. Pick the closest [adapter quickstart](quickstarts/README.md)
 4. Generate starter code with the CLI:
-   - `queue generate:api-job --name=send-email`
-   - `queue generate:workflow --name=asset-pipeline`
-   - `queue generate:scheduled --name=daily-digest`
+   - `queue generate api-job --name=send-email`
+   - `queue generate workflow --name=asset-pipeline`
+   - `queue generate scheduled --name=daily-digest`
 
 ### If you are starting a greenfield project
 

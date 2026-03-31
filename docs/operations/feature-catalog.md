@@ -86,15 +86,17 @@ Official adapters:
 - Fastify (`@omni-queue/fastify-adapter`)
 - Nest (`@omni-queue/nest-adapter`)
 - Hono (`@omni-queue/hono-adapter`)
+- Elysia (`@omni-queue/elysia-adapter`) — HTTP/static integration with native Bun WebSocket live updates (`/ws`), plus optional polling fallback.
 
 ## CLI and Developer Tooling
 
 Implemented CLI surfaces (`@omni-queue/cli`):
 - `queue init`
-- `queue generate:job`
-- `queue generate:api-job`
-- `queue generate:workflow`
-- `queue generate:scheduled`
+- `queue generate job`
+- `queue generate api-job`
+- `queue generate workflow`
+- `queue generate scheduled`
+- `queue generate isolation`
 - `queue monitor`
 - `queue dlq:list`
 - `queue dlq:retry`
@@ -103,7 +105,6 @@ Implemented CLI surfaces (`@omni-queue/cli`):
 - `queue dashboard`
 - `queue dev`
 - `queue start`
-- `queue gen isolation`
 
 ## Observability and Telemetry
 

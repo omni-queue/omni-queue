@@ -258,9 +258,9 @@ tokens = rotateScopedBearerTokens(tokens, [
 
 **3) CLI starter templates**
 - Extended the queue CLI with starter generators for:
-  - `queue generate:api-job`
-  - `queue generate:workflow`
-  - `queue generate:scheduled`
+  - `queue generate api-job`
+  - `queue generate workflow`
+  - `queue generate scheduled`
 - Added test coverage for each generator in `packages/cli/src/queue.test.ts`.
 
 ### Milestone 5.5 — BullMQ Parity Closure (2-4 weeks)

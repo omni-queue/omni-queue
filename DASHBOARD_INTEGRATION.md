@@ -16,14 +16,14 @@ npm run server:dev
 
 # Terminal 2: Start the dashboard UI (in another terminal, from workspace root)
 cd packages/dashboard
-npm run dev
+VITE_API_TARGET=http://localhost:3100 npm run dev
 ```
 
-Then open http://localhost:5173 in your browser.
+Then open <http://localhost:4173> in your browser.
 
-**API Server**: http://localhost:3100  
-**Dashboard UI**: http://localhost:5173  
-**Dashboard API**: http://localhost:3100/api/dashboard
+**API Server**: <http://localhost:3100>  
+**Dashboard UI**: <http://localhost:4173>  
+**Dashboard API**: <http://localhost:3100/api/dashboard>
 
 #### Endpoints Available
 
@@ -36,7 +36,7 @@ Then open http://localhost:5173 in your browser.
 - `POST /dlq/retry` - Retry a dead-letter job
 - `GET /api/dashboard/*` - Dashboard data endpoints
 
-#### One-Command Start
+#### One-Command Start (queue-system)
 
 Alternatively, run both together with:
 
@@ -64,11 +64,11 @@ cd packages/dashboard
 npm run dev
 ```
 
-Then open http://localhost:5173 in your browser.
+Then open <http://localhost:4173> in your browser.
 
-**API Server**: http://localhost:3110 (different port)  
-**Dashboard UI**: http://localhost:5173  
-**Dashboard API**: http://localhost:3110/api/dashboard
+**API Server**: <http://localhost:3110> (different port)  
+**Dashboard UI**: <http://localhost:4173>  
+**Dashboard API**: <http://localhost:3110/api/dashboard>
 
 #### One-Command Start
 
@@ -103,23 +103,31 @@ Once the dashboard is running, you can:
 
 ### Dashboard Packages
 
-- **@omni-queue/dashboard-api** - Express middleware providing `/api/dashboard/*` endpoints
-   - `createDashboardRequestHandler()` - Route-mounting factory for framework adapters
-   - Integrates with your `Supervisor` while leaving HTTP server ownership to the host app
-   - SSE and polling endpoints are available through the mounted API routes
+- **@omni-queue/dashboard-api** - Shared dashboard primitives for provider adapters, including `buildDashboardRouter()` for authenticated API routes, `attachDashboardWebSocket()` for authenticated live updates, and shared auth/config helpers used by provider adapters.
 
 - **@omni-queue/dashboard** - React + Vite frontend
   - React Router for client-side navigation
   - Real-time data via WebSocket + context provider
   - Type-safe data structures aligned with supervisor API
 
+- **Provider adapters** (`@omni-queue/express-adapter`, `@omni-queue/fastify-adapter`, `@omni-queue/nest-adapter`, `@omni-queue/next-adapter`, `@omni-queue/hono-adapter`)
+  - mount dashboard API routes into the host app
+  - serve the built dashboard UI when `uiDir` is provided
+  - apply the configured dashboard auth to API, UI, and WebSocket upgrades
+
 ### How It Works
 
-1. **API Server** - Creates a Supervisor instance and mounts dashboard middleware into the app you already own:
+1. **API Server** - Creates a Supervisor instance and lets the provider adapter mount API routes, static UI, and WebSocket handling into the app/server you already own:
+
    ```typescript
    const supervisor = new Supervisor({ queues, workers, registry, storageAdapters });
-   const handler = createDashboardRequestHandler({ supervisor, endpoint: '/api/dashboard' });
-   handler(app);
+   app.use(createExpressAdapter({
+     supervisor,
+     apiBase: '/api/dashboard',
+     uiDir: path.resolve(process.cwd(), 'packages/dashboard/dist'),
+     uiBase: '/',
+   }));
+   createExpressWebSocketBinding(server, { supervisor, apiBase: '/api/dashboard' });
    ```
 
 2. **Dashboard UI** - Connects to `/api/dashboard` and renders data:
@@ -156,7 +164,7 @@ VITE_DASHBOARD_ENDPOINT=/api/dashboard  # API base URL (default)
 To use a different API:
 
 ```bash
-VITE_DASHBOARD_ENDPOINT=http://localhost:3100/api/dashboard npm run dev
+VITE_DASHBOARD_ENDPOINT=/api/dashboard VITE_API_TARGET=http://localhost:3100 npm run dev
 ```
 
 ---
@@ -170,18 +178,28 @@ VITE_DASHBOARD_ENDPOINT=http://localhost:3100/api/dashboard npm run dev
 
 2. Check WebSocket connection in browser DevTools (F12 → Network → WS tab)
 
-3. If WebSocket fails, it will fall back to HTTP polling after 3s
+3. If WebSocket is unavailable in your environment, force polling without rebuilding dashboard assets by setting runtime config in the host page:
+
+   ```html
+   <script>
+     window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = { transport: 'polling' };
+   </script>
+   ```
+
+   You can also test quickly with `?transport=polling`.
 
 ### Jobs not appearing in dashboard
 
 1. Make sure supervisor is initialized in the server:
+
    ```typescript
    const supervisor = new Supervisor({ queues, workers, registry, storageAdapters });
    ```
 
 2. And passed to the dashboard handler:
+
    ```typescript
-   const handler = createDashboardRequestHandler({ supervisor });
+   app.use(createExpressAdapter({ supervisor, apiBase: '/api/dashboard' }));
    ```
 
 3. Check that jobs match defined queue names
@@ -206,10 +224,12 @@ VITE_DASHBOARD_ENDPOINT=http://localhost:3100/api/dashboard npm run dev
 ## File Reference
 
 **Examples:**
+
 - `examples/redis-isolation/src/server.ts` - Express server with dashboard
 - `examples/queue-system/src/server.ts` - Express server with dashboard
 
 **Dashboard:**
+
 - `packages/dashboard-api/src/index.ts` - Main exports and factories
 - `packages/dashboard/src/contexts/DashboardDataContext.tsx` - Data provider
 - `packages/dashboard/src/pages/*.tsx` - Page components

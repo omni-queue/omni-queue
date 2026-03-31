@@ -90,7 +90,7 @@ Omni Queue now covers essentially all common BullMQ use cases in Redis-backed de
 | | Hono adapter | ❌ | ✅ | 🟢 Advantage | Only in Omni |
 | **CLI & Scaffolding** |
 | | Project init | ❌ | ✅ | 🟢 Advantage | Only in Omni |
-| | Job scaffolding | ⚠️ | ✅ | 🟢 Advantage | BullMQ none; Omni has `queue generate:job` + variants |
+| | Job scaffolding | ⚠️ | ✅ | 🟢 Advantage | BullMQ none; Omni has `queue generate job` + variants |
 | | Monitoring CLI | ⚠️ | ✅ | 🟢 Advantage | BullMQ via external tools; Omni has `queue monitor` |
 | **Documentation & Migration** |
 | | Migration guide | ❌ | ✅ | 🟢 Advantage | Only in Omni |

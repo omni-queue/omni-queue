@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { OverviewResponse, WsMessage } from '../types';
-import { API_BASE } from '../types';
+import { API_BASE, DASHBOARD_TRANSPORT } from '../types';
 
 function resolveWsUrl(): string {
   const httpBase = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
@@ -10,7 +10,9 @@ function resolveWsUrl(): string {
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
 
 export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
-  const [status, setStatus] = useState<WsStatus>('connecting');
+  const [status, setStatus] = useState<WsStatus>(
+    DASHBOARD_TRANSPORT === 'polling' ? 'disconnected' : 'connecting'
+  );
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
@@ -19,6 +21,11 @@ export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
+    if (DASHBOARD_TRANSPORT === 'polling') {
+      setStatus('disconnected');
+      return;
+    }
+
     setStatus('connecting');
     const ws = new WebSocket(resolveWsUrl());
     wsRef.current = ws;
@@ -50,6 +57,13 @@ export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
 
   useEffect(() => {
     mountedRef.current = true;
+    if (DASHBOARD_TRANSPORT === 'polling') {
+      setStatus('disconnected');
+      return () => {
+        mountedRef.current = false;
+      };
+    }
+
     connect();
     return () => {
       mountedRef.current = false;

@@ -39,6 +39,8 @@ cd examples/redis-isolation
 npm run server
 ```
 
+Stop either process with `Ctrl+C`. The example now performs graceful shutdown (closes dashboard WebSocket/server handles, stops schedulers/workers, and closes Redis) before exit.
+
 ## API
 
 Health:

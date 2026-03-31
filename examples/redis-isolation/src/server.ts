@@ -1,7 +1,8 @@
 import express from 'express';
+import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { JobManager, Supervisor } from '@omni-queue/core';
-import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@omni-queue/express-adapter';
 import 'dotenv/config';
 import {
   GenerateThumbnailJob,
@@ -15,11 +16,12 @@ import {
   createRedisStoreFromEnv,
   createRegistry,
 } from './runtime';
+import { registerGracefulShutdown } from './graceful-shutdown';
 
 function asString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
+  return trimmed || undefined;
 }
 
 function asPositiveNumber(value: unknown): number | undefined {
@@ -42,6 +44,7 @@ function asJobPriority(value: unknown): 'critical' | 'high' | 'normal' | 'low' |
 
 async function main() {
   const port = Number(process.env.PORT ?? '3100');
+  const dashboardUiDir = path.resolve(process.cwd(), 'public/omni-queue-dashboard');
   const store = createRedisStoreFromEnv();
   const queues = createQueues();
   const workers = createProducerWorkers();
@@ -63,13 +66,6 @@ async function main() {
   });
 
   const app = express();
-  app.use(
-    omniQueueExpressAdapter({
-      supervisor,
-      apiBase: '/api/dashboard',
-      streamIntervalMs: 2000,
-    })
-  );
   app.use(express.json());
 
   // Job API endpoints
@@ -79,7 +75,7 @@ async function main() {
       const subject = asString(req.body.subject);
       const content = asString(req.body.body);
 
-      if (!to || !subject || !content) {
+      if (to == null || subject == null || content == null) {
         res.status(400).json({ error: 'Expected payload: { to, subject, body }' });
         return;
       }
@@ -292,17 +288,33 @@ async function main() {
     }
   });
 
-  app.get('/health', (req, res) => {
+  app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'redis-isolation-api' });
   });
 
+  app.use(
+    createExpressAdapter({
+      supervisor,
+      apiBase: '/api/dashboard',
+      streamIntervalMs: 2000,
+      uiDir: dashboardUiDir,
+      uiBase: '/',
+      protectUiWithAuth: false,
+    })
+  );
+
   // 404 handler
-  app.use((req, res) => {
+  app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
   });
 
   const server = await new Promise<import('node:http').Server>((resolve) => {
     const started = app.listen(port, '127.0.0.1', () => resolve(started));
+  });
+  const dashboardSocket = createExpressWebSocketBinding(server, {
+    supervisor,
+    apiBase: '/api/dashboard',
+    streamIntervalMs: 2000,
   });
   console.log('[api] GET  /health');
   console.log('[api] POST /jobs/email');
@@ -311,10 +323,15 @@ async function main() {
   console.log('[api] POST /jobs/transcode');
   console.log('[api] POST /jobs/progress');
   console.log('[api] POST /dlq/retry');
-  console.log('[api] Dashboard UI: http://localhost:4173 (dev) or http://localhost:3100 (production)');
+  console.log('[api] Dashboard UI: http://localhost:4173 (dev) or http://localhost:3100/ (production)');
 
-  const shutdown = async () => {
+  registerGracefulShutdown({
+    label: 'api',
+    onShutdown: async () => {
     jobManager.stopSchedules();
+    dashboardSocket.close();
+    server.closeIdleConnections?.();
+    server.closeAllConnections?.();
     await new Promise<void>((resolve, reject) => {
       server.close((error) => {
         if (error) {
@@ -325,14 +342,7 @@ async function main() {
       });
     });
     await store.close();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', () => {
-    void shutdown();
-  });
-  process.on('SIGTERM', () => {
-    void shutdown();
+    },
   });
 }
 

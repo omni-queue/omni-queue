@@ -1,14 +1,24 @@
+import http from 'node:http';
 import {
+  bindOmniQueueWebSocket,
+  omniQueueAdapter,
   type DashboardApiOptions,
+  type DashboardWebSocketController,
 } from '@omni-queue/dashboard-api';
-import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
 
 export interface FastifyLike {
   use?: (...args: unknown[]) => unknown;
 }
 
 export function omniQueueFastifyAdapter(options: DashboardApiOptions) {
-  return omniQueueExpressAdapter(options);
+  return omniQueueAdapter(options);
+}
+
+export function bindOmniQueueFastifyWebSocket(
+  server: http.Server,
+  options: DashboardApiOptions
+): DashboardWebSocketController {
+  return bindOmniQueueWebSocket(server, options);
 }
 
 export function registerFastifyAdapter(app: FastifyLike, options: DashboardApiOptions): void {

@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { runGenerateIsolation } from './gen';
 
 type WorkerManifest = {
@@ -22,6 +23,24 @@ export async function runQueue(queueArgs: string[]) {
 		case 'init':
 			await runQueueInit(flagArgs);
 			return;
+		case 'generate':
+			if (subcommand === 'isolation') {
+				await runGenerateIsolation(queueArgs.slice(2));
+				return;
+			} else if (subcommand === 'job') {
+				await runGenerateJob(queueArgs.slice(2));
+				return;
+			} else if (subcommand === 'api-job') {
+				await runGenerateApiJob(queueArgs.slice(2));
+				return;
+			} else if (subcommand === 'workflow') {
+				await runGenerateWorkflow(queueArgs.slice(2));
+				return;
+			} else if (subcommand === 'scheduled') {
+				await runGenerateScheduledJob(queueArgs.slice(2));
+				return;
+			}
+			break;
 		case 'generate:job':
 			await runGenerateJob(flagArgs);
 			return;
@@ -53,7 +72,14 @@ export async function runQueue(queueArgs: string[]) {
 			await runQueueStart();
 			return;
 		case 'dashboard':
+			if (subcommand === 'publish') {
+				await runQueueDashboardPublish(queueArgs.slice(2));
+				return;
+			}
 			await runQueueDashboard();
+			return;
+		case 'dashboard:publish':
+			await runQueueDashboardPublish(flagArgs);
 			return;
 		case 'workers:list':
 			await runWorkersList();
@@ -89,10 +115,11 @@ function printQueueUsage() {
 	console.log('');
 	console.log('Usage:');
 	console.log('  queue init [--yes] [--dir=.]');
-	console.log('  queue generate:job --name=send-email [--dir=./src/jobs] [--queue=default]');
-	console.log('  queue generate:api-job --name=send-email [--dir=./src/jobs] [--queue=api-jobs]');
-	console.log('  queue generate:workflow --name=asset-pipeline [--dir=./src/workflows] [--queue=default]');
-	console.log('  queue generate:scheduled --name=daily-digest [--dir=./src/jobs] [--queue=default]');
+	console.log('  queue generate isolation [--dir=./src/definitions]');
+	console.log('  queue generate job --name=send-email [--dir=./src/jobs] [--queue=default]');
+	console.log('  queue generate api-job --name=send-email [--dir=./src/jobs] [--queue=api-jobs]');
+	console.log('  queue generate workflow --name=asset-pipeline [--dir=./src/workflows] [--queue=default]');
+	console.log('  queue generate scheduled --name=daily-digest [--dir=./src/jobs] [--queue=default]');
 	console.log('  queue monitor [--baseUrl=http://localhost:3110] [--queue=name]');
 	console.log('  queue dlq:list [--baseUrl=http://localhost:3110] [--queue=name] [--limit=20] [--offset=0]');
 	console.log('  queue dlq:retry --queue=name --jobId=id [--baseUrl=http://localhost:3110]');
@@ -100,12 +127,9 @@ function printQueueUsage() {
 	console.log('  queue dev');
 	console.log('  queue start');
 	console.log('  queue dashboard');
+	console.log('  queue dashboard publish [--out=./public/omni-queue-dashboard]');
+	console.log('  queue dashboard:publish [--out=./public/omni-queue-dashboard]');
 	console.log('  queue workers:list');
-	console.log('  queue gen isolation [--dir=./src/definitions]');
-	console.log('  queue gen job [--dir=./src/jobs]');
-	console.log('  queue gen api-job [--dir=./src/jobs]');
-	console.log('  queue gen workflow [--dir=./src/workflows]');
-	console.log('  queue gen scheduled [--dir=./src/jobs]');
 }
 
 function parseFlags(flagArgs: string[]): Record<string, string> {
@@ -151,6 +175,51 @@ function ensureFile(filePath: string, content: string) {
 	if (fs.existsSync(filePath)) return;
 	ensureDirectory(path.dirname(filePath));
 	fs.writeFileSync(filePath, content, 'utf8');
+}
+
+function emptyDirectory(dirPath: string) {
+	if (!fs.existsSync(dirPath)) {
+		fs.mkdirSync(dirPath, { recursive: true });
+		return;
+	}
+
+	for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+		const entryPath = path.join(dirPath, entry.name);
+		fs.rmSync(entryPath, { recursive: true, force: true });
+	}
+}
+
+function copyDirectory(sourceDir: string, targetDir: string) {
+	ensureDirectory(targetDir);
+	for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+		const sourcePath = path.join(sourceDir, entry.name);
+		const targetPath = path.join(targetDir, entry.name);
+		if (entry.isDirectory()) {
+			copyDirectory(sourcePath, targetPath);
+			continue;
+		}
+
+		fs.copyFileSync(sourcePath, targetPath);
+	}
+}
+
+function resolveDashboardDistDir(cwd: string): string {
+	const require = createRequire(import.meta.url);
+	try {
+		const dashboardPackageJson = require.resolve('@omni-queue/dashboard/package.json', {
+			paths: [cwd],
+		});
+		const distDir = path.join(path.dirname(dashboardPackageJson), 'dist');
+		if (fs.existsSync(distDir) && fs.statSync(distDir).isDirectory()) {
+			return distDir;
+		}
+	} catch {
+		// handled below with a user-facing error
+	}
+
+	throw new Error(
+		'Unable to locate dashboard dist assets from @omni-queue/dashboard. Install the package in this project before publishing assets.'
+	);
 }
 
 function mergePackageScripts(pkgPath: string, scripts: Record<string, string>) {
@@ -220,8 +289,9 @@ async function runQueueInit(flagArgs: string[]) {
 			'queue:dev': 'queue dev',
 			'queue:start': 'queue start',
 			'queue:monitor': 'queue monitor',
-			'queue:gen:isolation': 'queue gen isolation',
-			'queue:generate:job': 'queue generate:job --name=sample-job',
+			'queue:dashboard:publish': 'queue dashboard:publish --out=./public/omni-queue-dashboard',
+			'queue:generate:isolation': 'queue generate isolation',
+			'queue:generate:job': 'queue generate job --name=sample-job',
 			'queue:dlq:list': 'queue dlq:list',
 		});
 	}
@@ -234,10 +304,10 @@ async function runQueueInit(flagArgs: string[]) {
 		console.log('- Added queue:* scripts to package.json (without overwriting existing scripts).');
 	}
 	console.log('Next steps:');
-	console.log('  1) queue gen isolation');
-	console.log('  1) queue gen job --name=send-email');
-	console.log('  2) queue generate:job --name=send-email');
-	console.log('  3) queue monitor');
+	console.log('  1) queue generate isolation');
+	console.log('  2) queue generate job --name=send-email');
+	console.log('  3) queue dashboard:publish --out=./public/omni-queue-dashboard');
+	console.log('  4) queue monitor');
 }
 
 async function runGenerateJob(flagArgs: string[]) {
@@ -246,7 +316,7 @@ async function runGenerateJob(flagArgs: string[]) {
 	const rawName = flags.name;
 
 	if (!rawName) {
-		throw new Error('Missing --name. Example: queue generate:job --name=send-email');
+		throw new Error('Missing --name. Example: queue generate job --name=send-email');
 	}
 
 	const jobName = toKebabCase(rawName);
@@ -303,7 +373,7 @@ async function runGenerateApiJob(flagArgs: string[]) {
 	const rawName = flags.name;
 
 	if (!rawName) {
-		throw new Error('Missing --name. Example: queue generate:api-job --name=send-email');
+		throw new Error('Missing --name. Example: queue generate api-job --name=send-email');
 	}
 
 	const jobName = toKebabCase(rawName);
@@ -362,7 +432,7 @@ async function runGenerateWorkflow(flagArgs: string[]) {
 	const rawName = flags.name;
 
 	if (!rawName) {
-		throw new Error('Missing --name. Example: queue generate:workflow --name=asset-pipeline');
+		throw new Error('Missing --name. Example: queue generate workflow --name=asset-pipeline');
 	}
 
 	const workflowName = toKebabCase(rawName);
@@ -425,7 +495,7 @@ async function runGenerateScheduledJob(flagArgs: string[]) {
 	const rawName = flags.name;
 
 	if (!rawName) {
-		throw new Error('Missing --name. Example: queue generate:scheduled --name=daily-digest');
+		throw new Error('Missing --name. Example: queue generate scheduled --name=daily-digest');
 	}
 
 	const jobName = toKebabCase(rawName);
@@ -586,8 +656,7 @@ async function runDlqList(flagArgs: string[]) {
 
 async function runDlqRetry(flagArgs: string[]) {
 	const flags = parseFlags(flagArgs);
-	const queueName = flags.queue;
-	const jobId = flags.jobId;
+	const { queue: queueName, jobId } = flags;
 
 	if (!queueName || !jobId) {
 		throw new Error('Missing --queue or --jobId. Example: queue dlq:retry --queue=emails --jobId=abc123');
@@ -746,6 +815,26 @@ async function runQueueDashboard() {
 			console.log(`  - ${path.basename(file, '.js')}`);
 		}
 	}
+}
+
+async function runQueueDashboardPublish(flagArgs: string[]) {
+	const cwd = process.cwd();
+	const flags = parseFlags(flagArgs);
+	const outDir = path.resolve(cwd, flags.out ?? flags.dir ?? './public/omni-queue-dashboard');
+	const sourceDir = resolveDashboardDistDir(cwd);
+
+	if (!fs.existsSync(path.join(sourceDir, 'index.html'))) {
+		throw new Error(`Dashboard dist is incomplete: ${sourceDir}`);
+	}
+
+	emptyDirectory(outDir);
+	copyDirectory(sourceDir, outDir);
+
+	console.log('Published dashboard assets');
+	console.log(`- source: ${path.relative(cwd, sourceDir) || sourceDir}`);
+	console.log(`- output: ${path.relative(cwd, outDir) || outDir}`);
+	console.log('Use this path in adapters:');
+	console.log(`  uiDir: path.resolve(process.cwd(), '${path.relative(cwd, outDir).replace(/\\/g, '/')}')`);
 }
 
 async function runWorkersList() {

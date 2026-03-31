@@ -5,7 +5,7 @@ Use this pattern when a Nest controller or service should hand work to Omni Queu
 ## Generate a starter
 
 ```bash
-queue generate:api-job --name=provision-account --queue=nest-api
+queue generate api-job --name=provision-account --queue=nest-api
 ```
 
 ## Example service usage

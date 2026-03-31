@@ -7,13 +7,27 @@ For in-process mounting, ensure Fastify has middleware support (`@fastify/middie
 ## Usage
 
 ```ts
-import { omniQueueFastifyAdapter } from '@omni-queue/fastify-adapter';
+import path from 'node:path';
+import {
+  bindOmniQueueFastifyWebSocket,
+  omniQueueFastifyAdapter,
+} from '@omni-queue/fastify-adapter';
 
 await fastify.register(import('@fastify/middie'));
 fastify.use(
-	omniQueueFastifyAdapter({
-		supervisor,
-		apiBase: '/api/omni-queue',
-	})
+  omniQueueFastifyAdapter({
+    supervisor,
+    apiBase: '/api/omni-queue',
+    uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
+    uiBase: '/',
+    protectUiWithAuth: true,
+  })
 );
+
+bindOmniQueueFastifyWebSocket(fastify.server, {
+  supervisor,
+  apiBase: '/api/omni-queue',
+});
 ```
+
+Publish the UI assets into that folder with `queue dashboard:publish --out=./public/omni-queue-dashboard`.

@@ -9,6 +9,7 @@ These quickstarts show the recommended application shapes for official Omni Queu
 - [Fastify adapter](fastify-adapter.md)
 - [Nest adapter](nest-adapter.md)
 - [Hono adapter](hono-adapter.md)
+- [Elysia adapter](elysia-adapter.md)
 
 ## How to use these guides
 
@@ -23,9 +24,9 @@ Each quickstart is intentionally short:
 ## Recommended CLI commands
 
 ```bash
-queue generate:api-job --name=send-email
-queue generate:workflow --name=asset-pipeline
-queue generate:scheduled --name=daily-digest
+queue generate api-job --name=send-email
+queue generate workflow --name=asset-pipeline
+queue generate scheduled --name=daily-digest
 ```
 
 ## Choosing the right starter

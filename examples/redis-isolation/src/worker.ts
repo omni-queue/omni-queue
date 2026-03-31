@@ -1,9 +1,11 @@
 import type { DashboardOptions } from '@omni-queue/core';
 import { Supervisor } from '@omni-queue/core';
 import express from 'express';
-import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
+import path from 'node:path';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@omni-queue/express-adapter';
 import type http from 'node:http';
 import { createConsumerWorkers, createQueues, createRedisStoreFromEnv, createRegistry } from './runtime';
+import { registerGracefulShutdown } from './graceful-shutdown';
 
 import 'dotenv/config';
 
@@ -51,6 +53,7 @@ function buildDashboardOptionsFromEnv(): DashboardOptions | undefined {
 }
 
 async function main() {
+    const dashboardUiDir = path.resolve(process.cwd(), 'public/omni-queue-dashboard');
     const store = createRedisStoreFromEnv();
     const queues = createQueues();
     const workers = createConsumerWorkers();
@@ -62,6 +65,7 @@ async function main() {
 
     const dashboard = buildDashboardOptionsFromEnv();
     let dashboardServer: http.Server | undefined;
+    let dashboardSocket: { close: () => void } | undefined;
 
     const supervisor = new Supervisor({
         queues,
@@ -74,11 +78,15 @@ async function main() {
     await supervisor.start();
 
     if (dashboard?.enabled) {
+        const dashboardEndpoint = dashboard.endpoint;
         const dashboardApp = express();
         dashboardApp.use(
-            omniQueueExpressAdapter({
+            createExpressAdapter({
                 supervisor,
-                apiBase: dashboard.endpoint,
+                ...(dashboardEndpoint ? { apiBase: dashboardEndpoint } : {}),
+                uiDir: dashboardUiDir,
+                uiBase: '/',
+                protectUiWithAuth: true,
             })
         );
 
@@ -89,6 +97,11 @@ async function main() {
                 () => resolve(started)
             );
         });
+
+        dashboardSocket = createExpressWebSocketBinding(dashboardServer, {
+            supervisor,
+            ...(dashboardEndpoint ? { apiBase: dashboardEndpoint } : {}),
+        });
     }
 
     console.log('[worker] supervisor started');
@@ -98,26 +111,23 @@ async function main() {
     }
     console.log('[worker] waiting for jobs from Redis\n');
 
-    const shutdown = async () => {
-        console.log('\n[worker] shutting down ...');
-        await new Promise<void>((resolve) => {
-            if (!dashboardServer) {
-                resolve();
-                return;
-            }
+    registerGracefulShutdown({
+        label: 'worker',
+        onShutdown: async () => {
+            dashboardSocket?.close();
+            dashboardServer?.closeIdleConnections?.();
+            dashboardServer?.closeAllConnections?.();
+            await new Promise<void>((resolve) => {
+                if (!dashboardServer) {
+                    resolve();
+                    return;
+                }
 
-            dashboardServer.close(() => resolve());
-        });
-        supervisor.stop();
-        await store.close();
-        process.exit(0);
-    };
-
-    process.on('SIGINT', () => {
-        void shutdown();
-    });
-    process.on('SIGTERM', () => {
-        void shutdown();
+                dashboardServer.close(() => resolve());
+            });
+            supervisor.stop();
+            await store.close();
+        },
     });
 }
 

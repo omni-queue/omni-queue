@@ -4,7 +4,7 @@
 
 Omni-queue is a TypeScript-first job queue system that gives you flexible worker isolation, pluggable storage backends, and an auto-scaling supervisor — all out of the box.
 
-[![CI](https://github.com/your-org/omni-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/your-org/omni-queue/actions)
+[![CI](https://github.com/omni-queue/omni-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/omni-queue/omni-queue/actions)
 [![npm](https://img.shields.io/npm/v/@omni-queue/core)](https://www.npmjs.com/package/@omni-queue/core)
 
 ## Documentation Hub
@@ -52,13 +52,14 @@ Choose the entry point that matches your use case:
 | [`@omni-queue/mysql-store`](packages/mysql-store) | MySQL storage adapter |
 | [`@omni-queue/mongo-store`](packages/mongo-store) | MongoDB storage adapter |
 | [`@omni-queue/dynamodb-store`](packages/dynamodb-store) | DynamoDB storage adapter |
-| [`@omni-queue/dashboard-api`](packages/dashboard-api) | HTTP server, middleware, and auth surface for dashboard operations |
+| [`@omni-queue/dashboard-api`](packages/dashboard-api) | Shared dashboard API primitives (routes, auth, websocket binding, config resolution) |
 | [`@omni-queue/dashboard`](packages/dashboard) | First-party dashboard frontend |
-| [`@omni-queue/express-adapter`](packages/express-adapter) | Express integration |
+| [`@omni-queue/express-adapter`](packages/express-adapter) | Express adapter (`createExpressAdapter`, `createExpressWebSocketBinding`) |
 | [`@omni-queue/next-adapter`](packages/next-adapter) | Next.js integration |
 | [`@omni-queue/fastify-adapter`](packages/fastify-adapter) | Fastify integration |
 | [`@omni-queue/nest-adapter`](packages/nest-adapter) | Nest integration |
 | [`@omni-queue/hono-adapter`](packages/hono-adapter) | Hono integration |
+| [`@omni-queue/elysia-adapter`](packages/elysia-adapter) | Elysia/Bun integration |
 | [`@omni-queue/otel-plugin`](packages/otel-plugin) | OpenTelemetry tracing plugin |
 | [`@omni-queue/plugins`](packages/plugins) | Built-in plugins: DAG, rate-limiter |
 
@@ -113,10 +114,10 @@ await supervisor.start();
 Use the CLI to generate production-oriented starter files:
 
 ```bash
-queue generate:job --name=send-email
-queue generate:api-job --name=send-email
-queue generate:workflow --name=asset-pipeline
-queue generate:scheduled --name=daily-digest
+queue generate job --name=send-email
+queue generate api-job --name=send-email
+queue generate workflow --name=asset-pipeline
+queue generate scheduled --name=daily-digest
 ```
 
 These templates are intended to give new adopters a clean starting point for typed jobs, HTTP-triggered background work, DAG-style workflows, and scheduled execution.

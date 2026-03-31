@@ -198,7 +198,7 @@ This guide does not attempt to promise byte-for-byte behavioral equivalence for 
 
 Use the CLI to generate migration-friendly templates:
 
-- `queue generate:job --name=send-email`
-- `queue generate:api-job --name=send-email`
-- `queue generate:workflow --name=asset-pipeline`
-- `queue generate:scheduled --name=daily-digest`
+- `queue generate job --name=send-email`
+- `queue generate api-job --name=send-email`
+- `queue generate workflow --name=asset-pipeline`
+- `queue generate scheduled --name=daily-digest`

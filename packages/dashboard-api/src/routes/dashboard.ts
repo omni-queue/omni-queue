@@ -1,13 +1,25 @@
-import express from 'express';
+import { createRequire } from 'node:module';
+import type { Request, Response, Router } from 'express';
 import type { DashboardAuthOptions, QueueAdminJobStatus, Supervisor } from '@omni-queue/core';
+import { checkAuth, getAllowedQueues, hasDashboardPermission } from '../middleware/request-auth';
 import { queryArchive, updateArchiveRetention } from '../services/archive';
-import { checkAuth, getAllowedQueues, hasDashboardPermission } from '../middleware/auth';
 import { getDashboardBatch, listDashboardBatches } from '../services/batches';
-import { getDashboardJobById, getDashboardJobs, getSilencedJobs, type DashboardJobFilterStatus } from '../services/jobs';
+import {
+  getDashboardJobById,
+  getDashboardJobs,
+  getSilencedJobs,
+  type DashboardJobFilterStatus,
+} from '../services/jobs';
 import { getMonitoringTag, listMonitoringTags } from '../services/monitoring';
 import { buildOverview } from '../services/overview';
 import { buildSloReport } from '../services/slo';
 import { asNonNegativeInt, asPositiveInt, asString } from '../utils/http';
+
+const require = createRequire(import.meta.url);
+
+function loadExpress(): typeof import('express') {
+  return require('express');
+}
 
 function asDashboardStatus(value: unknown): DashboardJobFilterStatus | undefined {
   const status = asString(value);
@@ -44,18 +56,19 @@ export function buildDashboardRouter(
   supervisor: Supervisor,
   auth: DashboardAuthOptions,
   streamIntervalMs: number
-): express.Router {
+): Router {
+  const express = loadExpress();
   const router = express.Router();
 
-  const hasQueueAccess = (req: express.Request, queueName: string): boolean => {
+  const hasQueueAccess = (req: Request, queueName: string): boolean => {
     const allowedQueues = getAllowedQueues(req);
     if (!allowedQueues) return true;
     return allowedQueues.has(queueName);
   };
 
   const enforceQueueAccess = (
-    req: express.Request,
-    res: express.Response,
+    req: Request,
+    res: Response,
     queueName: string | undefined,
     errorMessage = 'Queue access denied'
   ): queueName is string => {
@@ -71,7 +84,7 @@ export function buildDashboardRouter(
     return true;
   };
 
-  const filterOverviewForRequest = async (req: express.Request) => {
+  const filterOverviewForRequest = async (req: Request) => {
     const overview = await buildOverview(supervisor);
     const allowedQueues = getAllowedQueues(req);
     if (!allowedQueues) {
@@ -126,8 +139,8 @@ export function buildDashboardRouter(
   };
 
   const requirePermission = (
-    req: express.Request,
-    res: express.Response,
+    req: Request,
+    res: Response,
     permission: 'read' | 'operate' | 'admin'
   ): boolean => {
     if (hasDashboardPermission(req, permission)) {
@@ -138,7 +151,7 @@ export function buildDashboardRouter(
     return false;
   };
 
-  const filterJobsForRequest = <T extends { queue: string }>(req: express.Request, jobs: T[]): T[] => {
+  const filterJobsForRequest = <T extends { queue: string }>(req: Request, jobs: T[]): T[] => {
     const allowedQueues = getAllowedQueues(req);
     if (!allowedQueues) {
       return jobs;

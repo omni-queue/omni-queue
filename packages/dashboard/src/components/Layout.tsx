@@ -46,7 +46,16 @@ function ConnectionDot({ connected, connecting }: { connected: boolean; connecti
 export function Layout() {
   const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { overview, refreshOverview, wsStatus } = useDashboardData();
+  const { overview, refreshOverview, transportMode, wsStatus } = useDashboardData();
+
+  const connectionLabel =
+    transportMode === 'polling'
+      ? 'Polling mode'
+      : wsStatus === 'connected'
+        ? 'Live'
+        : wsStatus === 'connecting'
+          ? 'Connecting…'
+          : 'Polling (fallback)';
 
   const isActive = (path: string) => {
     if (path === '/') return location.pathname === '/';
@@ -98,7 +107,7 @@ export function Layout() {
 
         <div className="px-5 py-4 border-t border-slate-800 flex items-center gap-2 text-xs text-slate-500">
           <ConnectionDot connected={wsStatus === 'connected'} connecting={wsStatus === 'connecting'} />
-          <span>{wsStatus === 'connected' ? 'Live' : wsStatus === 'connecting' ? 'Connecting…' : 'Polling'}</span>
+          <span>{connectionLabel}</span>
         </div>
       </aside>
 

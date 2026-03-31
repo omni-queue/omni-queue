@@ -5,7 +5,7 @@ Use this pattern for lightweight edge-style APIs that enqueue background work.
 ## Generate a starter
 
 ```bash
-queue generate:api-job --name=publish-webhook --queue=edge-api
+queue generate api-job --name=publish-webhook --queue=edge-api
 ```
 
 ## Example route

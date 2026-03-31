@@ -6,16 +6,25 @@ HTTP bindings for Omni Queue dashboard APIs.
 
 `@omni-queue/core` only stores dashboard configuration on `Supervisor`. This package turns that configuration into:
 
-- a reusable dashboard route mounting helper
+- shared dashboard primitives for provider adapters:
+  - dashboard config + WS path resolution helpers (`resolveDashboardConfig`, `resolveDashboardWsPaths`)
+  - transport-agnostic auth helpers (`authenticateDashboardRequest`, permission checks)
+  - dashboard query/service helpers used by framework adapters to implement HTTP routes
 
-Default framework adapter package: `@omni-queue/express-adapter`.
+It does not create an Express app, start a server, or serve static UI files directly. Those responsibilities belong to the provider adapter.
+
+Default provider adapter package: `@omni-queue/express-adapter`.
 
 ## Example
 
 ```ts
 import express from 'express';
+import path from 'node:path';
 import { Supervisor } from '@omni-queue/core';
-import { omniQueueExpressAdapter } from '@omni-queue/express-adapter';
+import {
+  createExpressAdapter,
+  createExpressWebSocketBinding,
+} from '@omni-queue/express-adapter';
 
 const supervisor = new Supervisor({
   queues,
@@ -34,9 +43,21 @@ const supervisor = new Supervisor({
 
 const app = express();
 app.use(
-  omniQueueExpressAdapter({
+  createExpressAdapter({
     supervisor,
     apiBase: '/queue-manager',
+    uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
+    uiBase: '/',
   })
 );
+
+const server = app.listen(3210);
+createExpressWebSocketBinding(server, {
+  supervisor,
+  apiBase: '/queue-manager',
+});
+
+// publish assets first:
+// queue dashboard:publish --out=./public/omni-queue-dashboard
+// (resolved from installed @omni-queue/dashboard in node_modules)
 ```
