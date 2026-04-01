@@ -19,9 +19,9 @@ npx @omni-queue/cli dashboard:publish --out=./public/omni-queue-dashboard --base
 
 This Pages Router sample hosts the dashboard through API routes, so its UI mount is constrained by the API route path unless you add rewrites or run a custom Node server. The preferred sample path is `/api/dashboard-api`.
 
-## Why worker is a separate script
+## Why worker is a separate script in production
 
-Do not run queue workers inside the Next API process.
+For production, keep queue workers outside the Next API process.
 
 - API latency and background execution should be isolated.
 - You can scale Next and workers independently.
@@ -29,8 +29,29 @@ Do not run queue workers inside the Next API process.
 
 This sample provides two entrypoints:
 
-- `npm run dev`: Next API + dashboard host only
+- `npm run dev`: Next API + dashboard host + worker in one process (`SUPERVISOR_MODE=hybrid` by default)
 - `npm run worker`: queue worker only (`src/worker.ts`)
+
+## Optional same-process mode
+
+Same-process mode is enabled by default. You can still set it explicitly:
+
+```bash
+SUPERVISOR_MODE=hybrid npm run dev
+```
+
+In that mode, `src/runtime.ts` starts the supervisor with `start('hybrid')` and registers an inline worker for the `emails` queue. This is useful for local development or small deployments, but it is still not the default recommendation for production.
+
+## API-only mode
+
+If you want the split-process setup:
+
+```bash
+SUPERVISOR_MODE=api npm run dev
+npm run worker
+```
+
+In API-only mode, the Next process will enqueue jobs but will not process them itself.
 
 ## Run
 

@@ -17,9 +17,9 @@ To publish dashboard assets with the CLI:
 npx @omni-queue/cli dashboard:publish --out=./public/omni-queue-dashboard --base=/secured-dashboard --api-base=/api/dashboard-api
 ```
 
-## Why worker is a separate script
+## Why worker is a separate script in production
 
-Do not run queue workers inside the HTTP server process.
+For production, keep queue workers outside the HTTP server process.
 
 - Preserve API responsiveness under heavy background load.
 - Scale and deploy worker capacity independently.
@@ -27,8 +27,29 @@ Do not run queue workers inside the HTTP server process.
 
 This sample provides two entrypoints:
 
-- `bun run dev`: API + dashboard host only (`src/server.ts`)
+- `bun run dev`: API + dashboard host + worker in one process (`src/server.ts`, `SUPERVISOR_MODE=hybrid` by default)
 - `bun run worker`: queue worker only (`src/worker.ts`)
+
+## Optional same-process mode
+
+Same-process mode is enabled by default. You can still set it explicitly:
+
+```bash
+SUPERVISOR_MODE=hybrid bun run dev
+```
+
+In that mode, `src/server.ts` starts the supervisor with `start('hybrid')` and registers an inline worker for the `emails` queue. This is useful for local development or small deployments, but it is still not the default recommendation for production.
+
+## API-only mode
+
+If you want the split-process setup:
+
+```bash
+SUPERVISOR_MODE=api bun run dev
+bun run worker
+```
+
+In API-only mode, the server will enqueue jobs but will not process them itself.
 
 ## Run
 

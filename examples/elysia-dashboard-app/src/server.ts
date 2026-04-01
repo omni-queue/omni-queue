@@ -1,6 +1,14 @@
 import path from 'node:path';
 import { Elysia } from 'elysia';
-import { FileQueueStorage, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
+import {
+  FileQueueStorage,
+  JobRegistry,
+  resolveSupervisorMode,
+  Supervisor,
+  type SupervisorMode,
+  defineQueues,
+  defineWorkers,
+} from '@omni-queue/core';
 import { registerElysiaAdapter } from '@omni-queue/elysia-adapter';
 import { ElysiaEmailJob } from './jobs';
 
@@ -16,6 +24,7 @@ async function main() {
   const UI_BASE = normalizeBasePath(process.env.DASHBOARD_UI_BASE ?? '/secured-dashboard');
   const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
+  const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
 
   const registry = new JobRegistry();
   registry.register(ElysiaEmailJob);
@@ -24,12 +33,15 @@ async function main() {
     queues: defineQueues({
       emails: { name: 'emails', connection: 'file', concurrency: 2, batchSize: 10 },
     }),
-    workers: defineWorkers({}),
+    workers:
+      supervisorMode === 'hybrid' || supervisorMode === 'worker'
+        ? defineWorkers({ emailWorker: { queues: ['emails'], concurrency: 1, isolation: 'inline' } })
+        : defineWorkers({}),
     registry,
     storageAdapters: { file: new FileQueueStorage(QUEUE_DATA_DIR) },
   });
 
-  await supervisor.start('api');
+  await supervisor.start(supervisorMode);
 
   const app = new Elysia();
 
@@ -44,6 +56,7 @@ async function main() {
   app
     .get('/', () => ({
       status: 'ok',
+      supervisorMode,
       enqueueRoute: '/jobs/email',
       dashboardRoute: UI_BASE,
       dashboardApiBase: API_BASE,
@@ -70,6 +83,10 @@ async function main() {
   app.listen({ port: 3020, hostname: '0.0.0.0' });
 
   console.log('Elysia example running on http://localhost:3020');
+  console.log(`Supervisor mode: ${supervisorMode}`);
+  if (supervisorMode === 'api') {
+    console.warn('API mode does not process jobs. Run `bun run worker` or set SUPERVISOR_MODE=hybrid.');
+  }
   console.log(`Queue data dir: ${QUEUE_DATA_DIR}`);
   console.log(`Dashboard API base: ${API_BASE}`);
   console.log(`Dashboard UI base: ${UI_BASE}`);

@@ -1307,6 +1307,19 @@ export class JobManager {
     return new Error(String(error));
   }
 
+  private toErrorDetails(error: Error): StoredJob['errorDetails'] {
+    const details: StoredJob['errorDetails'] = {
+      error: error.message,
+      ...(error.name ? { errorName: error.name } : {}),
+      ...(typeof (error as Error & { code?: unknown }).code === 'string'
+        ? { errorCode: (error as Error & { code?: string }).code }
+        : {}),
+      ...(typeof error.stack === 'string' ? { errorStack: error.stack } : {}),
+    };
+
+    return details;
+  }
+
   private isTimeoutError(error: unknown): boolean {
     if (!(error instanceof Error)) {
       return false;
@@ -1328,6 +1341,7 @@ export class JobManager {
     options?: { forceDeadLetter?: boolean }
   ): Promise<'deadlettered' | 'snoozed'> {
     const normalizedError = this.toExecutionError(error);
+    const errorDetails = this.toErrorDetails(normalizedError);
 
     this.batchManager?.markJobFailed(job, normalizedError);
     for (const plugin of allPlugins) {
@@ -1341,11 +1355,12 @@ export class JobManager {
       await storage.moveToDeadLetter({
         ...job,
         state: 'failed',
+        errorDetails,
         updatedAt: Date.now(),
       });
       permanentFailureMode = 'deadlettered';
     } else {
-      permanentFailureMode = await this.applyPoisonFailurePolicy(job, queueConfig, storage, attempt);
+      permanentFailureMode = await this.applyPoisonFailurePolicy(job, queueConfig, storage, attempt, errorDetails);
     }
 
     if (permanentFailureMode === 'deadlettered') {
@@ -1368,7 +1383,8 @@ export class JobManager {
     job: StoredJob,
     queueConfig: QueueConfig,
     storage: QueueStorage,
-    failureCount: number
+    failureCount: number,
+    errorDetails: StoredJob['errorDetails']
   ): Promise<'deadlettered' | 'snoozed'> {
     const policy = queueConfig.reliability?.poisonPolicy;
     const now = Date.now();
@@ -1377,6 +1393,7 @@ export class JobManager {
       await storage.moveToDeadLetter({
         ...job,
         state: 'failed',
+        errorDetails,
         updatedAt: now,
       });
       return 'deadlettered';
@@ -1407,6 +1424,7 @@ export class JobManager {
       ...job,
       state: 'failed',
       updatedAt: now,
+      errorDetails,
       tags: Array.from(new Set(tags)),
     });
 

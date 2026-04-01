@@ -39,6 +39,9 @@ type DeadLetterDoc = {
   attempts: number;
   createdAt: number;
   failedAt: number;
+  errorDetails?: StoredJob['errorDetails'];
+  retriedAt?: number;
+  retriedJobId?: string;
 };
 
 type CompletedDoc = {
@@ -233,6 +236,7 @@ export class MongoStore implements QueueStorage {
           attempts: job.attempts,
           createdAt: job.createdAt,
           failedAt: Date.now(),
+          ...(job.errorDetails ? { errorDetails: job.errorDetails } : {}),
         },
       },
       { upsert: true }
@@ -395,22 +399,44 @@ export class MongoStore implements QueueStorage {
       attempts: row.attempts,
       createdAt: row.createdAt,
       updatedAt: row.failedAt,
+      ...(row.errorDetails ? { errorDetails: row.errorDetails } : {}),
+      ...(row.retriedAt != null ? { retriedAt: row.retriedAt } : {}),
+      ...(row.retriedJobId ? { retriedJobId: row.retriedJobId } : {}),
     }));
   }
 
   async retryDeadLetterJob(queueName: string, jobId: string): Promise<boolean> {
     await this.ensureInitialized();
-    const deadRow = await this.deadLetters.findOneAndDelete({ id: jobId, queue: queueName });
+    const now = Date.now();
+    const retriedJobId = crypto.randomUUID();
+
+    const deadRow = await this.deadLetters.findOneAndUpdate(
+      {
+        id: jobId,
+        queue: queueName,
+        retriedAt: { $exists: false },
+      },
+      {
+        $set: {
+          retriedAt: now,
+          retriedJobId,
+          failedAt: now,
+        },
+      },
+      {
+        returnDocument: 'before',
+      }
+    );
+
     if (!deadRow) {
       return false;
     }
 
-    const now = Date.now();
     await this.jobs.updateOne(
-      { id: deadRow.id },
+      { id: retriedJobId },
       {
         $setOnInsert: {
-          id: deadRow.id,
+          id: retriedJobId,
           name: deadRow.name,
           payload: deadRow.payload,
           queue: deadRow.queue,
@@ -418,7 +444,7 @@ export class MongoStore implements QueueStorage {
           attempts: 0,
           priority: 'normal',
           priorityRank: 2,
-          createdAt: deadRow.createdAt,
+          createdAt: now,
           updatedAt: now,
         } as JobDoc,
       },

@@ -7,6 +7,7 @@ export * from './job-node';
 export * from './queue';
 export * from './registry';
 export * from './runtime-resolver';
+export * from './supervisor-mode';
 export * from './supervisor';
 export * from './worker';
 export * from './worker-runtime';

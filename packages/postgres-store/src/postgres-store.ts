@@ -140,8 +140,20 @@ export class PostgresStore implements QueueStorage {
         queue       TEXT    NOT NULL,
         attempts    INTEGER NOT NULL DEFAULT 0,
         created_at  BIGINT  NOT NULL,
-        failed_at   BIGINT  NOT NULL
+        failed_at   BIGINT  NOT NULL,
+        error_details JSONB,
+        retried_at BIGINT,
+        retried_job_id TEXT
       );
+
+      ALTER TABLE ${this.dlTable}
+        ADD COLUMN IF NOT EXISTS error_details JSONB;
+
+      ALTER TABLE ${this.dlTable}
+        ADD COLUMN IF NOT EXISTS retried_at BIGINT;
+
+      ALTER TABLE ${this.dlTable}
+        ADD COLUMN IF NOT EXISTS retried_job_id TEXT;
 
       CREATE TABLE IF NOT EXISTS ${this.completedTable} (
         id           TEXT    PRIMARY KEY,
@@ -251,8 +263,8 @@ export class PostgresStore implements QueueStorage {
 
       await client.query(
         `
-        INSERT INTO ${this.dlTable} (id, name, payload, queue, attempts, created_at, failed_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        INSERT INTO ${this.dlTable} (id, name, payload, queue, attempts, created_at, failed_at, error_details, retried_at, retried_job_id)
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NULL, NULL)
         ON CONFLICT (id) DO NOTHING
         `,
         [
@@ -263,6 +275,7 @@ export class PostgresStore implements QueueStorage {
           job.attempts,
           job.createdAt,
           Date.now(),
+          job.errorDetails ? JSON.stringify(job.errorDetails) : null,
         ]
       );
 
@@ -462,6 +475,9 @@ export class PostgresStore implements QueueStorage {
       attempts: Number(row['attempts'] ?? 0),
       createdAt: Number(row['created_at']),
       updatedAt: Number(row['failed_at']),
+      ...(row['error_details'] != null ? { errorDetails: row['error_details'] as StoredJob['errorDetails'] } : {}),
+      ...(row['retried_at'] != null ? { retriedAt: Number(row['retried_at']) } : {}),
+      ...(row['retried_job_id'] != null ? { retriedJobId: row['retried_job_id'] as string } : {}),
     }));
   }
 
@@ -471,7 +487,7 @@ export class PostgresStore implements QueueStorage {
       await client.query('BEGIN');
 
       const deadResult = await client.query(
-        `SELECT * FROM ${this.dlTable} WHERE id = $1 AND queue = $2`,
+        `SELECT * FROM ${this.dlTable} WHERE id = $1 AND queue = $2 AND retried_at IS NULL FOR UPDATE`,
         [jobId, queueName]
       );
 
@@ -482,6 +498,7 @@ export class PostgresStore implements QueueStorage {
       }
 
       const now = Date.now();
+      const retriedJobId = crypto.randomUUID();
       await client.query(
         `
         INSERT INTO ${this.table}
@@ -489,10 +506,13 @@ export class PostgresStore implements QueueStorage {
         VALUES ($1, $2, $3, $4, 'queued', 0, NULL, NULL, NULL, NULL, NULL, 'normal', NULL, $5, $6)
         ON CONFLICT (id) DO NOTHING
         `,
-        [row['id'], row['name'], row['payload'], row['queue'], Number(row['created_at']), now]
+        [retriedJobId, row['name'], row['payload'], row['queue'], now, now]
       );
 
-      await client.query(`DELETE FROM ${this.dlTable} WHERE id = $1 AND queue = $2`, [jobId, queueName]);
+      await client.query(
+        `UPDATE ${this.dlTable} SET retried_at = $3, retried_job_id = $4, failed_at = $3 WHERE id = $1 AND queue = $2`,
+        [jobId, queueName, now, retriedJobId]
+      );
       await client.query('COMMIT');
       return true;
     } catch (error) {

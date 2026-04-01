@@ -2,7 +2,16 @@ import http from 'node:http';
 import path from 'node:path';
 import { getRequestListener } from '@hono/node-server';
 import { Hono } from 'hono';
-import { FileQueueStorage, Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
+import {
+  FileQueueStorage,
+  Job,
+  JobRegistry,
+  resolveSupervisorMode,
+  Supervisor,
+  type SupervisorMode,
+  defineQueues,
+  defineWorkers,
+} from '@omni-queue/core';
 import { bindOmniQueueHonoWebSocket, omniQueueHonoAdapter } from '@omni-queue/hono-adapter';
 
 function normalizeBasePath(value: string): string {
@@ -35,18 +44,22 @@ async function main() {
   const UI_BASE = normalizeBasePath(process.env.DASHBOARD_UI_BASE ?? '/secured-dashboard');
   const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
+  const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
 
   const registry = new JobRegistry();
   registry.register(HonoEmailJob);
 
   const supervisor = new Supervisor({
     queues: defineQueues({ emails: { name: 'emails', connection: 'file', concurrency: 2, batchSize: 10 } }),
-    workers: defineWorkers({ emailWorker: { queues: ['emails'], concurrency: 1, isolation: 'inline' } }),
+    workers:
+      supervisorMode === 'hybrid' || supervisorMode === 'worker'
+        ? defineWorkers({ emailWorker: { queues: ['emails'], concurrency: 1, isolation: 'inline' } })
+        : defineWorkers({}),
     registry,
     storageAdapters: { file: new FileQueueStorage(QUEUE_DATA_DIR) },
   });
 
-  await supervisor.start('api');
+  await supervisor.start(supervisorMode);
 
   const dashboardOptions = {
     supervisor,
@@ -63,6 +76,7 @@ async function main() {
   app.get('/', (c) =>
     c.json({
       status: 'ok',
+      supervisorMode,
       enqueueRoute: '/jobs/email',
       dashboardRoute: UI_BASE,
       dashboardApiBase: API_BASE,
@@ -101,6 +115,10 @@ async function main() {
 
   server.listen(3040, () => {
     console.log('Hono example running on http://localhost:3040');
+    console.log(`Supervisor mode: ${supervisorMode}`);
+    if (supervisorMode === 'api') {
+      console.warn('API mode does not process jobs. Run `npm run worker` or set SUPERVISOR_MODE=hybrid.');
+    }
     console.log(`Queue data dir: ${QUEUE_DATA_DIR}`);
     console.log(`Dashboard API base: ${API_BASE}`);
     console.log(`Dashboard UI base: ${UI_BASE}`);

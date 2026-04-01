@@ -25,6 +25,13 @@ export type JobConstructor = {
   jobName: string;
 };
 
+export interface JobErrorDetails {
+  error: string;
+  errorName?: string;
+  errorCode?: string;
+  errorStack?: string;
+}
+
 export interface StoredJob {
   id: string;
   name: string;
@@ -56,6 +63,10 @@ export interface StoredJob {
   lastScheduledAt?: number; // Last execution timestamp for recurring jobs
   repeatScheduleId?: string;
   repeatIntervalMs?: number;
+
+  errorDetails?: JobErrorDetails;
+  retriedAt?: number;
+  retriedJobId?: string;
 
   createdAt: number;
   updatedAt: number;

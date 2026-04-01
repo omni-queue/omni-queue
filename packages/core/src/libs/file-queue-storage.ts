@@ -319,22 +319,41 @@ export class FileQueueStorage implements QueueStorage {
 
   async retryDeadLetterJob(queueName: string, jobId: string): Promise<boolean> {
     const deadPath = path.join(this.deadDir, `${jobId}.json`);
-    const queuedPath = path.join(this.queuedDir, `${jobId}.json`);
 
     try {
       const deadJob = this.readJson<StoredJob>(deadPath);
       if (deadJob.queue !== queueName) return false;
+      if (deadJob.retriedAt != null) return false;
+
+      const now = Date.now();
+      const retriedJobId = crypto.randomUUID();
+      const queuedPath = path.join(this.queuedDir, `${retriedJobId}.json`);
 
       const retried: StoredJob = {
         ...deadJob,
+        id: retriedJobId,
         state: 'queued',
         attempts: 0,
-        updatedAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
       };
 
       delete (retried as StoredJob & { delayUntil?: number }).delayUntil;
+      delete (retried as StoredJob & { errorDetails?: StoredJob['errorDetails'] }).errorDetails;
+      delete (retried as StoredJob & { idempotencyKey?: string }).idempotencyKey;
+      delete (retried as StoredJob & { retriedAt?: number }).retriedAt;
+      delete (retried as StoredJob & { retriedJobId?: string }).retriedJobId;
+
       fs.writeFileSync(queuedPath, JSON.stringify(retried));
-      this.silentUnlink(deadPath);
+      fs.writeFileSync(
+        deadPath,
+        JSON.stringify({
+          ...deadJob,
+          retriedAt: now,
+          retriedJobId,
+          updatedAt: now,
+        })
+      );
       return true;
     } catch {
       return false;

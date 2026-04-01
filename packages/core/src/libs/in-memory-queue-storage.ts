@@ -185,15 +185,36 @@ export class InMemoryQueueStorage implements QueueStorage {
     const index = queueDeadLetter.findIndex((job) => job.id === jobId);
     if (index < 0) return false;
 
-    const [deadJob] = queueDeadLetter.splice(index, 1);
-    this.deadLetter.set(queueName, queueDeadLetter);
+    const deadJob = queueDeadLetter[index]!;
+    if (deadJob.retriedAt != null) {
+      return false;
+    }
+
+    const now = Date.now();
+    const retriedJobId = crypto.randomUUID();
 
     const retried: StoredJob = {
-      ...deadJob!,
+      ...deadJob,
+      id: retriedJobId,
       state: 'queued',
       attempts: 0,
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     };
+
+    delete (retried as StoredJob & { delayUntil?: number }).delayUntil;
+    delete (retried as StoredJob & { errorDetails?: StoredJob['errorDetails'] }).errorDetails;
+    delete (retried as StoredJob & { idempotencyKey?: string }).idempotencyKey;
+    delete (retried as StoredJob & { retriedAt?: number }).retriedAt;
+    delete (retried as StoredJob & { retriedJobId?: string }).retriedJobId;
+
+    queueDeadLetter[index] = {
+      ...deadJob,
+      retriedAt: now,
+      retriedJobId,
+      updatedAt: now,
+    };
+    this.deadLetter.set(queueName, queueDeadLetter);
 
     this.jobs.set(retried.id, retried);
     return true;

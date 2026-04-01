@@ -1,6 +1,15 @@
 import path from 'node:path';
 import Fastify from 'fastify';
-import { FileQueueStorage, Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
+import {
+  FileQueueStorage,
+  Job,
+  JobRegistry,
+  resolveSupervisorMode,
+  Supervisor,
+  type SupervisorMode,
+  defineQueues,
+  defineWorkers,
+} from '@omni-queue/core';
 import { bindOmniQueueFastifyWebSocket, omniQueueFastifyAdapter } from '@omni-queue/fastify-adapter';
 
 function normalizeBasePath(value: string): string {
@@ -24,13 +33,17 @@ async function main() {
   const UI_BASE = normalizeBasePath(process.env.DASHBOARD_UI_BASE ?? '/secured-dashboard');
   const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
+  const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
 
   const registry = new JobRegistry();
   registry.register(FastifyEmailJob);
 
   const supervisor = new Supervisor({
     queues: defineQueues({ emails: { name: 'emails', connection: 'file', concurrency: 2, batchSize: 10 } }),
-    workers: defineWorkers({}),
+    workers:
+      supervisorMode === 'hybrid' || supervisorMode === 'worker'
+        ? defineWorkers({ emailWorker: { queues: ['emails'], concurrency: 1, isolation: 'inline' } })
+        : defineWorkers({}),
     registry,
     storageAdapters: { file: new FileQueueStorage(QUEUE_DATA_DIR) },
   });
@@ -75,6 +88,7 @@ async function main() {
 
   app.get('/', async () => ({
     status: 'ok',
+    supervisorMode,
     enqueueRoute: '/jobs/email',
     dashboardRoute: UI_BASE,
     dashboardApiBase: API_BASE,
@@ -82,8 +96,12 @@ async function main() {
   }));
 
   await app.listen({ port: 3030, host: '0.0.0.0' });
-  await supervisor.start('api');
+  await supervisor.start(supervisorMode);
   console.log('Fastify example running on http://localhost:3030');
+  console.log(`Supervisor mode: ${supervisorMode}`);
+  if (supervisorMode === 'api') {
+    console.warn('API mode does not process jobs. Run `npm run worker` or set SUPERVISOR_MODE=hybrid.');
+  }
   console.log(`Queue data dir: ${QUEUE_DATA_DIR}`);
   console.log(`Dashboard API base: ${API_BASE}`);
   console.log(`Dashboard UI base: ${UI_BASE}`);

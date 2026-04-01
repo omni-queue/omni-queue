@@ -2,7 +2,16 @@ import 'reflect-metadata';
 import path from 'node:path';
 import { Module } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
-import { FileQueueStorage, Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
+import {
+  FileQueueStorage,
+  Job,
+  JobRegistry,
+  resolveSupervisorMode,
+  Supervisor,
+  type SupervisorMode,
+  defineQueues,
+  defineWorkers,
+} from '@omni-queue/core';
 import { bindOmniQueueNestWebSocket, omniQueueNestAdapter } from '@omni-queue/nest-adapter';
 
 function normalizeBasePath(value: string): string {
@@ -24,9 +33,14 @@ class NestEmailJob extends Job<{ to: string; subject: string; body: string }> {
 const registry = new JobRegistry();
 registry.register(NestEmailJob);
 
+const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
+
 const supervisor = new Supervisor({
   queues: defineQueues({ emails: { name: 'emails', connection: 'file', concurrency: 2, batchSize: 10 } }),
-  workers: defineWorkers({}),
+  workers:
+    supervisorMode === 'hybrid' || supervisorMode === 'worker'
+      ? defineWorkers({ emailWorker: { queues: ['emails'], concurrency: 1, isolation: 'inline' } })
+      : defineWorkers({}),
   registry,
   storageAdapters: {
     file: new FileQueueStorage(path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data')),
@@ -44,7 +58,7 @@ async function bootstrap() {
   const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
 
-  await supervisor.start('api');
+  await supervisor.start(supervisorMode);
 
   const app = await NestFactory.create(AppModule);
   const expressApp = app.getHttpAdapter().getInstance() as {
@@ -69,6 +83,7 @@ async function bootstrap() {
   expressApp.get('/', (_req, res) => {
     res.json({
       status: 'ok',
+      supervisorMode,
       enqueueRoute: '/jobs/email',
       dashboardRoute: UI_BASE,
       dashboardApiBase: API_BASE,
@@ -98,6 +113,10 @@ async function bootstrap() {
 
   await app.listen(3050);
   console.log('Nest example running on http://localhost:3050');
+  console.log(`Supervisor mode: ${supervisorMode}`);
+  if (supervisorMode === 'api') {
+    console.warn('API mode does not process jobs. Run `npm run worker` or set SUPERVISOR_MODE=hybrid.');
+  }
   console.log(`Queue data dir: ${QUEUE_DATA_DIR}`);
   console.log(`Dashboard API base: ${API_BASE}`);
   console.log(`Dashboard UI base: ${UI_BASE}`);

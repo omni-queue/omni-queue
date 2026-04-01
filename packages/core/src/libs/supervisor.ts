@@ -38,7 +38,8 @@ export interface SupervisorOptions {
   dashboard?: DashboardOptions;
 }
 
-export type SupervisorMode = 'api' | 'worker';
+// 'all' is kept as a compatibility alias for older examples.
+export type SupervisorMode = 'api' | 'worker' | 'hybrid' | 'all';
 
 export class Supervisor {
   private workers: Map<string, any[]> = new Map();
@@ -150,7 +151,7 @@ export class Supervisor {
       this.promoter.start();
     }
 
-    if (this.mode === 'worker') {
+    if (this.shouldRunWorkers()) {
       for (const [name, config] of Object.entries(this.workerDefs)) {
         this.workers.set(name, []);
         this.scaleWorker(name, config);
@@ -698,9 +699,13 @@ export class Supervisor {
     const rounded = Math.floor(concurrency);
     this.desiredWorkerScaling.set(workerName, rounded);
 
-    if (this.running && this.mode === 'worker') {
+    if (this.running && this.shouldRunWorkers()) {
       this.scaleTo(workerName, workerDef, rounded);
     }
+  }
+
+  private shouldRunWorkers(mode: SupervisorMode = this.mode): boolean {
+    return mode === 'worker' || mode === 'hybrid' || mode === 'all';
   }
 
   getWorkerDefinitions(): Record<string, WorkerConfig> {
@@ -846,7 +851,7 @@ export class Supervisor {
   stop() {
     this.running = false;
     this.mode = 'worker';
-    
+
     // Stop scheduled job promoter
     this.promoter?.stop();
     this.jobManager.stopSchedules();
@@ -864,7 +869,7 @@ export class Supervisor {
   }
 
   private updateReliabilityState(event: QueueLifecycleEvent): void {
-    const queueName = event.queueName;
+    const { queueName } = event;
     if (!queueName) {
       return;
     }
