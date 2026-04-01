@@ -1,5 +1,6 @@
 export * from './isolation';
 export * from './batch-manager';
+export * from './file-queue-storage';
 export * from './in-memory-queue-storage';
 export * from './isolation-definition';
 export * from './job-node';

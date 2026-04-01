@@ -14,12 +14,16 @@ It is organized to help three common audiences:
 
 - [Implemented feature catalog](feature-catalog.md)
 - [Phase 0: Core foundation](phase-1/phase-0-foundation.md)
+- [Phase 2: Observability and dashboard](phase-2/phase-2-observability-dashboard.md)
+- [Phase 3: Advanced features](phase-3/phase-3-advanced-features.md)
+- [Phase 4: Ecosystem and integration](phase-4/phase-4-ecosystem-integration.md)
 - [Quick start guide](../../README.md)
 
 ### Migration and adoption
 
 - [BullMQ migration guide](migration-guides/from-bullmq.md)
 - [Adapter quickstarts](quickstarts/README.md)
+- [Dashboard integration guide](quickstarts/dashboard-integration.md)
 
 ### Production readiness
 
@@ -30,8 +34,9 @@ It is organized to help three common audiences:
 
 ### Architecture and APIs
 
-- [Architecture docs](architecture/)
-- [API reference docs](api-reference/)
+- [Phase 0 architecture foundation](phase-1/phase-0-foundation.md)
+- [Feature catalog](feature-catalog.md)
+- [Adapter quickstarts](quickstarts/README.md)
 
 ## Recommended reading paths
 

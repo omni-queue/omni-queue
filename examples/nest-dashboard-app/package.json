@@ -1,0 +1,26 @@
+{
+  "name": "nest-dashboard-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "npm run build && node dist/main.js",
+    "worker": "npm run build && node dist/worker.js",
+    "start": "npm run dev",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@nestjs/common": "^11.1.6",
+    "@nestjs/core": "^11.1.6",
+    "@nestjs/platform-express": "^11.1.6",
+    "@omni-queue/core": "*",
+    "@omni-queue/nest-adapter": "*",
+    "express": "^4.21.2",
+    "reflect-metadata": "^0.2.2",
+    "rxjs": "^7.8.2"
+  },
+  "devDependencies": {
+    "@omni-queue/cli": "*"
+  }
+}

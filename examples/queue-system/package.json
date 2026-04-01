@@ -12,7 +12,7 @@
     "dev:dashboard": "concurrently \"npm run server:dev\" \"npm run dashboard\"",
     "start": "npm run dev",
     "build": "vite build",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
     "check-types": "tsc --noEmit",
     "queue:dev": "queue dev",
@@ -23,7 +23,6 @@
     "omni:generate:isolation": "omni generate isolation"
   },
   "dependencies": {
-    "@omni-queue/cli": "*",
     "@omni-queue/core": "*",
     "@omni-queue/dashboard-api": "*",
     "@omni-queue/otel-plugin": "*",
@@ -31,6 +30,7 @@
     "express": "^4.21.2"
   },
   "devDependencies": {
+    "@omni-queue/cli": "*",
     "concurrently": "^9.1.0"
   }
 }

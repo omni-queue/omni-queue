@@ -14,6 +14,12 @@ Omni-queue is a TypeScript-first job queue system that gives you flexible worker
 - [Documentation index](docs/operations/README.md)
 - [BullMQ migration guide](docs/operations/migration-guides/from-bullmq.md)
 - [Adapter quickstarts](docs/operations/quickstarts/README.md)
+- [Dashboard integration guide](docs/operations/quickstarts/dashboard-integration.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Release process](docs/operations/releasing.md)
+- [Changelog](CHANGELOG.md)
 
 ## Adoption Paths
 
@@ -237,15 +243,42 @@ RUN_INTEGRATION_TESTS=true \
 npm run test:integration
 ```
 
+## CI Workflows
+
+Two GitHub Actions workflows protect `main`:
+
+- `CI` (`.github/workflows/ci.yml`): install, build, typecheck, and monorepo test sweep.
+- `Integration Tests` (`.github/workflows/integration-tests.yml`): Redis + Postgres adapter integration validation when core/storage paths change.
+
+You can run the same checks locally with `npm run build`, `npm run check-types`, `npm test`, and `npm run test:integration`.
+
 ---
 
 ## Examples
 
 | Example | Description |
 |---------|-------------|
+| [`examples/api-server`](examples/api-server) | Two-process API producer + worker consumer using file-based storage |
 | [`examples/queue-system`](examples/queue-system) | Multi-queue system with plugins and workers |
 | [`examples/redis-isolation`](examples/redis-isolation) | Redis-backed HTTP API with delayed + scheduled dispatch |
-| [`examples/dashboard`](examples/dashboard) | Shadcn dashboard UI for queue health, triage, and scaling controls |
+| [`examples/workflow-system`](examples/workflow-system) | DAG workflow + batch + one-time scheduling in a focused in-memory project |
+| [`examples/reliability-lab`](examples/reliability-lab) | Retry/backoff policy, DLQ operations, queue pause/resume/drain, and reliability snapshot |
+| [`examples/scheduling-lab`](examples/scheduling-lab) | Delayed, runAt, interval, and cron scheduling with deferred query/promotion |
+| [`examples/queue-admin-lab`](examples/queue-admin-lab) | Queue status, promotion/removal, cleaning, and obliteration admin operations |
+| [`examples/idempotency-lab`](examples/idempotency-lab) | Idempotency key deduplication behavior across in-flight and completed windows |
+| [`examples/timeout-sandbox-lab`](examples/timeout-sandbox-lab) | Execution timeout fail strategy and sandbox-policy enforcement behavior |
+| [`examples/poison-policy-lab`](examples/poison-policy-lab) | Quarantine, auto-snooze, and escalation poison-message policy behaviors |
+| [`examples/archive-lab`](examples/archive-lab) | Completed-job archive queries, filtering, and cleanup flows |
+| [`examples/metrics-lab`](examples/metrics-lab) | Runtime metrics collection plus Prometheus, StatsD, and DataDog export formats |
+| [`examples/postgres-storage-lab`](examples/postgres-storage-lab) | Postgres-backed queue storage with migrations and completed-job reads |
+| [`examples/mysql-storage-lab`](examples/mysql-storage-lab) | MySQL-backed queue storage with migrations and completed-job reads |
+| [`examples/mongo-storage-lab`](examples/mongo-storage-lab) | MongoDB-backed queue storage with migrations and completed-job reads |
+| [`examples/dynamodb-storage-lab`](examples/dynamodb-storage-lab) | DynamoDB-backed queue storage with migrate-and-run workflow |
+| [`examples/next-dashboard-app`](examples/next-dashboard-app) | Next.js dashboard adapter app with API-route dispatch and dashboard catch-all |
+| [`examples/elysia-dashboard-app`](examples/elysia-dashboard-app) | Elysia dashboard adapter app with HTTP dispatch and mounted dashboard routes |
+| [`examples/fastify-dashboard-app`](examples/fastify-dashboard-app) | Fastify dashboard adapter app with middleware mounting and queue API route |
+| [`examples/hono-dashboard-app`](examples/hono-dashboard-app) | Hono dashboard adapter app with Node server bridge and queue API route |
+| [`examples/nest-dashboard-app`](examples/nest-dashboard-app) | Nest dashboard adapter app with controller dispatch and mounted dashboard middleware |
 
 For guided setup flows, see [docs/operations/quickstarts/README.md](docs/operations/quickstarts/README.md).
 

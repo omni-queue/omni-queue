@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/core",
   "version": "0.1.0",
-  "private": true,
   "description": "Core abstractions and interfaces for Omni-Queue",
   "keywords": [
     "queue",
@@ -47,5 +46,8 @@
   },
   "dependencies": {
     "node-cron": "^4.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

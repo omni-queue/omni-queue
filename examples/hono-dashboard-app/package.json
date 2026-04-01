@@ -1,0 +1,22 @@
+{
+  "name": "hono-dashboard-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "npm run build && node dist/server.js",
+    "worker": "npm run build && node dist/worker.js",
+    "start": "npm run dev",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@hono/node-server": "^1.14.4",
+    "@omni-queue/core": "*",
+    "@omni-queue/hono-adapter": "*",
+    "hono": "^4.9.8"
+  },
+  "devDependencies": {
+    "@omni-queue/cli": "*"
+  }
+}

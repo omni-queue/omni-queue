@@ -12,6 +12,8 @@ export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const hasConnectedRef = useRef(false);
+  const fallbackToPollingRef = useRef(DASHBOARD_TRANSPORT === 'polling');
   const onOverviewRef = useRef(onOverview);
   onOverviewRef.current = onOverview;
 
@@ -28,6 +30,8 @@ export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
 
     ws.onopen = () => {
       if (!mountedRef.current) { ws.close(); return; }
+      hasConnectedRef.current = true;
+      fallbackToPollingRef.current = false;
       setStatus('connected');
     };
 
@@ -47,7 +51,16 @@ export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
     ws.onclose = () => {
       if (!mountedRef.current) return;
       setStatus('disconnected');
-      retryRef.current = setTimeout(() => { connect(); }, 3000);
+
+      // If websocket never connects, treat it as unsupported and stick to polling fallback.
+      if (!hasConnectedRef.current) {
+        fallbackToPollingRef.current = true;
+        return;
+      }
+
+      if (!fallbackToPollingRef.current) {
+        retryRef.current = setTimeout(() => { connect(); }, 3000);
+      }
     };
   }, []);
 

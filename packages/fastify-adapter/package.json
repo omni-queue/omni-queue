@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/fastify-adapter",
   "version": "0.1.0",
-  "private": true,
   "description": "Fastify adapter for Omni-Queue dashboard-api",
   "keywords": [
     "queue",
@@ -40,5 +39,8 @@
   "peerDependencies": {
     "express": "^4.21.2",
     "ws": "^8.18.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -161,7 +161,7 @@ export class PostgresStore implements QueueStorage {
       INSERT INTO ${this.table}
         (id, name, payload, queue, state, attempts, max_attempts, idempotency_key, delay_until, scheduled_cron, last_scheduled_at, priority, progress, created_at, updated_at)
       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
-      ON CONFLICT (idempotency_key) DO NOTHING
+      ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL DO NOTHING
       `,
       [
         job.id,

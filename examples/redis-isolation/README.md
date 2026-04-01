@@ -13,15 +13,14 @@ Isolation modes by queue:
 - API server enqueues jobs into Redis.
 - Worker process consumes from Redis and executes jobs with inline/thread/process isolation.
 
-## Prerequisites
-
-- Redis running locally on `127.0.0.1:6379` (or set `REDIS_URL`)
-- Build workspace once from repo root:
+## Install from npm
 
 ```bash
+cd examples/redis-isolation
 npm install
-npm run build
 ```
+
+Redis is required (`127.0.0.1:6379` by default, or set `REDIS_URL`).
 
 ## Run
 

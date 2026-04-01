@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/mysql-store",
   "version": "0.1.0",
-  "private": true,
   "description": "MySQL storage adapter for Omni-Queue",
   "keywords": [
     "queue",
@@ -37,5 +36,8 @@
   "dependencies": {
     "@omni-queue/core": "*",
     "mysql2": "^3.14.4"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

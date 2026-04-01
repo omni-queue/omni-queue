@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, Outlet, useLocation } from 'react-router-dom';
+import { NavLink, Outlet } from 'react-router-dom';
 import {
   Activity,
   AlertTriangle,
@@ -46,7 +46,6 @@ function ConnectionDot({ connected, connecting }: { connected: boolean; connecti
 }
 
 export function Layout() {
-  const location = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { overview, refreshOverview, transportMode, wsStatus } = useDashboardData();
   const { requiresAuth, logout } = useDashboardAuth();
@@ -60,11 +59,6 @@ export function Layout() {
           ? 'Connecting…'
           : 'Polling (fallback)';
 
-  const isActive = (path: string) => {
-    if (path === '/') return location.pathname === '/';
-    return location.pathname.startsWith(path);
-  };
-
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
       {sidebarOpen && (
@@ -72,7 +66,7 @@ export function Layout() {
       )}
 
       <aside
-        className={`fixed z-30 inset-y-0 left-0 flex flex-col w-64 bg-slate-900 text-white transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:flex`}
+        className={`fixed z-30 inset-y-0 left-0 flex w-64 flex-shrink-0 flex-col bg-slate-900 text-white transition-transform duration-200 ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'} lg:relative lg:translate-x-0 lg:flex`}
       >
         <div className="flex items-center justify-between h-16 px-5 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
@@ -87,14 +81,15 @@ export function Layout() {
         <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto" aria-label="Main navigation">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
-            const active = isActive(item.path);
             return (
-              <Link
+              <NavLink
                 key={item.path}
                 to={item.path}
+                end={item.path === '/'}
                 onClick={() => setSidebarOpen(false)}
-                aria-current={active ? 'page' : undefined}
-                className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-colors ${active ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`}
+                className={({ isActive }) =>
+                  `flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-colors ${isActive ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'}`
+                }
               >
                 <Icon className="h-4 w-4" />
                 {item.label}
@@ -103,7 +98,7 @@ export function Layout() {
                     {(overview?.totals.dlq ?? 0) > 99 ? '99+' : overview?.totals.dlq}
                   </span>
                 )}
-              </Link>
+              </NavLink>
             );
           })}
         </nav>
@@ -114,7 +109,7 @@ export function Layout() {
         </div>
       </aside>
 
-      <div className="flex flex-col flex-1 overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
         <header className="flex items-center justify-between h-16 px-6 bg-white border-b border-slate-100 flex-shrink-0">
           <button onClick={() => setSidebarOpen(true)} className="lg:hidden text-slate-500 hover:text-slate-900">
             <Menu className="h-5 w-5" />

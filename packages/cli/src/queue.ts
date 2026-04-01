@@ -37,6 +37,13 @@ const DASHBOARD_CONFIG_EXAMPLE = `// dashboard-config.example.js
 //   //
 //   endpoint: '/api/dashboard',
 //
+//   // uiBase
+//   // ─────────────────────────────────────────────────────────────────────
+//   // The URL base where the dashboard UI is mounted.
+//   //   '/' (default) for root mounts, or '/omni-queue-dashboard' for sub-path mounts.
+//   //
+//   uiBase: '/omni-queue-dashboard',
+//
 // };
 `;
 
@@ -163,8 +170,8 @@ function printQueueUsage() {
 	console.log('  queue dev');
 	console.log('  queue start');
 	console.log('  queue dashboard');
-	console.log('  queue dashboard publish [--out=./public/omni-queue-dashboard]');
-	console.log('  queue dashboard:publish [--out=./public/omni-queue-dashboard]');
+	console.log('  queue dashboard publish [--out=./public/omni-queue-dashboard] [--base=<inferred from --out>] [--api-base=/api/dashboard]');
+	console.log('  queue dashboard:publish [--out=./public/omni-queue-dashboard] [--base=<inferred from --out>] [--api-base=/api/dashboard]');
 	console.log('  queue workers:list');
 }
 
@@ -237,6 +244,114 @@ function copyDirectory(sourceDir: string, targetDir: string) {
 
 		fs.copyFileSync(sourcePath, targetPath);
 	}
+}
+
+function normalizePublishBase(baseValue: string): string {
+	const trimmed = baseValue.trim();
+	if (!trimmed) return './';
+	if (trimmed === './' || trimmed === '../' || trimmed === '/') return trimmed;
+
+	if (trimmed.startsWith('./') || trimmed.startsWith('../')) {
+		return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+	}
+
+	if (trimmed.startsWith('/')) {
+		return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+	}
+
+	const normalized = `/${trimmed.replace(/^\/+/, '')}`;
+	return normalized.endsWith('/') ? normalized : `${normalized}/`;
+}
+
+function rewritePublishedDashboardAssetBase(outDir: string, basePrefix: string) {
+	const normalizedBase = normalizePublishBase(basePrefix);
+	const filesToRewrite: string[] = [];
+
+	const walk = (dirPath: string) => {
+		for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+			const entryPath = path.join(dirPath, entry.name);
+			if (entry.isDirectory()) {
+				walk(entryPath);
+				continue;
+			}
+
+			if (entry.name.endsWith('.html') || entry.name.endsWith('.js') || entry.name.endsWith('.css')) {
+				filesToRewrite.push(entryPath);
+			}
+		}
+	};
+
+	walk(outDir);
+
+	for (const filePath of filesToRewrite) {
+		const raw = fs.readFileSync(filePath, 'utf8');
+		const rewritten = raw
+			.replace(/(["'`])\/assets\//g, `$1${normalizedBase}assets/`)
+			.replace(/(["'`])\.\/assets\//g, `$1${normalizedBase}assets/`)
+			.replace(/(["'`])assets\//g, `$1${normalizedBase}assets/`);
+
+		if (rewritten !== raw) {
+			fs.writeFileSync(filePath, rewritten, 'utf8');
+		}
+	}
+}
+
+function normalizeUiBasePath(value: string): string {
+	const trimmed = value.trim();
+	if (!trimmed || trimmed === '/') return '/';
+	const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+	return withLeadingSlash.replace(/\/+$/, '');
+}
+
+function rewritePublishedDashboardRuntimeConfig(outDir: string, apiBase: string, uiBase: string) {
+	const indexHtmlPath = path.join(outDir, 'index.html');
+	if (!fs.existsSync(indexHtmlPath)) {
+		return;
+	}
+
+	const source = fs.readFileSync(indexHtmlPath, 'utf8');
+	const runtimeScriptTag = [
+		'<script id="omni-queue-dashboard-config">',
+		'window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {',
+		"  transport: 'auto',",
+		`  endpoint: '${apiBase}',`,
+		`  uiBase: '${uiBase}',`,
+		'};',
+		'</script>',
+	].join('\n');
+
+	const replacedExistingTag = source.replace(
+		/<script id="omni-queue-dashboard-config">[\s\S]*?<\/script>/,
+		runtimeScriptTag
+	);
+
+	const rewritten = replacedExistingTag.includes('<script id="omni-queue-dashboard-config">')
+		? replacedExistingTag
+		: replacedExistingTag.replace(/\s*<script type="module"/, `\n    ${runtimeScriptTag}\n    <script type="module"`);
+
+	if (rewritten !== source) {
+		fs.writeFileSync(indexHtmlPath, rewritten, 'utf8');
+	}
+}
+
+function deriveDefaultPublishBase(cwd: string, outDir: string): string {
+	const relativeOutDir = path.relative(cwd, outDir).replace(/\\/g, '/');
+	if (!relativeOutDir || relativeOutDir.startsWith('..')) {
+		return './';
+	}
+
+	const segments = relativeOutDir.split('/').filter(Boolean);
+	const publicIndex = segments.indexOf('public');
+	if (publicIndex === -1) {
+		return './';
+	}
+
+	const publicSubPath = segments.slice(publicIndex + 1).join('/');
+	if (!publicSubPath) {
+		return '/';
+	}
+
+	return `/${publicSubPath}`;
 }
 
 function resolveDashboardDistDir(cwd: string): string {
@@ -857,6 +972,10 @@ async function runQueueDashboardPublish(flagArgs: string[]) {
 	const cwd = process.cwd();
 	const flags = parseFlags(flagArgs);
 	const outDir = path.resolve(cwd, flags.out ?? flags.dir ?? './public/omni-queue-dashboard');
+	const defaultAssetBase = deriveDefaultPublishBase(cwd, outDir);
+	const assetBase = normalizePublishBase(flags.base ?? defaultAssetBase);
+	const apiBase = normalizeUiBasePath(flags['api-base'] ?? '/api/dashboard');
+	const uiBase = normalizeUiBasePath(assetBase === './' ? '/' : assetBase);
 	const sourceDir = resolveDashboardDistDir(cwd);
 
 	if (!fs.existsSync(path.join(sourceDir, 'index.html'))) {
@@ -865,6 +984,8 @@ async function runQueueDashboardPublish(flagArgs: string[]) {
 
 	emptyDirectory(outDir);
 	copyDirectory(sourceDir, outDir);
+	rewritePublishedDashboardAssetBase(outDir, assetBase);
+	rewritePublishedDashboardRuntimeConfig(outDir, apiBase, uiBase);
 
 	const exampleConfigPath = path.join(outDir, 'dashboard-config.example.js');
 	fs.writeFileSync(exampleConfigPath, DASHBOARD_CONFIG_EXAMPLE, 'utf8');
@@ -872,6 +993,9 @@ async function runQueueDashboardPublish(flagArgs: string[]) {
 	console.log('Published dashboard assets');
 	console.log(`- source: ${path.relative(cwd, sourceDir) || sourceDir}`);
 	console.log(`- output: ${path.relative(cwd, outDir) || outDir}`);
+	console.log(`- asset base: ${assetBase}`);
+	console.log(`- dashboard api base: ${apiBase}`);
+	console.log(`- dashboard ui base: ${uiBase}`);
 	console.log('Use this path in adapters:');
 	console.log(`  uiDir: path.resolve(process.cwd(), '${path.relative(cwd, outDir).replace(/\\/g, '/')}')`);
 	console.log('Runtime config template:');

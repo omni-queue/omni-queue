@@ -1,0 +1,46 @@
+name: Support request
+description: Ask for help using omni-queue.
+title: "support: "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        For broad Q&A, Discussions are preferred. For concrete usage blockers, this form helps us assist quickly.
+
+  - type: textarea
+    id: goal
+    attributes:
+      label: What are you trying to achieve?
+      placeholder: Describe the desired outcome.
+    validations:
+      required: true
+
+  - type: textarea
+    id: attempted
+    attributes:
+      label: What have you tried?
+      placeholder: Include commands, snippets, links, and results.
+    validations:
+      required: true
+
+  - type: textarea
+    id: config
+    attributes:
+      label: Relevant configuration/code
+      render: ts
+
+  - type: input
+    id: node
+    attributes:
+      label: Node.js version
+    validations:
+      required: true
+
+  - type: input
+    id: os
+    attributes:
+      label: Operating system
+    validations:
+      required: true

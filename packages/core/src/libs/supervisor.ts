@@ -38,9 +38,12 @@ export interface SupervisorOptions {
   dashboard?: DashboardOptions;
 }
 
+export type SupervisorMode = 'api' | 'worker';
+
 export class Supervisor {
   private workers: Map<string, any[]> = new Map();
   private running = false;
+  private mode: SupervisorMode = 'worker';
   public jobManager: JobManager;
   private batchManager: BatchManager;
   private promoter?: ScheduledJobPromoter;
@@ -128,7 +131,8 @@ export class Supervisor {
     );
   }
 
-  async start() {
+  async start(mode: SupervisorMode = 'worker') {
+    this.mode = mode;
     this.running = true;
 
     await this.jobManager.recoverRepeatableSchedules();
@@ -146,12 +150,14 @@ export class Supervisor {
       this.promoter.start();
     }
 
-    for (const [name, config] of Object.entries(this.workerDefs)) {
-      this.workers.set(name, []);
-      this.scaleWorker(name, config);
-    }
+    if (this.mode === 'worker') {
+      for (const [name, config] of Object.entries(this.workerDefs)) {
+        this.workers.set(name, []);
+        this.scaleWorker(name, config);
+      }
 
-    this.monitor();
+      this.monitor();
+    }
   }
 
   async monitor() {
@@ -692,7 +698,7 @@ export class Supervisor {
     const rounded = Math.floor(concurrency);
     this.desiredWorkerScaling.set(workerName, rounded);
 
-    if (this.running) {
+    if (this.running && this.mode === 'worker') {
       this.scaleTo(workerName, workerDef, rounded);
     }
   }
@@ -839,6 +845,7 @@ export class Supervisor {
 
   stop() {
     this.running = false;
+    this.mode = 'worker';
     
     // Stop scheduled job promoter
     this.promoter?.stop();
@@ -852,6 +859,8 @@ export class Supervisor {
         });
       }
     }
+
+    this.workers.clear();
   }
 
   private updateReliabilityState(event: QueueLifecycleEvent): void {

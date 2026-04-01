@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/nest-adapter",
   "version": "0.1.0",
-  "private": true,
   "description": "NestJS adapter for Omni-Queue dashboard-api",
   "keywords": [
     "queue",
@@ -36,5 +35,8 @@
   },
   "dependencies": {
     "@omni-queue/dashboard-api": "*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

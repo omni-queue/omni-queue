@@ -5,18 +5,21 @@ This catalog is the canonical, implementation-focused inventory of capabilities 
 ## Core Runtime
 
 ### Queue lifecycle and orchestration
+
 - Supervisor-managed worker lifecycle, queue ownership, and scaling orchestration.
 - Registry-driven class jobs (`JobRegistry`) with typed payload support.
 - Queue dispatch primitives: immediate, delayed (`delayMs`, `delayUntil`), scheduled (`runAt`, `intervalMs`, `pattern` + `timezone`).
 - Queue administration APIs: pause/resume, drain, clean, obliterate, promote/remove, queue depth inspection.
 
 ### Execution model
+
 - Isolation modes: `inline`, `thread`, `process`.
 - Pooled thread/process execution with generated isolation modules.
 - Visibility leasing with lease extension heartbeat and timeout handling.
 - Execution timeout controls (`executionTimeoutMs`, `timeoutStrategy`, `timeoutSignal`).
 
 ### Retry and failure handling
+
 - Configurable attempts (`maxAttempts`, queue retry settings, `Job.retries()`).
 - Backoff controls:
   - legacy fixed/exponential
@@ -31,6 +34,7 @@ This catalog is the canonical, implementation-focused inventory of capabilities 
 - Poison-message policy templates: `quarantine`, `auto-snooze`, `escalation`.
 
 ### Rate limiting and reliability controls
+
 - Queue-level rate limiting.
 - Per-consumer rate limiting (`rateLimit.perConsumer`).
 - Local token-bucket coordinator for non-distributed storage backends.
@@ -39,24 +43,28 @@ This catalog is the canonical, implementation-focused inventory of capabilities 
 - Circuit breaker controls (`failureThreshold`, `cooldownMs`, `halfOpenMaxInFlight`, `tripOnTimeout`).
 
 ### Sandboxing and security controls
+
 - Sandbox policy contract (`sandbox`) with filesystem/environment/network/child-process controls.
 - Enforced sandbox for thread/process isolation execution.
 - Inline execution is rejected when sandbox policy is enabled.
 - Policy options: env allowlist, cwd allowlist, network allowlist, deny network, deny child-process spawn, read-only filesystem.
 
 ### Workflows, batch, and progress
+
 - DAG job flows with dependency tracking and atomic-failure behavior.
 - Batch job composition and result aggregation.
 - Progress reporting via `reportProgress()` + storage-backed progress updates.
 - Lifecycle event stream with queue/worker/job transitions.
 
 ### Idempotency and archival
+
 - Idempotency key support with deduplication windows.
 - Completed-job archive support and retention policy hooks.
 
 ## Storage Adapters
 
 Implemented adapters:
+
 - `@omni-queue/redis-store`
 - `@omni-queue/postgres-store`
 - `@omni-queue/mysql-store`
@@ -65,6 +73,7 @@ Implemented adapters:
 - in-memory storage in `@omni-queue/core`
 
 Notable capabilities:
+
 - Shared `QueueStorage` contract across backends.
 - Delayed/deferred job queries and promotion behavior.
 - Active/ready/completed/dead-letter query surfaces.
@@ -81,6 +90,7 @@ Notable capabilities:
 ## Framework Adapters
 
 Official adapters:
+
 - Express (`@omni-queue/express-adapter`)
 - Next.js (`@omni-queue/next-adapter`)
 - Fastify (`@omni-queue/fastify-adapter`)
@@ -91,6 +101,7 @@ Official adapters:
 ## CLI and Developer Tooling
 
 Implemented CLI surfaces (`@omni-queue/cli`):
+
 - `queue init`
 - `queue generate job`
 - `queue generate api-job`
@@ -114,10 +125,57 @@ Implemented CLI surfaces (`@omni-queue/cli`):
 
 ## Examples and executable references
 
-- `examples/queue-system`: queue + worker + plugin composition.
-- `examples/redis-isolation`: Redis-backed isolated execution and dashboard flow.
-- `examples/dashboard`: dashboard-focused operational UX.
-- `examples/api-server`: API + queue integration pattern.
+### Core runtime
+
+- `examples/queue-system`: queue + worker + plugin composition baseline.
+- `examples/workflow-system`: multi-step job flow with `reportProgress`, fan-out, and chained queues.
+- `examples/scheduling-lab`: `scheduledAt` / cron-style deferred dispatch and run-at semantics.
+
+### Reliability and safety controls
+
+- `examples/reliability-lab`: retries, custom `retryPolicy` (deadletter on validation errors), exponential backoff.
+- `examples/idempotency-lab`: `dedupeWindowMs` + `includeFailed` idempotency key deduplication.
+- `examples/timeout-sandbox-lab`: `executionTimeoutMs`, `timeoutStrategy: 'fail'`, sandbox policy rejection.
+- `examples/poison-policy-lab`: all three poison templates — quarantine, auto-snooze, and escalation.
+
+### Operational visibility
+
+- `examples/archive-lab`: `getCompletedJobs`, `queryJobArchive` filters, `setArchiveRetentionPolicy`, `cleanJobs`.
+- `examples/metrics-lab`: `QueueMetricsPlugin`, `MetricsCollector`, Prometheus / StatsD / DataDog exporters.
+- `examples/queue-admin-lab`: queue admin operations — pause, resume, flush, priority reordering.
+
+### Storage backends
+
+- `examples/redis-isolation`: Redis-backed isolated execution and dashboard flow (process/thread pool wiring).
+- `examples/postgres-storage-lab`: `PostgresStore` with `migrate()` + Supervisor + dispatch + completed-job read.
+- `examples/mysql-storage-lab`: `MySqlStore` wiring with connection pool and env-gated bootstrap.
+- `examples/mongo-storage-lab`: `MongoStore` wiring with `MongoClient` + `dbName` configuration.
+- `examples/dynamodb-storage-lab`: `DynamoDbStore` with `region`, local endpoint override, and table config.
+
+### Framework adapters and dashboard integration
+
+- `examples/next-dashboard-app`: Next.js Pages Router — catch-all dashboard route + job dispatch API route.
+- `examples/elysia-dashboard-app`: Elysia — `registerElysiaAdapter` + job dispatch endpoint (port 3020).
+- `examples/fastify-dashboard-app`: Fastify + `@fastify/middie` + `omniQueueFastifyAdapter` (port 3030).
+- `examples/hono-dashboard-app`: Hono + `@hono/node-server` + `omniQueueHonoAdapter` (port 3040).
+- `examples/nest-dashboard-app`: NestJS — `omniQueueNestAdapter` middleware + decorated controller (port 3050).
+
+### Reference apps
+
+- `examples/api-server`: REST API + queue integration pattern — canonical request-driven dispatch reference.
+- `examples/dashboard`: dashboard-focused operational UX without a framework adapter.
+
+## Coverage completeness checklist
+
+Use this checklist when validating whether runnable examples cover the implemented feature surface.
+
+- Core runtime behavior (dispatch, scheduling, workflow, retries, DLQ, queue admin).
+- Reliability and safety controls (idempotency, timeout strategy, sandbox policy, poison policy).
+- Operational visibility (archive queries, metrics exporters, dashboard integration).
+- Storage backends (in-memory, Redis, Postgres, MySQL, MongoDB, DynamoDB).
+- Framework adapters (Next, Elysia, Fastify, Hono, Nest).
+
+For the canonical mapping from each feature area to concrete runnable projects, see the Feature coverage matrix in [quickstarts/README.md](quickstarts/README.md).
 
 ## Notes on scope
 

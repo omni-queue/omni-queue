@@ -1,0 +1,23 @@
+{
+  "name": "next-dashboard-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "next dev",
+    "start": "next start",
+    "build": "vite build",
+    "worker": "npm run build && node dist/worker.js",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@omni-queue/core": "*",
+    "@omni-queue/next-adapter": "*",
+    "next": "^15.5.6",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@omni-queue/cli": "*"
+  }
+}

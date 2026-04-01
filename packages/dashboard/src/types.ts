@@ -173,6 +173,7 @@ export type DashboardLoginPayload =
 
 type DashboardRuntimeConfig = {
   endpoint?: string;
+  uiBase?: string;
   transport?: string;
 };
 
@@ -195,6 +196,18 @@ export const API_BASE: string =
   (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
     ?.VITE_DASHBOARD_ENDPOINT ||
   '/api/dashboard';
+
+function normalizeUiBase(value: string | undefined): string {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed === '/') {
+    return '/';
+  }
+
+  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, '');
+}
+
+export const UI_BASE: string = normalizeUiBase(getRuntimeConfig()?.uiBase);
 
 function normalizeTransport(value: string | undefined): DashboardTransport {
   const normalized = value?.trim().toLowerCase();

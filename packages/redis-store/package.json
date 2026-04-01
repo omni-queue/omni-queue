@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/redis-store",
   "version": "0.1.0",
-  "private": true,
   "description": "Redis storage adapter for Omni-Queue",
   "keywords": [
     "queue",
@@ -41,5 +40,8 @@
   },
   "devDependencies": {
     "@types/node": "^20.11.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -12,6 +12,7 @@
     "build:core": "turbo run build --filter=@omni-queue/core",
     "dev": "turbo run dev",
     "test": "turbo run test",
+    "test:integration": "npm run test:integration --workspace @omni-queue/redis-store && npm run test:integration --workspace @omni-queue/postgres-store",
     "test:watch": "turbo run test:watch",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",

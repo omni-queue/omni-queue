@@ -1,0 +1,46 @@
+name: Feature request
+description: Propose an enhancement to omni-queue.
+title: "feat: "
+labels:
+  - enhancement
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for the idea. Please describe the problem and intended outcome.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem statement
+      description: What user or developer problem are you trying to solve?
+      placeholder: As a ..., I want ..., so that ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: Describe your preferred approach.
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Any alternative solutions or workarounds?
+
+  - type: textarea
+    id: impact
+    attributes:
+      label: API and compatibility impact
+      description: Does this change public APIs, runtime behavior, or migration paths?
+
+  - type: textarea
+    id: examples
+    attributes:
+      label: Example usage
+      description: Add pseudocode or snippets if helpful.
+      render: ts

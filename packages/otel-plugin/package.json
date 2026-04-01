@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/otel-plugin",
   "version": "0.1.0",
-  "private": true,
   "description": "OpenTelemetry tracing plugin for Omni-Queue",
   "keywords": [
     "queue",
@@ -30,7 +29,7 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "lint": "eslint src",
     "clean": "rm -rf dist"
@@ -38,5 +37,8 @@
   "dependencies": {
     "@omni-queue/core": "*",
     "@opentelemetry/api": "^1.9.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }
