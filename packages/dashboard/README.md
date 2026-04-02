@@ -17,6 +17,9 @@ The UI expects a configurable API base (default: `/api/dashboard`) and uses thes
 - `GET /overview`
 - `GET /queues`
 - `GET /jobs`
+- `GET /schedules`
+- `POST /schedules/:scheduleId/remove`
+- `POST /schedules/clear`
 - `GET /workers`
 - `GET /completed`
 - `GET /failed`

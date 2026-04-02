@@ -10,7 +10,7 @@ import {
   QueueAdminJobStatus,
   QueueStorage,
 } from '../interfaces/queue-storage';
-import { CompletedJobRecord, FlowNodeInput, FlowState, StoredJob } from '../types';
+import { CompletedJobRecord, FlowNodeInput, FlowState, RepeatableScheduleDefinition, StoredJob } from '../types';
 import { WorkerConfig } from '../interfaces/worker-config';
 import { sleep } from '../utils';
 import { ResilientWorker } from './resilient-worker';
@@ -36,6 +36,9 @@ export interface SupervisorOptions {
   storageAdapters: Record<string, QueueStorage>;
   globalPlugins?: Plugin[];
   dashboard?: DashboardOptions;
+  repeatables?: {
+    recoverOnStart?: boolean;
+  };
 }
 
 // 'all' is kept as a compatibility alias for older examples.
@@ -53,6 +56,7 @@ export class Supervisor {
   private pausedQueues = new Set<string>();
   private lifecycleEvents = new LifecycleEventBus();
   private reliabilityStatus = new Map<string, QueueReliabilityStatus>();
+  private repeatablesConfig?: SupervisorOptions['repeatables'];
 
   constructor(
     queuesOrOptions: Record<string, QueueConfig> | SupervisorOptions,
@@ -76,6 +80,7 @@ export class Supervisor {
       finalStorageAdapters = queuesOrOptions.storageAdapters;
       finalGlobalPlugins = queuesOrOptions.globalPlugins || [];
       finalDashboard = queuesOrOptions.dashboard;
+      this.repeatablesConfig = queuesOrOptions.repeatables;
     } else {
       if (!workerDefs || !registry || !storageAdapters) {
         throw new Error(
@@ -136,7 +141,9 @@ export class Supervisor {
     this.mode = mode;
     this.running = true;
 
-    await this.jobManager.recoverRepeatableSchedules();
+    if (this.repeatablesConfig?.recoverOnStart !== false) {
+      await this.jobManager.recoverRepeatableSchedules();
+    }
 
     // Start scheduled job promoter (Phase 1.1)
     const defaultStorageKey = Object.keys(this.storageAdapters)[0];
@@ -445,6 +452,42 @@ export class Supervisor {
     if (!storage) return false;
 
     return storage.retryDeadLetterJob(queueName, jobId);
+  }
+
+  async listRepeatableSchedules(query: { queueName?: string; limit?: number; offset?: number } = {}): Promise<RepeatableScheduleDefinition[]> {
+    const all = await this.jobManager.listRepeatableSchedules();
+    const queueName = query.queueName;
+    const filtered = queueName ? all.filter((schedule) => schedule.queue === queueName) : all;
+
+    const offset = query.offset ?? 0;
+    const end = query.limit != null ? offset + query.limit : undefined;
+    return filtered.slice(offset, end);
+  }
+
+  async removeRepeatableSchedule(scheduleId: string): Promise<boolean> {
+    return this.jobManager.removeRepeatableSchedule(scheduleId);
+  }
+
+  async clearRepeatableSchedules(query: { queueName?: string } = {}): Promise<number> {
+    if (!query.queueName) {
+      return this.jobManager.clearRepeatableSchedules();
+    }
+
+    const schedules = await this.jobManager.listRepeatableSchedules();
+    let removed = 0;
+
+    for (const schedule of schedules) {
+      if (schedule.queue !== query.queueName) {
+        continue;
+      }
+
+      const didRemove = await this.jobManager.removeRepeatableSchedule(schedule.id);
+      if (didRemove) {
+        removed += 1;
+      }
+    }
+
+    return removed;
   }
 
   async promoteJob(queueName: string, jobId: string): Promise<boolean> {

@@ -69,5 +69,8 @@ npm run worker
 - `DASHBOARD_UI_BASE`: dashboard UI mount path. Default: `/secured-dashboard`
 - `DASHBOARD_UI_DIR`: dashboard static asset directory. Default: `public/omni-queue-dashboard`
 - `QUEUE_DATA_DIR`: shared file queue directory. Default: `queue-data`
+- `RECOVER_REPEATABLES`: default `false` in this example. Set to `true` only when you intentionally want persisted interval/cron schedules to recover on startup.
 
 This sample uses `FileQueueStorage` from `@omni-queue/core` by default so server and worker share the same local storage directory out-of-the-box.
+
+If you see jobs enqueueing every few seconds in hybrid mode, old persisted repeatable schedules are likely present in `queue-data`. This sample disables repeatable recovery on startup by default (`RECOVER_REPEATABLES=false`), so those definitions are ignored unless you explicitly opt in.

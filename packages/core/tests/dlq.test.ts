@@ -79,6 +79,8 @@ describe('Phase 1.4 DLQ', () => {
     const dlq = await storage.getDeadLetterJobs({ queueName: 'default' });
     expect(dlq).toHaveLength(1);
     expect(dlq[0]!.id).toBe('dlq-1');
+    expect(dlq[0]!.errorDetails?.error).toBe('boom');
+    expect(dlq[0]!.errorDetails?.errorName).toBe('Error');
     expect(onFailedPermanently).toHaveBeenCalledOnce();
   });
 
@@ -96,12 +98,19 @@ describe('Phase 1.4 DLQ', () => {
     expect(retried).toBe(true);
 
     const afterRetry = await supervisor.getDLQ({ queueName: 'default' });
-    expect(afterRetry.map((job) => job.id)).not.toContain('dlq-2');
+    const original = afterRetry.find((job) => job.id === 'dlq-2');
+    expect(original).toBeDefined();
+    expect(original?.retriedAt).toBeTypeOf('number');
+    expect(original?.retriedJobId).toBeTypeOf('string');
+
+    const retryAgain = await supervisor.retryDLQ('default', 'dlq-2');
+    expect(retryAgain).toBe(false);
 
     const requeued = await storage.dequeue({ queue: 'default', batchSize: 1, leaseMs: 30_000 });
     expect(requeued).toHaveLength(1);
-    expect(requeued[0]!.id).toBe('dlq-2');
+    expect(requeued[0]!.id).toBe(original?.retriedJobId);
     expect(requeued[0]!.state).toBe('leased');
     expect(requeued[0]!.attempts).toBe(0);
+    expect(requeued[0]!.errorDetails).toBeUndefined();
   });
 });

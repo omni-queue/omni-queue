@@ -34,6 +34,7 @@ const registry = new JobRegistry();
 registry.register(NestEmailJob);
 
 const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
+const recoverRepeatables = process.env.RECOVER_REPEATABLES === 'true';
 
 const supervisor = new Supervisor({
   queues: defineQueues({ emails: { name: 'emails', connection: 'file', concurrency: 2, batchSize: 10 } }),
@@ -44,6 +45,9 @@ const supervisor = new Supervisor({
   registry,
   storageAdapters: {
     file: new FileQueueStorage(path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data')),
+  },
+  repeatables: {
+    recoverOnStart: recoverRepeatables,
   },
 });
 
@@ -114,6 +118,7 @@ async function bootstrap() {
   await app.listen(3050);
   console.log('Nest example running on http://localhost:3050');
   console.log(`Supervisor mode: ${supervisorMode}`);
+  console.log(`Repeatable recovery on start: ${recoverRepeatables ? 'enabled' : 'disabled'}`);
   if (supervisorMode === 'api') {
     console.warn('API mode does not process jobs. Run `npm run worker` or set SUPERVISOR_MODE=hybrid.');
   }

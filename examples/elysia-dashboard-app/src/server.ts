@@ -25,6 +25,7 @@ async function main() {
   const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
   const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
+  const recoverRepeatables = process.env.RECOVER_REPEATABLES === 'true';
 
   const registry = new JobRegistry();
   registry.register(ElysiaEmailJob);
@@ -39,6 +40,9 @@ async function main() {
         : defineWorkers({}),
     registry,
     storageAdapters: { file: new FileQueueStorage(QUEUE_DATA_DIR) },
+    repeatables: {
+      recoverOnStart: recoverRepeatables,
+    },
   });
 
   await supervisor.start(supervisorMode);
@@ -84,6 +88,7 @@ async function main() {
 
   console.log('Elysia example running on http://localhost:3020');
   console.log(`Supervisor mode: ${supervisorMode}`);
+  console.log(`Repeatable recovery on start: ${recoverRepeatables ? 'enabled' : 'disabled'}`);
   if (supervisorMode === 'api') {
     console.warn('API mode does not process jobs. Run `bun run worker` or set SUPERVISOR_MODE=hybrid.');
   }

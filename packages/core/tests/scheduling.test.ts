@@ -1,4 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
 
 const cronScheduleMock = vi.hoisted(() => vi.fn());
 
@@ -13,8 +16,10 @@ import type { Plugin } from '../src/interfaces/plugin';
 import type { QueueConfig } from '../src/interfaces/queue-config';
 import type { WorkerConfig } from '../src/interfaces/worker-config';
 import { InMemoryQueueStorage } from '../src/libs/in-memory-queue-storage';
+import { FileQueueStorage } from '../src/libs/file-queue-storage';
 import { JobRegistry } from '../src/libs/registry';
 import { JobManager } from '../src/libs/worker-runtime';
+import { Supervisor } from '../src/libs/supervisor';
 
 const INTERNAL_REPEATABLE_QUEUE = '__omni_internal_repeatables';
 
@@ -213,5 +218,245 @@ describe('JobManager.schedule', () => {
     expect(await storage.getQueueDepth('default')).toBe(2);
 
     managerB.stopSchedules();
+  });
+
+  it('prunes persisted repeatables when the job is no longer registered', async () => {
+    const storage = new InMemoryQueueStorage();
+
+    const registryA = new JobRegistry();
+    registryA.register(ScheduledTestJob);
+
+    const queues: Record<string, QueueConfig> = {
+      default: {
+        name: 'default',
+        connection: 'memory',
+        concurrency: 1,
+        batchSize: 10,
+      },
+    };
+
+    const workers: Record<string, WorkerConfig> = {};
+    const managerA = new JobManager(queues, workers, registryA, { memory: storage });
+
+    await managerA.schedule(new ScheduledTestJob({ value: 'stale-repeatable' }), {
+      intervalMs: 100,
+      durable: true,
+    });
+
+    const persistedBefore = await storage.getReadyJobs({
+      queueName: INTERNAL_REPEATABLE_QUEUE,
+      limit: 100,
+      offset: 0,
+    });
+    expect(persistedBefore).toHaveLength(1);
+
+    const registryB = new JobRegistry();
+    const managerB = new JobManager(queues, workers, registryB, { memory: storage });
+
+    const recovered = await managerB.recoverRepeatableSchedules();
+    expect(recovered).toBe(0);
+
+    const persistedAfter = await storage.getReadyJobs({
+      queueName: INTERNAL_REPEATABLE_QUEUE,
+      limit: 100,
+      offset: 0,
+    });
+    expect(persistedAfter).toHaveLength(0);
+  });
+
+  it('does not recover persisted repeatables when supervisor recovery is disabled', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-29T12:00:00.000Z'));
+
+    const storage = new InMemoryQueueStorage();
+    const registry = new JobRegistry();
+    registry.register(ScheduledTestJob);
+
+    const queues: Record<string, QueueConfig> = {
+      default: {
+        name: 'default',
+        connection: 'memory',
+        concurrency: 1,
+        batchSize: 10,
+      },
+    };
+
+    const now = Date.now();
+    const scheduleId = 'persisted-no-recover';
+    await storage.enqueue({
+      id: `repeatable:${scheduleId}`,
+      name: '__omni_repeatable_schedule__',
+      payload: {
+        type: 'repeatable-schedule',
+        definition: {
+          id: scheduleId,
+          queue: 'default',
+          jobName: ScheduledTestJob.jobName,
+          payload: { value: 'no-recover' },
+          intervalMs: 100,
+          createdAt: now,
+          updatedAt: now,
+        },
+      },
+      queue: INTERNAL_REPEATABLE_QUEUE,
+      attempts: 0,
+      state: 'queued',
+      createdAt: now,
+      updatedAt: now,
+      idempotencyKey: `repeatable:${scheduleId}`,
+    });
+
+    const supervisor = new Supervisor({
+      queues,
+      workers: {},
+      registry,
+      storageAdapters: { memory: storage },
+      repeatables: { recoverOnStart: false },
+    });
+
+    await supervisor.start('api');
+    await vi.advanceTimersByTimeAsync(250);
+
+    expect(await storage.getQueueDepth('default')).toBe(0);
+
+    supervisor.stop();
+  });
+
+  it('lists and removes repeatable schedules', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-03-29T12:00:00.000Z'));
+
+    const { manager } = createTestContext();
+
+    await manager.schedule(new ScheduledTestJob({ value: 'interval' }), {
+      intervalMs: 100,
+      durable: true,
+    });
+    await manager.schedule(new ScheduledTestJob({ value: 'cron' }), {
+      pattern: '*/5 * * * * *',
+      durable: true,
+    });
+
+    const listed = await manager.listRepeatableSchedules();
+    expect(listed).toHaveLength(2);
+
+    const removed = await manager.removeRepeatableSchedule(listed[0]!.id);
+    expect(removed).toBe(true);
+
+    const afterRemoval = await manager.listRepeatableSchedules();
+    expect(afterRemoval).toHaveLength(1);
+
+    const cleared = await manager.clearRepeatableSchedules();
+    expect(cleared).toBe(1);
+
+    const afterClear = await manager.listRepeatableSchedules();
+    expect(afterClear).toHaveLength(0);
+  });
+
+  it('clears repeatable schedules by queue via supervisor', async () => {
+    const storage = new InMemoryQueueStorage();
+    const registry = new JobRegistry();
+    registry.register(ScheduledTestJob);
+
+    class OtherScheduledJob extends Job<{ value: string }> {
+      static jobName = 'other-scheduled-job';
+      jobName = OtherScheduledJob.jobName;
+
+      async handle(payload: { value: string }): Promise<{ ok: boolean; value: string }> {
+        return { ok: true, value: payload.value };
+      }
+
+      override queue(): string {
+        return 'other';
+      }
+    }
+
+    registry.register(OtherScheduledJob);
+
+    const queues: Record<string, QueueConfig> = {
+      default: {
+        name: 'default',
+        connection: 'memory',
+        concurrency: 1,
+        batchSize: 10,
+      },
+      other: {
+        name: 'other',
+        connection: 'memory',
+        concurrency: 1,
+        batchSize: 10,
+      },
+    };
+
+    const supervisor = new Supervisor({
+      queues,
+      workers: {},
+      registry,
+      storageAdapters: { memory: storage },
+      repeatables: { recoverOnStart: false },
+    });
+
+    await supervisor.jobManager.schedule(new ScheduledTestJob({ value: 'default' }), {
+      intervalMs: 100,
+      durable: true,
+    });
+    await supervisor.jobManager.schedule(new OtherScheduledJob({ value: 'other' }), {
+      intervalMs: 100,
+      durable: true,
+    });
+
+    const before = await supervisor.listRepeatableSchedules();
+    expect(before).toHaveLength(2);
+
+    const removed = await supervisor.clearRepeatableSchedules({ queueName: 'default' });
+    expect(removed).toBe(1);
+
+    const after = await supervisor.listRepeatableSchedules();
+    expect(after).toHaveLength(1);
+    expect(after[0]?.queue).toBe('other');
+  });
+
+  it('removes persisted repeatable schedule records from file storage queued state', async () => {
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omni-queue-repeatable-'));
+
+    try {
+      const storage = new FileQueueStorage(tmpDir);
+      const registry = new JobRegistry();
+      registry.register(ScheduledTestJob);
+
+      const supervisor = new Supervisor({
+        queues: {
+          default: {
+            name: 'default',
+            connection: 'file',
+            concurrency: 1,
+            batchSize: 10,
+          },
+        },
+        workers: {},
+        registry,
+        storageAdapters: { file: storage },
+        repeatables: { recoverOnStart: false },
+      });
+
+      await supervisor.jobManager.schedule(new ScheduledTestJob({ value: 'file-repeatable' }), {
+        intervalMs: 1_000,
+        durable: true,
+      });
+
+      const before = await supervisor.listRepeatableSchedules();
+      expect(before).toHaveLength(1);
+
+      const removed = await supervisor.removeRepeatableSchedule(before[0]!.id);
+      expect(removed).toBe(true);
+
+      const queuedDir = path.join(tmpDir, 'queued');
+      const queuedFiles = fs.existsSync(queuedDir)
+        ? fs.readdirSync(queuedDir).filter((name) => name.endsWith('.json'))
+        : [];
+      expect(queuedFiles.some((name) => name.startsWith('repeatable:'))).toBe(false);
+    } finally {
+      fs.rmSync(tmpDir, { recursive: true, force: true });
+    }
   });
 });

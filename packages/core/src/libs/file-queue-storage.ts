@@ -117,11 +117,20 @@ export class FileQueueStorage implements QueueStorage {
   }
 
   async moveToDeadLetter(job: StoredJob): Promise<void> {
-    const src = path.join(this.leasedDir, `${job.id}.json`);
+    const leasedSrc = path.join(this.leasedDir, `${job.id}.json`);
+    const queuedSrc = path.join(this.queuedDir, `${job.id}.json`);
     const dst = path.join(this.deadDir, `${job.id}.json`);
 
+    const src = fs.existsSync(leasedSrc)
+      ? leasedSrc
+      : fs.existsSync(queuedSrc)
+        ? queuedSrc
+        : undefined;
+
     try {
-      fs.renameSync(src, dst);
+      if (src) {
+        fs.renameSync(src, dst);
+      }
       const dead: StoredJob = { ...job, state: 'failed', updatedAt: Date.now() };
       fs.writeFileSync(dst, JSON.stringify(dead));
     } catch {

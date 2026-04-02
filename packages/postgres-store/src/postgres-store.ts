@@ -466,19 +466,25 @@ export class PostgresStore implements QueueStorage {
       values
     );
 
-    return result.rows.map((row) => ({
-      id: row['id'] as string,
-      name: row['name'] as string,
-      payload: row['payload'],
-      queue: row['queue'] as string,
-      state: 'failed' as const,
-      attempts: Number(row['attempts'] ?? 0),
-      createdAt: Number(row['created_at']),
-      updatedAt: Number(row['failed_at']),
-      ...(row['error_details'] != null ? { errorDetails: row['error_details'] as StoredJob['errorDetails'] } : {}),
-      ...(row['retried_at'] != null ? { retriedAt: Number(row['retried_at']) } : {}),
-      ...(row['retried_job_id'] != null ? { retriedJobId: row['retried_job_id'] as string } : {}),
-    }));
+    return result.rows.map((row) => {
+      const errorDetails = row['error_details'];
+
+      return {
+        id: row['id'] as string,
+        name: row['name'] as string,
+        payload: row['payload'],
+        queue: row['queue'] as string,
+        state: 'failed' as const,
+        attempts: Number(row['attempts'] ?? 0),
+        createdAt: Number(row['created_at']),
+        updatedAt: Number(row['failed_at']),
+        ...(errorDetails != null
+          ? { errorDetails: errorDetails as NonNullable<StoredJob['errorDetails']> }
+          : {}),
+        ...(row['retried_at'] != null ? { retriedAt: Number(row['retried_at']) } : {}),
+        ...(row['retried_job_id'] != null ? { retriedJobId: row['retried_job_id'] as string } : {}),
+      };
+    });
   }
 
   async retryDeadLetterJob(queueName: string, jobId: string): Promise<boolean> {

@@ -9,7 +9,7 @@ const routerBase = UI_BASE === '/' ? undefined : UI_BASE;
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <BrowserRouter basename={routerBase}>
+    <BrowserRouter {...(routerBase ? { basename: routerBase } : {})}>
       <App />
     </BrowserRouter>
   </React.StrictMode>

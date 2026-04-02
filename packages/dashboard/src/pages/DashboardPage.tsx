@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Activity, Gauge, Layers, ShieldAlert } from 'lucide-react';
+import { Activity, CalendarClock, Gauge, Layers, ShieldAlert } from 'lucide-react';
 import { dashboardFetch } from '../auth';
 import type { JobRow, OverviewResponse } from '../types';
 import { API_BASE } from '../types';
@@ -85,7 +85,7 @@ export function DashboardPage({ overview }: Props) {
         <p className="text-slate-400 text-sm mt-1">Last updated at {since}</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
         <StatCard
           icon={<Activity className="h-4 w-4" />}
           label="Load"
@@ -94,8 +94,13 @@ export function DashboardPage({ overview }: Props) {
         />
         <StatCard
           icon={<Gauge className="h-4 w-4" />}
-          label="Scheduled"
+          label="Delayed Jobs"
           value={overview.totals.deferred.toLocaleString()}
+        />
+        <StatCard
+          icon={<CalendarClock className="h-4 w-4" />}
+          label="Schedules"
+          value={(overview.totals.schedules ?? 0).toLocaleString()}
         />
         <StatCard
           icon={<ShieldAlert className="h-4 w-4" />}
@@ -120,6 +125,7 @@ export function DashboardPage({ overview }: Props) {
               <th className="px-6 py-3">Queue</th>
               <th className="px-6 py-3 text-right">Load</th>
               <th className="px-6 py-3 text-right">Scheduled</th>
+              <th className="px-6 py-3 text-right">Schedules</th>
               <th className="px-6 py-3 text-right">Failed</th>
             </tr>
           </thead>
@@ -129,6 +135,7 @@ export function DashboardPage({ overview }: Props) {
                 <td className="px-6 py-3 font-mono font-medium text-slate-800">{q.queue}</td>
                 <td className="px-6 py-3 text-right text-slate-700">{(q.load ?? q.depth).toLocaleString()}</td>
                 <td className="px-6 py-3 text-right text-slate-700">{q.deferredCount.toLocaleString()}</td>
+                <td className="px-6 py-3 text-right text-slate-700">{(q.repeatableCount ?? 0).toLocaleString()}</td>
                 <td className="px-6 py-3 text-right">
                   <span
                     className={

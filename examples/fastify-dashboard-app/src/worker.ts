@@ -12,6 +12,7 @@ class FastifyEmailJob extends Job<{ to: string; subject: string; body: string }>
 
 async function main() {
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
+  const recoverRepeatables = process.env.RECOVER_REPEATABLES === 'true';
 
   const registry = new JobRegistry();
   registry.register(FastifyEmailJob);
@@ -21,10 +22,14 @@ async function main() {
     workers: defineWorkers({ emailWorker: { queues: ['emails'], concurrency: 1, isolation: 'inline' } }),
     registry,
     storageAdapters: { file: new FileQueueStorage(QUEUE_DATA_DIR) },
+    repeatables: {
+      recoverOnStart: recoverRepeatables,
+    },
   });
 
   await supervisor.start('worker');
   console.log('Fastify worker started for queue: emails');
+  console.log(`Repeatable recovery on start: ${recoverRepeatables ? 'enabled' : 'disabled'}`);
   console.log(`Queue data dir: ${QUEUE_DATA_DIR}`);
 
   const shutdown = async () => {
