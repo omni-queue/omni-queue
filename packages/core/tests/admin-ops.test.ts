@@ -119,4 +119,76 @@ describe('Supervisor admin operations', () => {
     expect(deferredAfter).toHaveLength(0);
     expect(dlqAfter).toHaveLength(0);
   });
+
+  it('cleans failed (dead-letter) jobs by status', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-01T12:00:00.000Z'));
+
+    const storage = new InMemoryQueueStorage();
+    const supervisor = new Supervisor(
+      {
+        default: { name: 'default', connection: 'memory', concurrency: 1, batchSize: 10 },
+      },
+      {},
+      new JobRegistry(),
+      { memory: storage }
+    );
+
+    const now = Date.now();
+
+    // Move a job straight to dead-letter
+    await storage.moveToDeadLetter(
+      buildStoredJob({
+        id: 'dlq-clean-1',
+        queue: 'default',
+        state: 'failed',
+        createdAt: now - 10_000,
+        updatedAt: now - 10_000,
+      })
+    );
+
+    const cleanedFailed = await supervisor.cleanJobs('default', { status: 'failed', graceMs: 0, limit: 10 });
+    expect(cleanedFailed).toBe(1);
+
+    const dlqAfter = await supervisor.getDLQ({ queueName: 'default' });
+    expect(dlqAfter.map((j) => j.id)).not.toContain('dlq-clean-1');
+  });
+
+  it('cleans completed jobs by status', async () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date('2026-04-01T12:00:00.000Z'));
+
+    const storage = new InMemoryQueueStorage();
+    const supervisor = new Supervisor(
+      {
+        default: { name: 'default', connection: 'memory', concurrency: 1, batchSize: 10 },
+      },
+      {},
+      new JobRegistry(),
+      { memory: storage }
+    );
+
+    const now = Date.now();
+
+    // Directly add a completed job record
+    await storage.addCompletedJob(
+      buildStoredJob({
+        id: 'completed-clean-1',
+        queue: 'default',
+        state: 'completed',
+        createdAt: now - 10_000,
+        updatedAt: now - 10_000,
+      })
+    );
+
+    const cleanedCompleted = await supervisor.cleanJobs('default', {
+      status: 'completed',
+      graceMs: 0,
+      limit: 10,
+    });
+    expect(cleanedCompleted).toBe(1);
+
+    const completedAfter = await supervisor.getCompletedJobs({ queueName: 'default' });
+    expect(completedAfter.map((j) => j.id)).not.toContain('completed-clean-1');
+  });
 });
