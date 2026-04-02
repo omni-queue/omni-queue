@@ -75,7 +75,7 @@ export function pruneEnvironment(
   allowlist: string[]
 ): NodeJS.ProcessEnv {
   const allowed = new Set([...allowlist, ...ESSENTIAL_ENV_KEYS]);
-  const pruned: NodeJS.ProcessEnv = {};
+  const pruned: Record<string, string | undefined> = {};
 
   for (const [key, value] of Object.entries(env)) {
     if (allowed.has(key) && value !== undefined) {
@@ -83,7 +83,7 @@ export function pruneEnvironment(
     }
   }
 
-  return pruned;
+  return pruned as NodeJS.ProcessEnv;
 }
 
 export function isHostAllowed(host: string, allowlist?: string[]): boolean {

@@ -107,11 +107,12 @@ export function buildDashboardRouter(
       (acc, queue) => {
         acc.depth += queue.depth;
         acc.deferred += queue.deferredCount;
+        acc.schedules += queue.repeatableCount ?? 0;
         acc.dlq += queue.dlqCount;
         acc.completed += queue.completedCount ?? 0;
         return acc;
       },
-      { depth: 0, deferred: 0, dlq: 0, completed: 0 }
+      { depth: 0, deferred: 0, schedules: 0, dlq: 0, completed: 0 }
     );
 
     const reliabilityQueues = (overview.reliability?.queues ?? []).filter((queue) =>
@@ -753,6 +754,97 @@ export function buildDashboardRouter(
         total: filteredJobs.length,
         jobs: filteredJobs,
       });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.get('/schedules', async (req, res) => {
+    try {
+      if (!requirePermission(req, res, 'read')) return;
+      const queueName = asString(req.query.queue);
+      if (queueName && !enforceQueueAccess(req, res, queueName)) return;
+      const limit = Number(req.query.limit ?? '200');
+      const offset = Number(req.query.offset ?? '0');
+
+      const schedules = await supervisor.listRepeatableSchedules({
+        ...(queueName ? { queueName } : {}),
+        limit,
+        offset,
+      });
+
+      const filteredSchedules = queueName
+        ? schedules
+        : schedules.filter((schedule) => hasQueueAccess(req, schedule.queue));
+
+      res.json({
+        status: 'ok',
+        total: filteredSchedules.length,
+        schedules: filteredSchedules,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.post('/schedules/:scheduleId/remove', async (req, res) => {
+    try {
+      if (!requirePermission(req, res, 'operate')) return;
+      const scheduleId = asString(req.params.scheduleId);
+      if (!scheduleId) {
+        res.status(400).json({ error: 'Schedule id is required' });
+        return;
+      }
+
+      const schedules = await supervisor.listRepeatableSchedules();
+      const schedule = schedules.find((item) => item.id === scheduleId);
+      if (!schedule) {
+        res.status(404).json({ error: 'Schedule not found' });
+        return;
+      }
+
+      if (!hasQueueAccess(req, schedule.queue)) {
+        res.status(403).json({ error: 'Queue access denied' });
+        return;
+      }
+
+      const removed = await supervisor.removeRepeatableSchedule(scheduleId);
+      if (!removed) {
+        res.status(404).json({ error: 'Schedule not found' });
+        return;
+      }
+
+      res.status(202).json({ status: 'removed', scheduleId });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.post('/schedules/clear', async (req, res) => {
+    try {
+      if (!requirePermission(req, res, 'operate')) return;
+      const queueName = asString(req.body?.queue) ?? asString(req.query.queue);
+      if (queueName && !enforceQueueAccess(req, res, queueName)) return;
+
+      if (queueName) {
+        const removed = await supervisor.clearRepeatableSchedules({ queueName });
+        res.status(202).json({ status: 'cleared', queueName, removed });
+        return;
+      }
+
+      const allowedQueues = getAllowedQueues(req);
+      if (!allowedQueues) {
+        const removed = await supervisor.clearRepeatableSchedules();
+        res.status(202).json({ status: 'cleared', removed });
+        return;
+      }
+
+      let removed = 0;
+      for (const allowedQueue of allowedQueues) {
+        removed += await supervisor.clearRepeatableSchedules({ queueName: allowedQueue });
+      }
+
+      res.status(202).json({ status: 'cleared', removed });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
     }

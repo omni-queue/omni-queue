@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/hono-adapter",
   "version": "0.1.0",
-  "private": true,
   "description": "Hono adapter for Omni-Queue dashboard-api",
   "keywords": [
     "queue",
@@ -37,5 +36,8 @@
   "dependencies": {
     "@omni-queue/dashboard-api": "*",
     "express": "^4.21.2"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

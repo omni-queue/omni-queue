@@ -16,6 +16,7 @@ import { SilencedJobsPage } from './pages/SilencedJobsPage';
 import { BatchesPage } from './pages/BatchesPage';
 import { MonitoringPage } from './pages/MonitoringPage';
 import { ArchivePage } from './pages/ArchivePage';
+import { SchedulesPage } from './pages/SchedulesPage';
 import { LoginPage } from './pages/LoginPage';
 
 function DashboardRoute() {
@@ -33,12 +34,21 @@ function JobsRoute() {
   return <JobsPage queues={queues} />;
 }
 
+function SchedulesRoute() {
+  const { queues } = useDashboardData();
+  return <SchedulesPage queues={queues} />;
+}
+
 function QueueDetailRoute() {
   return <QueueDetailPage />;
 }
 
 function JobDetailRoute() {
-  return <JobDetailPage />;
+  return <JobDetailPage backTo="/jobs" backLabel="Back to jobs" />;
+}
+
+function FailedJobDetailRoute() {
+  return <JobDetailPage backTo="/failed" backLabel="Back to failed jobs" />;
 }
 
 function WorkerDetailRoute() {
@@ -95,7 +105,9 @@ function DashboardRoutes() {
           <Route path="queues" element={<QueuesRoute />} />
           <Route path="queues/:queueName" element={<QueueDetailRoute />} />
           <Route path="jobs" element={<JobsRoute />} />
+          <Route path="schedules" element={<SchedulesRoute />} />
           <Route path="jobs/:jobId" element={<JobDetailRoute />} />
+          <Route path="failed/:jobId" element={<FailedJobDetailRoute />} />
           <Route path="completed" element={<CompletedJobsRoute />} />
           <Route path="silenced" element={<SilencedJobsRoute />} />
           <Route path="workers" element={<WorkersRoute />} />

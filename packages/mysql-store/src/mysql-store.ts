@@ -88,9 +88,22 @@ export class MySqlStore implements QueueStorage {
         queue       VARCHAR(191) NOT NULL,
         attempts    INT NOT NULL DEFAULT 0,
         created_at  BIGINT NOT NULL,
-        failed_at   BIGINT NOT NULL
+        failed_at   BIGINT NOT NULL,
+        error_details JSON NULL,
+        retried_at BIGINT NULL,
+        retried_job_id VARCHAR(191) NULL
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `);
+
+    await this.pool
+      .query(`ALTER TABLE ${this.dlTable} ADD COLUMN IF NOT EXISTS error_details JSON NULL`)
+      .catch(() => undefined);
+    await this.pool
+      .query(`ALTER TABLE ${this.dlTable} ADD COLUMN IF NOT EXISTS retried_at BIGINT NULL`)
+      .catch(() => undefined);
+    await this.pool
+      .query(`ALTER TABLE ${this.dlTable} ADD COLUMN IF NOT EXISTS retried_job_id VARCHAR(191) NULL`)
+      .catch(() => undefined);
 
     await this.pool.query(`
       CREATE TABLE IF NOT EXISTS ${this.completedTable} (
@@ -226,11 +239,20 @@ export class MySqlStore implements QueueStorage {
 
       await conn.query(
         `
-        INSERT INTO ${this.dlTable} (id, name, payload, queue, attempts, created_at, failed_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?)
+        INSERT INTO ${this.dlTable} (id, name, payload, queue, attempts, created_at, failed_at, error_details, retried_at, retried_job_id)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, NULL, NULL)
         ON DUPLICATE KEY UPDATE id = id
         `,
-        [job.id, job.name, JSON.stringify(job.payload), job.queue, job.attempts, job.createdAt, Date.now()]
+        [
+          job.id,
+          job.name,
+          JSON.stringify(job.payload),
+          job.queue,
+          job.attempts,
+          job.createdAt,
+          Date.now(),
+          job.errorDetails ? JSON.stringify(job.errorDetails) : null,
+        ]
       );
 
       await conn.query(`DELETE FROM ${this.table} WHERE id = ?`, [job.id]);
@@ -417,16 +439,25 @@ export class MySqlStore implements QueueStorage {
       values
     );
 
-    return rows.map((row) => ({
-      id: String(row['id']),
-      name: String(row['name']),
-      payload: this.fromJsonColumn(row['payload']),
-      queue: String(row['queue']),
-      state: 'failed',
-      attempts: Number(row['attempts'] ?? 0),
-      createdAt: Number(row['created_at']),
-      updatedAt: Number(row['failed_at']),
-    }));
+    return rows.map((row) => {
+      const errorDetails = this.fromJsonColumn(row['error_details']);
+
+      return {
+        id: String(row['id']),
+        name: String(row['name']),
+        payload: this.fromJsonColumn(row['payload']),
+        queue: String(row['queue']),
+        state: 'failed',
+        attempts: Number(row['attempts'] ?? 0),
+        createdAt: Number(row['created_at']),
+        updatedAt: Number(row['failed_at']),
+        ...(errorDetails != null
+          ? { errorDetails: errorDetails as NonNullable<StoredJob['errorDetails']> }
+          : {}),
+        ...(row['retried_at'] != null ? { retriedAt: Number(row['retried_at']) } : {}),
+        ...(row['retried_job_id'] != null ? { retriedJobId: String(row['retried_job_id']) } : {}),
+      };
+    });
   }
 
   async retryDeadLetterJob(queueName: string, jobId: string): Promise<boolean> {
@@ -435,7 +466,7 @@ export class MySqlStore implements QueueStorage {
       await conn.beginTransaction();
 
       const [deadRows] = await conn.query<DbRow[]>(
-        `SELECT * FROM ${this.dlTable} WHERE id = ? AND queue = ? LIMIT 1 FOR UPDATE`,
+        `SELECT * FROM ${this.dlTable} WHERE id = ? AND queue = ? AND retried_at IS NULL LIMIT 1 FOR UPDATE`,
         [jobId, queueName]
       );
 
@@ -446,6 +477,7 @@ export class MySqlStore implements QueueStorage {
       }
 
       const now = Date.now();
+      const retriedJobId = crypto.randomUUID();
       await conn.query(
         `
         INSERT INTO ${this.table}
@@ -453,10 +485,13 @@ export class MySqlStore implements QueueStorage {
         VALUES (?, ?, ?, ?, 'queued', 0, NULL, NULL, NULL, NULL, NULL, 'normal', NULL, ?, ?)
         ON DUPLICATE KEY UPDATE id = id
         `,
-        [row['id'], row['name'], row['payload'], row['queue'], Number(row['created_at']), now]
+        [retriedJobId, row['name'], row['payload'], row['queue'], now, now]
       );
 
-      await conn.query(`DELETE FROM ${this.dlTable} WHERE id = ? AND queue = ?`, [jobId, queueName]);
+      await conn.query(
+        `UPDATE ${this.dlTable} SET retried_at = ?, retried_job_id = ?, failed_at = ? WHERE id = ? AND queue = ?`,
+        [now, retriedJobId, now, jobId, queueName]
+      );
       await conn.commit();
       return true;
     } catch (error) {

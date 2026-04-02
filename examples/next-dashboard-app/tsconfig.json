@@ -1,0 +1,14 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "./dist",
+    "noEmit": true,
+    "jsx": "preserve",
+    "moduleResolution": "bundler",
+    "allowJs": true,
+    "incremental": true
+  },
+  "include": ["src", "pages", "next-env.d.ts"],
+  "exclude": ["node_modules", "dist"]
+}

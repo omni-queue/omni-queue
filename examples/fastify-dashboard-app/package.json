@@ -1,0 +1,22 @@
+{
+  "name": "fastify-dashboard-app",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "npm run build && node dist/server.js",
+    "worker": "npm run build && node dist/worker.js",
+    "start": "npm run dev",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@fastify/middie": "^9.0.3",
+    "@omni-queue/core": "*",
+    "@omni-queue/fastify-adapter": "*",
+    "fastify": "^5.6.1"
+  },
+  "devDependencies": {
+    "@omni-queue/cli": "*"
+  }
+}

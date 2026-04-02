@@ -9,13 +9,17 @@ In-memory Omni Queue example demonstrating multi-queue processing, plugins, and 
 - Built-in plugins (`DAGPlugin`, `RateLimiterPlugin`) + OTel tracing plugin
 - Dashboard API + WebSocket mounting through `@omni-queue/express-adapter`
 
-## Prerequisites
-
-From the repository root:
+## Install from npm
 
 ```bash
+cd examples/queue-system
 npm install
-npm run build
+```
+
+To publish dashboard assets with the CLI:
+
+```bash
+npx @omni-queue/cli dashboard:publish --out=./public/omni-queue-dashboard --base=/dashboard --api-base=/api/dashboard
 ```
 
 ## Run the server
@@ -40,6 +44,14 @@ npm run dev
 ```
 
 Open `http://localhost:4173`.
+
+## Why worker is separate from server
+
+Do not run queue workers inside the HTTP server process.
+
+- API responsiveness stays stable under background load.
+- Worker scaling and server scaling can be tuned independently.
+- Crash and rollout boundaries stay isolated.
 
 ## Health check
 

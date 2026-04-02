@@ -24,6 +24,15 @@ function payloadPreview(payload: unknown): string {
   }
 }
 
+function errorDetailsPreview(job: JobRow): string {
+  const details = job.errorDetails;
+  if (!details) return '—';
+
+  const codePrefix = details.errorCode ? `[${details.errorCode}] ` : '';
+  const namePrefix = details.errorName ? `${details.errorName}: ` : '';
+  return `${codePrefix}${namePrefix}${details.error}`;
+}
+
 export function DlqPage({ queues }: Props) {
   const [jobs, setJobs] = useState<JobRow[]>([]);
   const [queueFilter, setQueueFilter] = useState('all');
@@ -66,7 +75,16 @@ export function DlqPage({ queues }: Props) {
         throw new Error(payload.error ?? `${res.status}`);
       }
       setSuccess(`Job ${job.id} re-queued.`);
-      setJobs((prev) => prev.filter((j) => j.id !== job.id));
+      setJobs((prev) =>
+        prev.map((current) =>
+          current.id === job.id
+            ? {
+                ...current,
+                retriedAt: Date.now(),
+              }
+            : current
+        )
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Retry failed');
     } finally {
@@ -125,6 +143,7 @@ export function DlqPage({ queues }: Props) {
                   <th className="px-5 py-3">Job ID</th>
                   <th className="px-5 py-3">Name</th>
                   <th className="px-5 py-3">Payload</th>
+                  <th className="px-5 py-3">Error</th>
                   <th className="px-5 py-3">Queue</th>
                   <th className="px-5 py-3 text-right">Attempts</th>
                   <th className="px-5 py-3 text-right">Failed</th>
@@ -135,17 +154,20 @@ export function DlqPage({ queues }: Props) {
                 {jobs.map((job) => (
                   <tr key={job.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-5 py-3 font-mono text-xs text-slate-500 max-w-[120px] truncate">
-                      <Link to={`/jobs/${encodeURIComponent(job.id)}?queue=${encodeURIComponent(job.queue)}`} className="hover:text-indigo-600">
+                      <Link to={`/failed/${encodeURIComponent(job.id)}?queue=${encodeURIComponent(job.queue)}`} className="hover:text-indigo-600">
                         {job.id}
                       </Link>
                     </td>
                     <td className="px-5 py-3 font-medium text-slate-800">
-                      <Link to={`/jobs/${encodeURIComponent(job.id)}?queue=${encodeURIComponent(job.queue)}`} className="hover:text-indigo-600">
+                      <Link to={`/failed/${encodeURIComponent(job.id)}?queue=${encodeURIComponent(job.queue)}`} className="hover:text-indigo-600">
                         {job.name}
                       </Link>
                     </td>
                     <td className="px-5 py-3 text-slate-600 max-w-[320px] truncate" title={payloadPreview(job.payload)}>
                       {payloadPreview(job.payload)}
+                    </td>
+                    <td className="px-5 py-3 text-slate-600 max-w-[320px] truncate" title={errorDetailsPreview(job)}>
+                      {errorDetailsPreview(job)}
                     </td>
                     <td className="px-5 py-3 font-mono text-xs text-slate-500">
                       <Link to={`/queues/${encodeURIComponent(job.queue)}`} className="hover:text-indigo-600">
@@ -157,10 +179,11 @@ export function DlqPage({ queues }: Props) {
                     <td className="px-5 py-3 text-right">
                       <button
                         onClick={() => { void retry(job); }}
-                        disabled={retrying === job.id}
+                        disabled={retrying === job.id || job.retriedAt != null}
                         className="px-3 py-1 text-xs font-medium bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 disabled:opacity-40 transition-colors"
+                        title={job.retriedAt != null ? `Already retried ${relativeTime(job.retriedAt)}` : undefined}
                       >
-                        {retrying === job.id ? 'Retrying…' : 'Retry'}
+                        {retrying === job.id ? 'Retrying…' : job.retriedAt != null ? 'Retried' : 'Retry'}
                       </button>
                     </td>
                   </tr>

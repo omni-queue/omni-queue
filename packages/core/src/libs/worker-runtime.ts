@@ -15,11 +15,6 @@ import {
   ScheduledJobHandle,
 } from '../types';
 import { QueueConfig } from '../interfaces/queue-config';
-import {
-  QueueRetryPolicyRule,
-  RetryDecision,
-  RetryDecisionContext,
-} from '../interfaces/retry-policy';
 import { WorkerConfig } from '../interfaces/worker-config';
 import { QueueStorage } from '../interfaces/queue-storage';
 import { priorityScore, sleep } from '../utils';
@@ -28,50 +23,28 @@ import { Plugin } from '../interfaces/plugin';
 import { BatchManager } from './batch-manager';
 import { JobNode } from './job-node';
 import { LifecycleEventBus } from './lifecycle-events';
-
-type ResolvedRetryDecision = {
-  action: 'retry' | 'fail' | 'deadletter';
-  maxAttempts: number;
-  backoffMs?: number;
-};
-
-type FlowRuntimeNode = {
-  id: string;
-  job: any;
-  dependsOn: Set<string>;
-  children: Set<string>;
-  status: 'pending' | 'queued' | 'completed' | 'failed' | 'blocked';
-  jobId?: string;
-  error?: string;
-};
-
-type FlowRuntime = {
-  id: string;
-  atomicFailure: boolean;
-  nodes: Map<string, FlowRuntimeNode>;
-  dagNodes: Map<string, JobNode>;
-};
-
-type DagPluginLike = {
-  registerNode: (node: JobNode) => void;
-};
-
-type PersistedRepeatableSchedulePayload = {
-  type: 'repeatable-schedule';
-  definition: RepeatableScheduleDefinition;
-};
-
-type ManagedScheduleTask = {
-  handle: ScheduledJobHandle;
-  durable: boolean;
-  storage?: QueueStorage;
-};
-
-const INTERNAL_REPEATABLE_QUEUE = '__omni_internal_repeatables';
-const INTERNAL_REPEATABLE_JOB = '__omni_repeatable_schedule__';
-const INTERNAL_REPEATABLE_PAYLOAD_TYPE = 'repeatable-schedule';
-const REPEATABLE_PAGE_LIMIT = 200;
-const DEDUPE_QUERY_LIMIT = 1000;
+import {
+  DEDUPE_QUERY_LIMIT,
+  type DagPluginLike,
+  type FlowRuntime,
+  type FlowRuntimeNode,
+  type ManagedScheduleTask,
+} from './worker-runtime/internal-types';
+import {
+  isTimeoutError,
+  resolveConfiguredMaxAttempts,
+  resolveExecutionTimeoutMs,
+  resolveRetryBackoff,
+  resolveRetryDecision,
+  toErrorDetails,
+  toExecutionError,
+} from './worker-runtime/retry-helpers';
+import {
+  findFailedIdempotencyMatch,
+  listPersistedRepeatableSchedules,
+  persistRepeatableSchedule,
+  removePersistedRepeatableSchedule,
+} from './worker-runtime/repeatable-storage';
 
 export class JobManager {
   private executors: Map<string, PooledExecutor> = new Map();
@@ -296,7 +269,7 @@ export class JobManager {
         schedulePattern: `every:${options.intervalMs}ms`,
       });
       if (durable) {
-        await this.persistRepeatableSchedule(storage, definition);
+        await persistRepeatableSchedule(storage, definition);
       }
       return this.startIntervalSchedule(definition, storage, durable);
     }
@@ -315,19 +288,24 @@ export class JobManager {
       schedulePattern: cronPattern,
     });
     if (durable) {
-      await this.persistRepeatableSchedule(storage, definition);
+      await persistRepeatableSchedule(storage, definition);
     }
     return this.startCronSchedule(definition, storage, durable);
   }
 
   async recoverRepeatableSchedules(): Promise<number> {
     const recoveredDefinitions = new Map<string, { definition: RepeatableScheduleDefinition; storage: QueueStorage }>();
+    const prunedDefinitions = new Set<string>();
 
     for (const queueConfig of Object.values(this.queues)) {
       const storage = this.getStorage(queueConfig);
-      const definitions = await this.listPersistedRepeatableSchedules(storage);
+      const definitions = await listPersistedRepeatableSchedules(storage);
       for (const definition of definitions) {
-        if (!this.queues[definition.queue]) {
+        if (!this.queues[definition.queue] || !this.registry.has(definition.jobName)) {
+          if (!prunedDefinitions.has(definition.id)) {
+            prunedDefinitions.add(definition.id);
+            await removePersistedRepeatableSchedule(storage, definition.id);
+          }
           continue;
         }
 
@@ -353,6 +331,77 @@ export class JobManager {
     }
 
     return recoveredDefinitions.size;
+  }
+
+  async listRepeatableSchedules(): Promise<RepeatableScheduleDefinition[]> {
+    const definitions = new Map<string, RepeatableScheduleDefinition>();
+
+    for (const task of this.scheduledTasks.values()) {
+      definitions.set(task.definition.id, task.definition);
+    }
+
+    const inspectedStorage = new Set<QueueStorage>();
+    for (const queueConfig of Object.values(this.queues)) {
+      const storage = this.getStorage(queueConfig);
+      if (inspectedStorage.has(storage)) {
+        continue;
+      }
+
+      inspectedStorage.add(storage);
+      const persisted = await listPersistedRepeatableSchedules(storage);
+      for (const definition of persisted) {
+        definitions.set(definition.id, definition);
+      }
+    }
+
+    return [...definitions.values()].sort((left, right) => {
+      if (left.updatedAt === right.updatedAt) {
+        return left.id.localeCompare(right.id);
+      }
+
+      return right.updatedAt - left.updatedAt;
+    });
+  }
+
+  async removeRepeatableSchedule(scheduleId: string): Promise<boolean> {
+    let removed = false;
+    const task = this.scheduledTasks.get(scheduleId);
+
+    if (task) {
+      task.handle.stop();
+      removed = true;
+    }
+
+    const inspectedStorage = new Set<QueueStorage>();
+    for (const queueConfig of Object.values(this.queues)) {
+      const storage = this.getStorage(queueConfig);
+      if (inspectedStorage.has(storage)) {
+        continue;
+      }
+
+      inspectedStorage.add(storage);
+      const persisted = await listPersistedRepeatableSchedules(storage);
+      if (persisted.some((definition) => definition.id === scheduleId)) {
+        await removePersistedRepeatableSchedule(storage, scheduleId);
+        removed = true;
+      }
+    }
+
+    return removed;
+  }
+
+  async clearRepeatableSchedules(): Promise<number> {
+    const definitions = await this.listRepeatableSchedules();
+    let removed = 0;
+
+    for (const definition of definitions) {
+      const didRemove = await this.removeRepeatableSchedule(definition.id);
+      if (didRemove) {
+        removed += 1;
+      }
+    }
+
+    return removed;
   }
 
   stopSchedules(): void {
@@ -537,12 +586,17 @@ export class JobManager {
         clearInterval(timer);
         this.scheduledTasks.delete(definition.id);
         if (durable) {
-          void this.removePersistedRepeatableSchedule(storage, definition.id);
+          void removePersistedRepeatableSchedule(storage, definition.id);
         }
       },
     };
 
-    this.scheduledTasks.set(definition.id, { handle, durable, ...(durable ? { storage } : {}) });
+    this.scheduledTasks.set(definition.id, {
+      handle,
+      definition,
+      durable,
+      ...(durable ? { storage } : {}),
+    });
     return handle;
   }
 
@@ -583,12 +637,17 @@ export class JobManager {
         }
         this.scheduledTasks.delete(definition.id);
         if (durable) {
-          void this.removePersistedRepeatableSchedule(storage, definition.id);
+          void removePersistedRepeatableSchedule(storage, definition.id);
         }
       },
     };
 
-    this.scheduledTasks.set(definition.id, { handle, durable, ...(durable ? { storage } : {}) });
+    this.scheduledTasks.set(definition.id, {
+      handle,
+      definition,
+      durable,
+      ...(durable ? { storage } : {}),
+    });
     return handle;
   }
 
@@ -606,90 +665,6 @@ export class JobManager {
 
     const instance = new ScheduledJobClass(definition.payload);
     await this.dispatchInternal(instance, undefined, scheduleMetadata);
-  }
-
-  private async persistRepeatableSchedule(
-    storage: QueueStorage,
-    definition: RepeatableScheduleDefinition
-  ): Promise<void> {
-    const now = Date.now();
-    await storage.enqueue({
-      id: this.repeatableStorageJobId(definition.id),
-      name: INTERNAL_REPEATABLE_JOB,
-      payload: {
-        type: INTERNAL_REPEATABLE_PAYLOAD_TYPE,
-        definition: {
-          ...definition,
-          updatedAt: now,
-        },
-      } as PersistedRepeatableSchedulePayload,
-      queue: INTERNAL_REPEATABLE_QUEUE,
-      attempts: 0,
-      state: 'queued',
-      createdAt: definition.createdAt,
-      updatedAt: now,
-      idempotencyKey: `repeatable:${definition.id}`,
-    });
-  }
-
-  private async removePersistedRepeatableSchedule(storage: QueueStorage, scheduleId: string): Promise<void> {
-    await storage.moveToDeadLetter({
-      id: this.repeatableStorageJobId(scheduleId),
-      name: INTERNAL_REPEATABLE_JOB,
-      payload: { type: INTERNAL_REPEATABLE_PAYLOAD_TYPE },
-      queue: INTERNAL_REPEATABLE_QUEUE,
-      attempts: 0,
-      state: 'failed',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  }
-
-  private async listPersistedRepeatableSchedules(storage: QueueStorage): Promise<RepeatableScheduleDefinition[]> {
-    const definitions: RepeatableScheduleDefinition[] = [];
-    let offset = 0;
-
-    while (true) {
-      const records = await storage.getReadyJobs({
-        queueName: INTERNAL_REPEATABLE_QUEUE,
-        limit: REPEATABLE_PAGE_LIMIT,
-        offset,
-      });
-
-      if (records.length === 0) {
-        break;
-      }
-
-      for (const record of records) {
-        if (record.name !== INTERNAL_REPEATABLE_JOB) {
-          continue;
-        }
-
-        const payload = record.payload as Partial<PersistedRepeatableSchedulePayload> | undefined;
-        if (payload?.type !== INTERNAL_REPEATABLE_PAYLOAD_TYPE || !payload.definition) {
-          continue;
-        }
-
-        const definition = payload.definition;
-        if (!definition.id || !definition.queue || !definition.jobName) {
-          continue;
-        }
-
-        definitions.push(definition);
-      }
-
-      if (records.length < REPEATABLE_PAGE_LIMIT) {
-        break;
-      }
-
-      offset += REPEATABLE_PAGE_LIMIT;
-    }
-
-    return definitions;
-  }
-
-  private repeatableStorageJobId(scheduleId: string): string {
-    return `repeatable:${scheduleId}`;
   }
 
   private async findDuplicateByIdempotencyKey(
@@ -728,14 +703,7 @@ export class JobManager {
       return completedMatch.id;
     }
 
-    const failedMatch = failedJobs.find(
-      (item) => item.idempotencyKey === idempotencyKey && (item.updatedAt ?? item.createdAt) >= cutoff
-    );
-    if (failedMatch) {
-      return failedMatch.id;
-    }
-
-    return null;
+    return findFailedIdempotencyMatch(failedJobs, idempotencyKey, cutoff);
   }
 
   // execute a stored job
@@ -766,14 +734,14 @@ export class JobManager {
     const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
     let attempt = ctx.job.attempts || 0;
     let previousBackoff = 0;
-    const configuredMaxAttempts = this.resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
+    const configuredMaxAttempts = resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
 
     if (!executor) throw new Error(`Executor not defined: ${ctx.job.queue}`);
 
     return executor.submit(async () => {
       while (true) {
         const leaseMs = queueConfig.visibilityTimeout || 30000;
-        const executionTimeoutMs = this.resolveExecutionTimeoutMs(queueConfig, workerConfig);
+        const executionTimeoutMs = resolveExecutionTimeoutMs(queueConfig, workerConfig);
         const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
 
         const heartbeat = setInterval(() => {
@@ -918,12 +886,12 @@ export class JobManager {
             error: err instanceof Error ? err.message : String(err),
           });
 
-          if (timeoutStrategy === 'fail' && this.isTimeoutError(err)) {
+          if (timeoutStrategy === 'fail' && isTimeoutError(err)) {
             await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
             throw err;
           }
 
-          const retryDecision = this.resolveRetryDecision(
+          const retryDecision = resolveRetryDecision(
             ctx,
             queueConfig,
             err,
@@ -943,12 +911,13 @@ export class JobManager {
             throw err;
           }
 
-          const backoff = this.resolveRetryBackoff(
+          const backoff = resolveRetryBackoff(
             ctx,
             queueConfig,
             attempt,
             retryDecision,
-            previousBackoff
+            previousBackoff,
+            this.resolveBackoff.bind(this)
           );
           previousBackoff = backoff;
 
@@ -969,11 +938,11 @@ export class JobManager {
     let previousBackoff = 0;
     const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
 
-    const configuredMaxAttempts = this.resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
+    const configuredMaxAttempts = resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
 
     while (true) {
       const leaseMs = queueConfig.visibilityTimeout || 30000;
-      const executionTimeoutMs = this.resolveExecutionTimeoutMs(queueConfig, workerConfig);
+      const executionTimeoutMs = resolveExecutionTimeoutMs(queueConfig, workerConfig);
       const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
 
       const heartbeat = setInterval(() => {
@@ -1065,12 +1034,12 @@ export class JobManager {
 
         await storage.updateAttempts(ctx.job.id, attempt);
 
-        if (timeoutStrategy === 'fail' && this.isTimeoutError(err)) {
+        if (timeoutStrategy === 'fail' && isTimeoutError(err)) {
           await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
           throw err;
         }
 
-        const retryDecision = this.resolveRetryDecision(
+        const retryDecision = resolveRetryDecision(
           ctx,
           queueConfig,
           err,
@@ -1090,12 +1059,13 @@ export class JobManager {
           throw err;
         }
 
-        const backoff = this.resolveRetryBackoff(
+        const backoff = resolveRetryBackoff(
           ctx,
           queueConfig,
           attempt,
           retryDecision,
-          previousBackoff
+          previousBackoff,
+          this.resolveBackoff.bind(this)
         );
         previousBackoff = backoff;
 
@@ -1145,20 +1115,6 @@ export class JobManager {
     return Math.max(0, Math.floor(backoff));
   }
 
-  private resolveConfiguredMaxAttempts(
-    queueConfig: QueueConfig,
-    instance: { retries?: () => number }
-  ): number {
-    return Math.max(
-      1,
-      queueConfig.maxAttempts ??
-        instance.retries?.() ??
-        queueConfig.retry?.maxAttempts ??
-        queueConfig.retry?.attempts ??
-        3
-    );
-  }
-
   resolveIsolationType(
     instance: { isolation?: () => IsolationType },
     workerConfig: WorkerConfig
@@ -1183,110 +1139,6 @@ export class JobManager {
     return 'inline';
   }
 
-  private resolveExecutionTimeoutMs(queueConfig: QueueConfig, workerConfig: WorkerConfig): number {
-    if (queueConfig.executionTimeoutMs && queueConfig.executionTimeoutMs > 0) {
-      return queueConfig.executionTimeoutMs;
-    }
-
-    if (workerConfig.timeout && workerConfig.timeout > 0) {
-      return workerConfig.timeout;
-    }
-
-    return 30000;
-  }
-
-  private resolveRetryDecision(
-    ctx: ExecutionContext,
-    queueConfig: QueueConfig,
-    error: unknown,
-    attempt: number,
-    configuredMaxAttempts: number
-  ): ResolvedRetryDecision {
-    const normalizedError = this.toExecutionError(error);
-    const context: RetryDecisionContext = {
-      attempt,
-      maxAttempts: configuredMaxAttempts,
-      queueName: ctx.job.queue,
-      jobId: ctx.job.id,
-      isTimeout: this.isTimeoutError(normalizedError),
-      ...(normalizedError.name ? { errorName: normalizedError.name } : {}),
-      ...(typeof (normalizedError as Error & { code?: string }).code === 'string'
-        ? { errorCode: (normalizedError as Error & { code?: string }).code }
-        : {}),
-      errorMessage: normalizedError.message,
-    };
-
-    const jobDecision = ctx.instance.retryPolicy?.(normalizedError, context);
-    const queueDecision = jobDecision ?? this.matchQueueRetryPolicy(queueConfig, context);
-    const resolved = queueDecision ?? { action: 'retry' as const };
-
-    return {
-      action: resolved.action,
-      maxAttempts: Math.max(1, resolved.maxAttempts ?? configuredMaxAttempts),
-      ...(resolved.backoffMs !== undefined ? { backoffMs: resolved.backoffMs } : {}),
-    };
-  }
-
-  private matchQueueRetryPolicy(
-    queueConfig: QueueConfig,
-    context: RetryDecisionContext
-  ): RetryDecision | undefined {
-    const rules = queueConfig.retry?.policy ?? [];
-    const matched = rules.find((rule) => this.matchesRetryRule(rule, context));
-
-    if (!matched) {
-      return undefined;
-    }
-
-    return {
-      action: matched.action,
-      ...(matched.maxAttempts !== undefined ? { maxAttempts: matched.maxAttempts } : {}),
-      ...(matched.backoffMs !== undefined ? { backoffMs: matched.backoffMs } : {}),
-    };
-  }
-
-  private matchesRetryRule(
-    rule: QueueRetryPolicyRule,
-    context: RetryDecisionContext
-  ): boolean {
-    const match = rule.when;
-
-    if (match.timeout !== undefined && match.timeout !== context.isTimeout) {
-      return false;
-    }
-
-    if (match.name && match.name !== context.errorName) {
-      return false;
-    }
-
-    if (match.code && match.code !== context.errorCode) {
-      return false;
-    }
-
-    if (
-      match.messageIncludes &&
-      !context.errorMessage.toLowerCase().includes(match.messageIncludes.toLowerCase())
-    ) {
-      return false;
-    }
-
-    return true;
-  }
-
-  private resolveRetryBackoff(
-    ctx: ExecutionContext,
-    queueConfig: QueueConfig,
-    attempt: number,
-    decision: ResolvedRetryDecision,
-    previousBackoff: number
-  ): number {
-    if (decision.backoffMs !== undefined) {
-      return Math.max(0, decision.backoffMs);
-    }
-
-    return ctx.instance.backoff?.(attempt) ?? this.resolveBackoff(queueConfig, attempt, previousBackoff);
-  }
-
   private resolveSandboxConfig(
     queueConfig: QueueConfig,
     workerConfig: WorkerConfig
@@ -1299,25 +1151,6 @@ export class JobManager {
     return policy;
   }
 
-  private toExecutionError(error: unknown): Error {
-    if (error instanceof Error) {
-      return error;
-    }
-
-    return new Error(String(error));
-  }
-
-  private isTimeoutError(error: unknown): boolean {
-    if (!(error instanceof Error)) {
-      return false;
-    }
-
-    return (
-      error.name === 'JobTimeoutError' ||
-      /timeout/i.test(error.message)
-    );
-  }
-
   private async handlePermanentFailure(
     job: StoredJob,
     queueConfig: QueueConfig,
@@ -1327,7 +1160,8 @@ export class JobManager {
     error: unknown,
     options?: { forceDeadLetter?: boolean }
   ): Promise<'deadlettered' | 'snoozed'> {
-    const normalizedError = this.toExecutionError(error);
+    const normalizedError = toExecutionError(error);
+    const errorDetails = toErrorDetails(normalizedError);
 
     this.batchManager?.markJobFailed(job, normalizedError);
     for (const plugin of allPlugins) {
@@ -1341,11 +1175,12 @@ export class JobManager {
       await storage.moveToDeadLetter({
         ...job,
         state: 'failed',
+        errorDetails,
         updatedAt: Date.now(),
       });
       permanentFailureMode = 'deadlettered';
     } else {
-      permanentFailureMode = await this.applyPoisonFailurePolicy(job, queueConfig, storage, attempt);
+      permanentFailureMode = await this.applyPoisonFailurePolicy(job, queueConfig, storage, attempt, errorDetails);
     }
 
     if (permanentFailureMode === 'deadlettered') {
@@ -1368,7 +1203,8 @@ export class JobManager {
     job: StoredJob,
     queueConfig: QueueConfig,
     storage: QueueStorage,
-    failureCount: number
+    failureCount: number,
+    errorDetails: NonNullable<StoredJob['errorDetails']>
   ): Promise<'deadlettered' | 'snoozed'> {
     const policy = queueConfig.reliability?.poisonPolicy;
     const now = Date.now();
@@ -1377,6 +1213,7 @@ export class JobManager {
       await storage.moveToDeadLetter({
         ...job,
         state: 'failed',
+        errorDetails,
         updatedAt: now,
       });
       return 'deadlettered';
@@ -1407,6 +1244,7 @@ export class JobManager {
       ...job,
       state: 'failed',
       updatedAt: now,
+      errorDetails,
       tags: Array.from(new Set(tags)),
     });
 

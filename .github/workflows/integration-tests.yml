@@ -2,9 +2,25 @@ name: Integration Tests
 
 on:
   pull_request:
-    branches: ['**']
+    branches: [main]
+    paths:
+      - '.github/workflows/integration-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'packages/core/**'
+      - 'packages/redis-store/**'
+      - 'packages/postgres-store/**'
   push:
-    branches: [main, master]
+    branches: [main]
+    paths:
+      - '.github/workflows/integration-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'packages/core/**'
+      - 'packages/redis-store/**'
+      - 'packages/postgres-store/**'
   workflow_dispatch:
 
 jobs:
@@ -51,16 +67,28 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install local workspace dependencies
+        run: >-
+          npm ci
+          --workspace @omni-queue/core
+          --workspace @omni-queue/redis-store
+          --workspace @omni-queue/postgres-store
 
-      - name: Typecheck
-        run: npm run check-types
+      - name: Build local workspace packages
+        run: >-
+          npm run build
+          --workspace @omni-queue/core
+          --workspace @omni-queue/redis-store
+          --workspace @omni-queue/postgres-store
+
+      - name: Typecheck local workspace packages
+        run: >-
+          npm exec tsc --noEmit -p packages/core/tsconfig.json
+          && npm exec tsc --noEmit -p packages/redis-store/tsconfig.json
+          && npm exec tsc --noEmit -p packages/postgres-store/tsconfig.json
 
       - name: Redis integration tests
-        working-directory: packages/redis-store
-        run: npm run test:integration
+        run: npm run test:integration --workspace @omni-queue/redis-store
 
       - name: Postgres integration tests
-        working-directory: packages/postgres-store
-        run: npm run test:integration
+        run: npm run test:integration --workspace @omni-queue/postgres-store

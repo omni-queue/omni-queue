@@ -1,4 +1,4 @@
-# Phase 6: Scaling & Enterprise Features (2027 Q3+)
+# Phase 6: Scaling & Enterprise Features
 
 **Goal**: Position Omni Queue for hyperscale deployments and enterprise multi-region/multi-tenant at scale.
 

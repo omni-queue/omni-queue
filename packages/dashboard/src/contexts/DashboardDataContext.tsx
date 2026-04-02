@@ -28,7 +28,7 @@ const DashboardDataContext = createContext<DashboardDataContextValue | undefined
 function buildOverviewSignature(data: OverviewResponse): string {
   const queueSignature = [...data.queues]
     .sort((a, b) => a.queue.localeCompare(b.queue))
-    .map((queue) => `${queue.queue}:${queue.depth}:${queue.deferredCount}:${queue.dlqCount}`)
+    .map((queue) => `${queue.queue}:${queue.depth}:${queue.deferredCount}:${queue.repeatableCount ?? 0}:${queue.dlqCount}`)
     .join('|');
 
   const reliabilitySignature = (data.reliability?.queues ?? [])
@@ -44,7 +44,7 @@ function buildOverviewSignature(data: OverviewResponse): string {
     .map(([name, concurrency]) => `${name}:${concurrency}`)
     .join('|');
 
-  return `${data.totals.depth}:${data.totals.deferred}:${data.totals.dlq}:${data.totals.completed}::${queueSignature}::${scalingSignature}::${reliabilitySignature}`;
+  return `${data.totals.depth}:${data.totals.deferred}:${data.totals.schedules ?? 0}:${data.totals.dlq}:${data.totals.completed}::${queueSignature}::${scalingSignature}::${reliabilitySignature}`;
 }
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {

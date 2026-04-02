@@ -1,7 +1,7 @@
 # Phase 1.1: Delayed & Scheduled Jobs - Technical Design
 
 **Status**: Implemented (core path)  
-**Target**: Q2 2026  
+**Target**: Phase 1 delivery window  
 **Effort**: 3-4 weeks
 
 ## Overview

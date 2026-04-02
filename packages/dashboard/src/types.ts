@@ -6,6 +6,7 @@ export type QueueOverview = {
   depth: number;
   load?: number;
   deferredCount: number;
+  repeatableCount?: number;
   dlqCount: number;
   completedCount?: number;
 };
@@ -20,7 +21,7 @@ export type WorkerDefinition = {
 export type OverviewResponse = {
   status: string;
   generatedAt: number;
-  totals: { depth: number; load?: number; deferred: number; dlq: number; completed: number };
+  totals: { depth: number; load?: number; deferred: number; schedules?: number; dlq: number; completed: number };
   metrics?: {
     recentCompletionTimestamps: number[];
     maxRuntimeMs: number;
@@ -60,6 +61,26 @@ export type JobRow = {
   completedAt?: number;
   delayUntil?: number;
   progress?: number;
+  errorDetails?: {
+    error: string;
+    errorName?: string;
+    errorCode?: string;
+    errorStack?: string;
+  };
+  retriedAt?: number;
+  retriedJobId?: string;
+};
+
+export type RepeatableScheduleRow = {
+  id: string;
+  queue: string;
+  jobName: string;
+  payload?: unknown;
+  pattern?: string;
+  intervalMs?: number;
+  timezone?: string;
+  createdAt: number;
+  updatedAt: number;
 };
 
 export type BatchJobRow = {
@@ -173,6 +194,7 @@ export type DashboardLoginPayload =
 
 type DashboardRuntimeConfig = {
   endpoint?: string;
+  uiBase?: string;
   transport?: string;
 };
 
@@ -195,6 +217,18 @@ export const API_BASE: string =
   (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
     ?.VITE_DASHBOARD_ENDPOINT ||
   '/api/dashboard';
+
+function normalizeUiBase(value: string | undefined): string {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed === '/') {
+    return '/';
+  }
+
+  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, '');
+}
+
+export const UI_BASE: string = normalizeUiBase(getRuntimeConfig()?.uiBase);
 
 function normalizeTransport(value: string | undefined): DashboardTransport {
   const normalized = value?.trim().toLowerCase();

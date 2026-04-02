@@ -541,21 +541,39 @@ return ids
 
     const deadJob = JSON.parse(raw) as StoredJob;
     if (deadJob.queue !== queueName) return false;
+    if (deadJob.retriedAt != null) return false;
+
+    const now = Date.now();
+    const retriedJobId = crypto.randomUUID();
 
     const retried: StoredJob = {
       ...deadJob,
+      id: retriedJobId,
       state: 'queued',
       attempts: 0,
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     delete (retried as StoredJob & { delayUntil?: number }).delayUntil;
+    delete (retried as StoredJob & { errorDetails?: StoredJob['errorDetails'] }).errorDetails;
+    delete (retried as StoredJob & { idempotencyKey?: string }).idempotencyKey;
+    delete (retried as StoredJob & { retriedAt?: number }).retriedAt;
+    delete (retried as StoredJob & { retriedJobId?: string }).retriedJobId;
 
     const pipeline = this.client.pipeline();
-    pipeline.zrem(this.deadKey(queueName), jobId);
-    pipeline.del(this.deadJobKey(jobId));
-    pipeline.set(this.jobKey(jobId), JSON.stringify(retried));
-    pipeline.zadd(this.readyKey(queueName), readyScore(retried), jobId);
+    pipeline.set(
+      this.deadJobKey(jobId),
+      JSON.stringify({
+        ...deadJob,
+        retriedAt: now,
+        retriedJobId,
+        updatedAt: now,
+      })
+    );
+    pipeline.zadd(this.deadKey(queueName), now, jobId);
+    pipeline.set(this.jobKey(retriedJobId), JSON.stringify(retried));
+    pipeline.zadd(this.readyKey(queueName), readyScore(retried), retriedJobId);
     await pipeline.exec();
 
     return true;

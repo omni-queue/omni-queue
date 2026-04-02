@@ -44,6 +44,9 @@ type DeadLetterDoc = {
   attempts: number;
   createdAt: number;
   failedAt: number;
+  errorDetails?: StoredJob['errorDetails'];
+  retriedAt?: number;
+  retriedJobId?: string;
 };
 
 type CompletedDoc = {
@@ -306,6 +309,7 @@ export class DynamoDbStore implements QueueStorage {
           attempts: job.attempts,
           createdAt: job.createdAt,
           failedAt: Date.now(),
+          ...(job.errorDetails ? { errorDetails: job.errorDetails } : {}),
         } as DeadLetterDoc,
       })
     );
@@ -510,6 +514,9 @@ export class DynamoDbStore implements QueueStorage {
       attempts: row.attempts,
       createdAt: row.createdAt,
       updatedAt: row.failedAt,
+      ...(row.errorDetails ? { errorDetails: row.errorDetails } : {}),
+      ...(row.retriedAt != null ? { retriedAt: row.retriedAt } : {}),
+      ...(row.retriedJobId ? { retriedJobId: row.retriedJobId } : {}),
     }));
   }
 
@@ -526,19 +533,43 @@ export class DynamoDbStore implements QueueStorage {
     );
 
     const item = deadRow.Items?.[0] as DeadLetterDoc | undefined;
-    if (!item || item.queue !== queueName) {
+    if (!item || item.queue !== queueName || item.retriedAt != null) {
       return false;
     }
 
     const now = Date.now();
+    const retriedJobId = crypto.randomUUID();
+
+    try {
+      await this.docClient.send(
+        new UpdateCommand({
+          TableName: this.dlTable,
+          Key: { id: item.id },
+          ConditionExpression: 'queue = :queue AND attribute_not_exists(retriedAt)',
+          UpdateExpression: 'SET retriedAt = :retriedAt, retriedJobId = :retriedJobId, failedAt = :failedAt',
+          ExpressionAttributeValues: {
+            ':queue': queueName,
+            ':retriedAt': now,
+            ':retriedJobId': retriedJobId,
+            ':failedAt': now,
+          },
+        })
+      );
+    } catch (error: unknown) {
+      if (this.isConditionalCheckFailure(error)) {
+        return false;
+      }
+      throw error;
+    }
+
     const job: JobDoc = {
-      id: item.id,
+      id: retriedJobId,
       name: item.name,
       payload: item.payload,
       queue: item.queue,
       state: 'queued',
       attempts: 0,
-      createdAt: item.createdAt,
+      createdAt: now,
       updatedAt: now,
       priority: 'normal',
       priorityRank: 2,
@@ -548,13 +579,6 @@ export class DynamoDbStore implements QueueStorage {
       new PutCommand({
         TableName: this.table,
         Item: job,
-      })
-    );
-
-    await this.docClient.send(
-      new DeleteCommand({
-        TableName: this.dlTable,
-        Key: { id: item.id },
       })
     );
 

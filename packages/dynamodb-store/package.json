@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/dynamodb-store",
   "version": "0.1.0",
-  "private": true,
   "description": "DynamoDB storage adapter for Omni-Queue",
   "keywords": [
     "queue",
@@ -39,5 +38,8 @@
     "@aws-sdk/client-dynamodb": "^3.891.0",
     "@aws-sdk/lib-dynamodb": "^3.891.0",
     "@omni-queue/core": "*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

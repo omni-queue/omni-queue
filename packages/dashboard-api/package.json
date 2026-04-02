@@ -1,7 +1,6 @@
 {
   "name": "@omni-queue/dashboard-api",
   "version": "0.1.0",
-  "private": true,
   "description": "HTTP bindings for Omni Queue dashboard APIs",
   "type": "module",
   "main": "./dist/index.cjs",
@@ -31,5 +30,8 @@
     "typescript": "^5.9.3",
     "tsup": "^8.5.1",
     "@types/node": "^20.11.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

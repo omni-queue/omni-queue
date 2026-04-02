@@ -2,18 +2,7 @@
 
 **Goal**: Position omni-queue as a **superior alternative to BullMQ** with **Laravel Horizon's operational excellence**.
 
-## Overview Timeline
-
-```
-2026 Q2         Q3              Q4              2027 Q1+            Q2+
-├─ Phase 1  ├─ Phase 2.1  ├─ Phase 3.1  ├─ Phase 4  ├─ Phase 5      ├─ Phase 6
-│  Delays   │  Metrics    │  Job Flows  │  Adapters │  Reliability  │  Enterprise
-│  Priority │  Dashboard  │  Pause/Drain│  Integr.  │  Security     │  Distributed
-│  Progress │  Archive    │  Timeout    │  CLI Tools│  Operability  │  Multi-region
-│  DLQ      └─────────────└────────────└────────────└───────────────└────────────
-```
-
-## Phase 1: Core Job Lifecycle (Q2 2026)
+## Phase 1: Core Job Lifecycle
 
 ### Objective
 Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
@@ -64,7 +53,7 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [x] Example: Failed job inspection & retry
 - **Estimated**: 2 weeks
 
-## Phase 2: Observability & Dashboard (Q3 2026)
+## Phase 2: Observability & Dashboard
 
 ### 2.1 Metrics Collection & Export **[DONE]**
 - [x] @omni-queue/metrics package
@@ -88,7 +77,7 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [x] Query builder for historical analysis
 - **Estimated**: 2 weeks
 
-## Phase 3: Advanced Features (Q4 2026)
+## Phase 3: Advanced Features
 
 ### 3.1 Job Flows (DAG-based Workflows) **[DONE]**
 - [x] JobFlow builder API
@@ -108,69 +97,69 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [x] Configurable timeout behavior (kill, retry)
 - **Estimated**: 2 weeks
 
-## Phase 4: Ecosystem & Integration (2027 Q1+)
+## Phase 4: Ecosystem & Integration
 
-### 4.1 Official Adapters
+### 4.1 Official Adapters **[DONE]**
 - [x] @omni-queue/mysql-store
 - [x] @omni-queue/postgres-store
 - [x] @omni-queue/mongo-store
 - [x] @omni-queue/dynamodb-store
 
-### 4.2 Framework Integrations
+### 4.2 Framework Integrations **[DONE]**
 - [x] @omni-queue/express-adapter (default via dashboard-api)
 - [x] @omni-queue/next-adapter
 - [x] @omni-queue/fastify-adapter
 - [x] @omni-queue/nest-adapter
 - [x] @omni-queue/hono-adapter
 
-### 4.3 CLI Tooling
+### 4.3 CLI Tooling **[DONE]**
 - [x] `omni-queue init`
 - [x] `omni-queue generate job`
 - [x] `omni-queue monitor`
 - [x] `omni-queue dlq:*` commands
 
-### 4.4 BullMQ Parity Gap Sprint (Pre-Phase 5)
+### 4.4 BullMQ Parity Gap Sprint (Pre-Phase 5) **[DONE]**
 - [x] Durable repeatable jobs (persisted schedules + restart recovery)
 - [x] Idempotency keys and deduplication strategy
 - [x] Job administration operations (`promote`, `remove`, `clean`, `obliterate`)
 - [x] Unified event stream contract for queue/worker/job lifecycle
 
-## Phase 5: Production Readiness & Adoption (2027 Q2+)
+## Phase 5: Production Readiness & Adoption
 
-### 5.1 Reliability Hardening
+### 5.1 Reliability Hardening **[DONE]**
 - [x] Exactly-once/idempotency guidance and helper APIs
 - [x] Backpressure and circuit-breaker strategy at queue/worker level
 - [x] Poison-message policy templates (quarantine, auto-snooze, escalation)
 
-### 5.2 Security & Multi-Tenancy
+### 5.2 Security & Multi-Tenancy **[DONE]**
 - [x] Dashboard/API RBAC roles (viewer/operator/admin)
 - [x] API tokens with scoped permissions and rotation guidance
 - [x] Tenant isolation model for queues, DLQ, and metrics boundaries
 
-### 5.3 Operability at Scale
+### 5.3 Operability at Scale **[DONE]**
 - [x] SLO-focused dashboards (latency, success rate, recovery time)
 - [x] Incident playbooks and runbooks for common failure modes
 - [x] Capacity planning toolkit for worker and storage sizing
 
-### 5.4 Developer Adoption & Migration
+### 5.4 Developer Adoption & Migration **[DONE]**
 - [x] Migration toolkit and compatibility layer from BullMQ
 - [x] Framework quickstarts for all official adapters
 - [x] Opinionated templates for API jobs, workflow jobs, and scheduled jobs
 
-### 5.5 BullMQ Parity Closure (Hard Gaps)
+### 5.5 BullMQ Parity Closure (Hard Gaps) **[DONE]**
 - [x] Strict worker sandboxing policy (filesystem/env/network allowlists) for isolated execution
 - [x] Custom retry logic surface (error-aware retry strategy hooks)
 - [x] Per-job backoff hooks (`Job.backoff(attempt)`) with runtime precedence
 - [x] Per-consumer rate limiting (in addition to current queue-level limits)
 
-**Execution checklist (5.5)**
+**Execution checklist (5.5)** **[DONE]**
 - [x] Add config contracts for sandbox policy, retry policy, and per-consumer limits
 - [x] Wire process-isolation sandbox enforcement path (runtime → isolation → process pool/worker)
 - [x] Implement retry decision evaluation in worker runtime (backward-compatible)
 - [x] Add limiter coordinator in resilient worker and fairness tests
 - [x] Publish migration notes + parity matrix update after implementation
 
-## Phase 6: Scaling & Enterprise Features (2027 Q3+)
+## Phase 6: Scaling & Enterprise Features
 
 **Goal**: Multi-region deployments, enterprise integrations, and advanced queue patterns for hyperscale.
 
@@ -206,8 +195,8 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 
 ## Success Metrics
 
-| Metric | Current | Q2 Target | Q4 Target |
-|--------|---------|-----------|-----------|
+| Metric | Current | Near-term target | Long-term target |
+|--------|---------|------------------|------------------|
 | Feature Completeness vs BullMQ | ~30% | ~50% | ~80% |
 | GitHub Stars | - | 500+ | 1500+ |
 | npm Downloads/week | - | 5k+ | 20k+ |
@@ -232,14 +221,21 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 /docs/operations/
 ├── ROADMAP.md                          (this file)
 ├── phase-1/
-│   ├── delayed-jobs-design.md         # Technical design
-│   ├── priorities-design.md
-│   ├── progress-design.md
-│   └── dlq-design.md
+│   ├── phase-0-foundation.md          # Foundation implementation and architecture baseline
+│   ├── delayed-jobs-design.md         # Delayed and scheduled jobs technical design
+│   └── phase-1.1-implementation-summary.md
+├── phase-2/
+│   └── phase-2-observability-dashboard.md
+├── phase-3/
+│   └── phase-3-advanced-features.md
+├── phase-4/
+│   └── phase-4-ecosystem-integration.md
 ├── phase-5/
-│   └── phase-5-proposal.md            # Production readiness plan
+│   ├── phase-5-proposal.md            # Production readiness plan
 │   ├── incident-playbooks.md          # Incident response runbooks
 │   └── capacity-planning-toolkit.md   # Sizing formulas and examples
+├── phase-6/
+│   └── phase-6-proposal.md
 ├── migration-guides/
 │   └── from-bullmq.md                 # BullMQ compatibility and migration path
 ├── quickstarts/
@@ -247,21 +243,10 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 │   ├── next-adapter.md                # Next.js route handler pattern
 │   ├── fastify-adapter.md             # Fastify route pattern
 │   ├── nest-adapter.md                # Nest service/controller pattern
-│   └── hono-adapter.md                # Hono edge-style pattern
-├── architecture/
-│   ├── delayed-job-promoter.md        # System components
-│   ├── job-lifecycle.md
-│   └── storage-adapter-protocol.md
-├── api-reference/
-│   ├── job-manager-api.md             # API docs
-│   ├── scheduler-api.md
-│   └── dlq-api.md
-├── examples/
-│   ├── delayed-jobs.ts                # Code samples
-│   ├── scheduling-jobs.ts
-│   └── dlq-management.ts
-└── migration-guides/
-    └── from-bullmq.md                 # Migration docs
+│   ├── hono-adapter.md                # Hono edge-style pattern
+│   ├── elysia-adapter.md              # Elysia/Bun pattern
+│   └── dashboard-integration.md
+└── feature-catalog.md                 # Canonical implementation inventory
 ```
 
 ## Current Status

@@ -4,6 +4,7 @@ import { WorkerConfig } from '../interfaces/worker-config';
 import { RateLimitCoordinator } from './rate-limiter';
 import { JobManager } from './worker-runtime';
 import type { LifecycleEventInput } from './lifecycle-events';
+import { sleep } from '../utils';
 
 export class ResilientWorker {
   private running = false;
@@ -48,6 +49,7 @@ export class ResilientWorker {
 
   async tick() {
     const queueOrder = this.getQueueOrder();
+    let processedAnyJobs = false;
 
     for (const queueName of queueOrder) {
       if (this.canProcessQueue && !this.canProcessQueue(queueName)) {
@@ -82,6 +84,8 @@ export class ResilientWorker {
         leaseMs: queueConfig.visibilityTimeout || 30000,
       });
 
+      processedAnyJobs ||= jobs.length > 0;
+
       for (const job of jobs) {
         try {
           await this.runtime.execute(job);
@@ -90,6 +94,10 @@ export class ResilientWorker {
           this.onExecutionFailed(queueName, queueConfig, error);
         }
       }
+    }
+
+    if (!processedAnyJobs) {
+      await sleep(25);
     }
   }
 
@@ -282,8 +290,4 @@ export class ResilientWorker {
   stop() {
     this.running = false;
   }
-}
-
-function sleep(ms: number) {
-  return new Promise((res) => setTimeout(res, ms));
 }
