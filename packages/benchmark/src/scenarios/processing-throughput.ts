@@ -25,6 +25,7 @@ import {
   meanOf,
   printReport,
   toOps,
+  withTimeout,
 } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
 
@@ -169,16 +170,19 @@ async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioRes
   const durations: number[] = [];
 
   for (let round = 0; round < opts.warmupIterations + opts.iterations; round++) {
-    const producerQ = new BeeQueue('bench-bee-proc', {
+    const queueName = `bench-bee-proc-${round}-${Date.now()}`;
+    const producerQ = new BeeQueue(queueName, {
       redis: { url: opts.redisUrl },
       isWorker: false,
+      getEvents: false,
     });
-    const workerQ = new BeeQueue('bench-bee-proc', {
+    const workerQ = new BeeQueue(queueName, {
       redis: { url: opts.redisUrl },
       isWorker: true,
+      getEvents: true,
     });
-
-    await producerQ.destroy();
+    await producerQ.ready();
+    await workerQ.ready();
 
     const start = performance.now();
 
@@ -186,17 +190,32 @@ async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioRes
       await producerQ.createJob({ index: i }).save();
     }
 
-    await new Promise<void>((resolve) => {
-      let done = 0;
-      workerQ.process(opts.concurrency, async () => { /* no-op */ });
-      workerQ.on('succeeded', () => { if (++done >= JOBS_PER_ROUND) resolve(); });
-      workerQ.on('failed', () => { if (++done >= JOBS_PER_ROUND) resolve(); });
-    });
+    await withTimeout(
+      new Promise<void>((resolve) => {
+        let done = 0;
+        const onSettled = () => {
+          done++;
+          if (done >= JOBS_PER_ROUND) {
+            workerQ.removeListener('succeeded', onSettled);
+            workerQ.removeListener('failed', onSettled);
+            resolve();
+          }
+        };
+
+        workerQ.on('succeeded', onSettled);
+        workerQ.on('failed', onSettled);
+        workerQ.process(opts.concurrency, async () => { /* no-op */ });
+      }),
+      30000,
+      'bee-queue processing round',
+    );
 
     const elapsed = performance.now() - start;
 
-    await workerQ.destroy();
-    await producerQ.destroy();
+    await workerQ.destroy().catch(() => {});
+    await producerQ.destroy().catch(() => {});
+    await workerQ.close(0).catch(() => {});
+    await producerQ.close(0).catch(() => {});
 
     if (round >= opts.warmupIterations) durations.push(elapsed);
   }

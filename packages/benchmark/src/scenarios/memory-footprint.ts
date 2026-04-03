@@ -18,7 +18,7 @@ import {
   defineWorkers,
   Job,
 } from '@vasto/core';
-import { buildReport, DEFAULT_OPTIONS, printReport, rssInMb } from '../harness.js';
+import { buildReport, DEFAULT_OPTIONS, printReport, rssInMb, withTimeout } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
 
 const JOB_COUNT = 10_000;
@@ -104,22 +104,30 @@ async function runBullMQ(opts: Required<ScenarioOptions>): Promise<ScenarioResul
 // ---------------------------------------------------------------------------
 
 async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioResult> {
-  const queue = new BeeQueue('bench-bee-mem', {
+  const queue = new BeeQueue(`bench-bee-mem-${Date.now()}`, {
     redis: { url: opts.redisUrl },
     isWorker: false,
+    getEvents: false,
   });
-  await queue.destroy();
+  await queue.ready();
 
   const baselineMb = rssInMb();
 
-  for (let i = 0; i < JOB_COUNT; i++) {
-    await queue.createJob({ index: i, data: 'benchmark-payload-memory-test' }).save();
-  }
+  await withTimeout(
+    (async () => {
+      for (let i = 0; i < JOB_COUNT; i++) {
+        await queue.createJob({ index: i, data: 'benchmark-payload-memory-test' }).save();
+      }
+    })(),
+    30000,
+    'bee-queue memory round',
+  );
 
   await new Promise((r) => setTimeout(r, 200));
   const peakMb = rssInMb();
 
-  await queue.destroy();
+  await queue.destroy().catch(() => {});
+  await queue.close(0).catch(() => {});
 
   return {
     library: 'bee-queue',

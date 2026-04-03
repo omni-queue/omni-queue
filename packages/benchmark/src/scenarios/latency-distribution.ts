@@ -22,6 +22,7 @@ import {
   percentiles,
   meanOf,
   printReport,
+  withTimeout,
 } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
 
@@ -137,38 +138,47 @@ async function runBullMQ(opts: Required<ScenarioOptions>): Promise<ScenarioResul
 async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioResult> {
   const latencies: number[] = [];
 
-  const producerQ = new BeeQueue('bench-bee-lat', {
+  const queueName = `bench-bee-lat-${Date.now()}`;
+  const producerQ = new BeeQueue(queueName, {
     redis: { url: opts.redisUrl },
     isWorker: false,
+    getEvents: false,
   });
-  const workerQ = new BeeQueue('bench-bee-lat', {
+  const workerQ = new BeeQueue(queueName, {
     redis: { url: opts.redisUrl },
     isWorker: true,
+    getEvents: true,
   });
-
-  await producerQ.destroy();
+  await producerQ.ready();
+  await workerQ.ready();
 
   let sampleCount = 0;
   const total = SAMPLE_SIZE + opts.warmupIterations;
 
-  await new Promise<void>((resolve) => {
-    workerQ.process(1, async (job: BeeQueue.Job<{ enqueuedAt: number }>) => {
-      const latency = performance.now() - job.data.enqueuedAt;
-      if (sampleCount >= opts.warmupIterations) latencies.push(latency);
-      sampleCount++;
-      if (sampleCount >= total) resolve();
-    });
+  await withTimeout(
+    new Promise<void>((resolve) => {
+      workerQ.process(1, async (job: BeeQueue.Job<{ enqueuedAt: number }>) => {
+        const latency = performance.now() - job.data.enqueuedAt;
+        if (sampleCount >= opts.warmupIterations) latencies.push(latency);
+        sampleCount++;
+        if (sampleCount >= total) resolve();
+      });
 
-    (async () => {
-      for (let i = 0; i < total; i++) {
-        await producerQ.createJob({ enqueuedAt: performance.now() }).save();
-        await new Promise((r) => setTimeout(r, 5));
-      }
-    })();
-  });
+      (async () => {
+        for (let i = 0; i < total; i++) {
+          await producerQ.createJob({ enqueuedAt: performance.now() }).save();
+          await new Promise((r) => setTimeout(r, 5));
+        }
+      })();
+    }),
+    30000,
+    'bee-queue latency round',
+  );
 
-  await workerQ.destroy();
-  await producerQ.destroy();
+  await workerQ.destroy().catch(() => {});
+  await producerQ.destroy().catch(() => {});
+  await workerQ.close(0).catch(() => {});
+  await producerQ.close(0).catch(() => {});
 
   return {
     library: 'bee-queue',

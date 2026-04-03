@@ -19,7 +19,7 @@ import {
   defineWorkers,
   Job,
 } from '@vasto/core';
-import { buildReport, DEFAULT_OPTIONS, meanOf, printReport } from '../harness.js';
+import { buildReport, DEFAULT_OPTIONS, meanOf, printReport, withTimeout } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
 
 const SAMPLE_SIZE = 50;
@@ -91,7 +91,8 @@ async function runVastoMemory(opts: Required<ScenarioOptions>): Promise<Scenario
 async function runBullMQ(opts: Required<ScenarioOptions>): Promise<ScenarioResult> {
   const drifts: number[] = [];
 
-  const queue = new BullMQQueue('bench-bullmq-delay', {
+  const queueName = `bench-bullmq-delay-${Date.now()}`;
+  const queue = new BullMQQueue(queueName, {
     connection: { url: opts.redisUrl },
   });
 
@@ -100,24 +101,32 @@ async function runBullMQ(opts: Required<ScenarioOptions>): Promise<ScenarioResul
   const total = SAMPLE_SIZE + opts.warmupIterations;
   let sampleCount = 0;
 
-  await new Promise<void>((resolve) => {
-    const worker = new BullMQWorker(
-      'bench-bullmq-delay',
-      async (job) => {
-        const scheduledFor = job.data.scheduledFor as number;
-        const drift = Math.max(0, Date.now() - scheduledFor);
-        if (sampleCount >= opts.warmupIterations) drifts.push(drift);
-        sampleCount++;
-        if (sampleCount >= total) void worker.close().then(resolve);
-      },
-      { connection: { url: opts.redisUrl }, concurrency: 10 },
-    );
-  });
+  await withTimeout(
+    new Promise<void>((resolve) => {
+      const worker = new BullMQWorker(
+        queueName,
+        async (job) => {
+          const scheduledFor = job.data.scheduledFor as number;
+          const drift = Math.max(0, Date.now() - scheduledFor);
+          if (sampleCount >= opts.warmupIterations) drifts.push(drift);
+          sampleCount++;
+          if (sampleCount >= total) {
+            void worker.close().then(resolve);
+          }
+        },
+        { connection: { url: opts.redisUrl }, concurrency: 10 },
+      );
 
-  // Enqueue after worker is ready
-  for (let i = 0; i < total; i++) {
-    await queue.add('bench', { scheduledFor: Date.now() + DELAY_MS }, { delay: DELAY_MS });
-  }
+      void (async () => {
+        await worker.waitUntilReady();
+        for (let i = 0; i < total; i++) {
+          await queue.add('bench', { scheduledFor: Date.now() + DELAY_MS }, { delay: DELAY_MS });
+        }
+      })();
+    }),
+    30000,
+    'bullmq delayed round',
+  );
 
   await queue.obliterate({ force: true }).catch(() => {});
   await queue.close();

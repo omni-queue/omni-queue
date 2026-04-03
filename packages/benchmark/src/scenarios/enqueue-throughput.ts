@@ -26,6 +26,7 @@ import {
   printReport,
   runRounds,
   toOps,
+  withTimeout,
 } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
 
@@ -111,19 +112,27 @@ async function runBullMQ(opts: Required<ScenarioOptions>): Promise<ScenarioResul
 // ---------------------------------------------------------------------------
 
 async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioResult> {
-  const queue = new BeeQueue('bench-bee', {
-    redis: { url: opts.redisUrl },
-    isWorker: false,
-  });
+  const durations: number[] = [];
 
-  const durations = await runRounds(async () => {
-    const jobs = Array.from({ length: JOBS_PER_ROUND }, (_, i) =>
-      queue.createJob({ index: i, data: 'benchmark-payload' }).save(),
-    );
-    await Promise.all(jobs);
-  }, opts);
+  for (let round = 0; round < opts.warmupIterations + opts.iterations; round++) {
+    const queueName = `bench-bee-enqueue-${round}-${Date.now()}`;
+    const queue = new BeeQueue(queueName, {
+      redis: { url: opts.redisUrl },
+      isWorker: false,
+      getEvents: false,
+      storeJobs: false,
+    });
+    await queue.ready();
 
-  await queue.destroy();
+    const duration = await measureBeeEnqueueRound(queue, round);
+
+    await queue.destroy().catch(() => {});
+    await queue.close(0).catch(() => {});
+
+    if (round >= opts.warmupIterations) {
+      durations.push(duration);
+    }
+  }
 
   const mean = meanOf(durations);
   return {
@@ -133,6 +142,20 @@ async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioRes
     ops: toOps(JOBS_PER_ROUND, mean),
     meanMs: mean,
   };
+}
+
+async function measureBeeEnqueueRound(queue: BeeQueue, round: number): Promise<number> {
+  const start = performance.now();
+  await withTimeout(
+    Promise.all(
+      Array.from({ length: JOBS_PER_ROUND }, (_, i) =>
+        queue.createJob({ index: i, data: 'benchmark-payload', round }).save(),
+      ),
+    ).then(() => undefined),
+    30000,
+    'bee-queue enqueue round',
+  );
+  return performance.now() - start;
 }
 
 // ---------------------------------------------------------------------------
