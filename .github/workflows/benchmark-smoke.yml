@@ -1,0 +1,54 @@
+name: Benchmark Smoke
+
+on:
+  pull_request:
+    paths:
+      - packages/benchmark/**
+      - packages/core/**
+      - packages/redis-store/**
+      - package.json
+      - package-lock.json
+  workflow_dispatch:
+
+jobs:
+  benchmark-smoke:
+    runs-on: ubuntu-latest
+    services:
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build core packages
+        run: npm run build:core
+
+      - name: Run benchmark smoke suite
+        env:
+          REDIS_URL: redis://localhost:6379
+        run: |
+          cd packages/benchmark
+          node --loader ts-node/esm src/runner.ts --scenario enqueue-throughput --iterations 2 --warmup 1 --save
+          node --loader ts-node/esm src/runner.ts --scenario latency-distribution --iterations 2 --warmup 1 --save
+
+      - name: Upload benchmark results
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-smoke-results
+          path: packages/benchmark/results/run-*.json

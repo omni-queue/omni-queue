@@ -1,0 +1,36 @@
+{
+  "name": "@vasto/benchmark",
+  "version": "0.1.0",
+  "description": "Performance benchmarks for Vasto against popular job queue libraries",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit",
+    "infra:up": "docker compose -f docker-compose.yml up -d",
+    "infra:down": "docker compose -f docker-compose.yml down",
+    "infra:reset": "docker compose -f docker-compose.yml down -v && docker compose -f docker-compose.yml up -d",
+    "run:all": "node --loader ts-node/esm src/runner.ts --all",
+    "run:enqueue": "node --loader ts-node/esm src/runner.ts --scenario enqueue-throughput",
+    "run:processing": "node --loader ts-node/esm src/runner.ts --scenario processing-throughput",
+    "run:latency": "node --loader ts-node/esm src/runner.ts --scenario latency-distribution",
+    "run:concurrency": "node --loader ts-node/esm src/runner.ts --scenario concurrency-scaling",
+    "run:delayed": "node --loader ts-node/esm src/runner.ts --scenario delayed-job-accuracy",
+    "run:memory": "node --loader ts-node/esm src/runner.ts --scenario memory-footprint"
+  },
+  "dependencies": {
+    "@vasto/core": "*",
+    "@vasto/redis-store": "*"
+  },
+  "devDependencies": {
+    "bullmq": "^5.28.6",
+    "bee-queue": "^1.7.1",
+    "pg-boss": "^10.0.0",
+    "ioredis": "^5.3.2",
+    "pg": "^8.11.0",
+    "tinybench": "^2.9.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.4.5",
+    "@types/node": "^20.11.5",
+    "@types/pg": "^8.11.0"
+  }
+}
