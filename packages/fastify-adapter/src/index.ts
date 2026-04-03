@@ -1,24 +1,24 @@
 import http from 'node:http';
 import {
-  bindOmniQueueWebSocket,
-  omniQueueAdapter,
+  bindVastoWebSocket,
+  vastoAdapter,
   type DashboardApiOptions,
   type DashboardWebSocketController,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 
 export interface FastifyLike {
   use?: (...args: unknown[]) => unknown;
 }
 
-export function omniQueueFastifyAdapter(options: DashboardApiOptions) {
-  return omniQueueAdapter(options);
+export function vastoFastifyAdapter(options: DashboardApiOptions) {
+  return vastoAdapter(options);
 }
 
-export function bindOmniQueueFastifyWebSocket(
+export function bindVastoFastifyWebSocket(
   server: http.Server,
   options: DashboardApiOptions
 ): DashboardWebSocketController {
-  return bindOmniQueueWebSocket(server, options);
+  return bindVastoWebSocket(server, options);
 }
 
 export function registerFastifyAdapter(app: FastifyLike, options: DashboardApiOptions): void {
@@ -28,5 +28,5 @@ export function registerFastifyAdapter(app: FastifyLike, options: DashboardApiOp
     );
   }
 
-  app.use(omniQueueFastifyAdapter(options));
+  app.use(vastoFastifyAdapter(options));
 }

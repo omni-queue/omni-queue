@@ -1,14 +1,14 @@
 {
-  "name": "@omni-queue/elysia-adapter",
+  "name": "@vasto/elysia-adapter",
   "version": "0.1.0",
-  "description": "Elysia adapter for Omni-Queue dashboard integration",
+  "description": "Elysia adapter for Vasto dashboard integration",
   "keywords": [
     "queue",
     "dashboard",
     "elysia",
     "bun",
     "adapter",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -35,7 +35,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/dashboard-api": "*",
+    "@vasto/dashboard-api": "*",
     "elysia": "^1.3.9",
     "express": "^4.21.2"
   },

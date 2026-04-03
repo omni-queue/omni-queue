@@ -13,7 +13,7 @@
 
 import fs from 'node:fs';
 import path from 'node:path';
-import { CompletedJobRecord, QueueStorage, LeaseOptions, StoredJob } from '@omni-queue/core';
+import { CompletedJobRecord, QueueStorage, LeaseOptions, StoredJob } from '@vasto/core';
 
 type LeasedJob = StoredJob & { _leaseExpiry: number };
 

@@ -7,7 +7,7 @@ MySQL-backed storage example.
 Set `MYSQL_URL`, for example:
 
 ```bash
-export MYSQL_URL=mysql://user:password@127.0.0.1:3306/omni_queue
+export MYSQL_URL=mysql://user:password@127.0.0.1:3306/vasto
 ```
 
 ## Run

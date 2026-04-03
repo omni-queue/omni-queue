@@ -5,7 +5,7 @@ import type {
   DashboardLoginRequest,
   QueueAdminJobStatus,
   Supervisor,
-} from '@omni-queue/core';
+} from '@vasto/core';
 import { checkAuth, getAllowedQueues, hasDashboardPermission } from '../middleware/request-auth';
 import {
   authenticateDashboardLogin,
@@ -317,7 +317,7 @@ export function buildDashboardRouter(
   });
 
   router.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'omni-queue-dashboard' });
+    res.json({ status: 'ok', service: 'vasto-dashboard' });
   });
 
   router.get('/overview', async (_req, res) => {

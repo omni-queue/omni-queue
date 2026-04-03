@@ -1,4 +1,4 @@
-import { Job } from '@omni-queue/core';
+import { Job } from '@vasto/core';
 
 export class ElysiaEmailJob extends Job<{ to: string; subject: string; body: string }> {
   static jobName = 'elysia-email';

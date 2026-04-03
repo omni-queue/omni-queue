@@ -1,15 +1,15 @@
-# `@omni-queue/express-adapter`
+# `@vasto/express-adapter`
 
-Default framework adapter for Omni-Queue dashboard integration.
+Default framework adapter for Vasto dashboard integration.
 
-Built on top of `@omni-queue/dashboard-api` and intended for Express/Connect-compatible apps.
+Built on top of `@vasto/dashboard-api` and intended for Express/Connect-compatible apps.
 
 This package does not start an HTTP server for you. Mount it into your existing Express app, optionally serve the built UI, and bind WebSocket upgrades on the server you own.
 
 ## Installation
 
 ```bash
-npm install @omni-queue/express-adapter
+npm install @vasto/express-adapter
 ```
 
 ## Usage
@@ -20,14 +20,14 @@ import path from 'node:path';
 import {
   createExpressAdapter,
   createExpressWebSocketBinding,
-} from '@omni-queue/express-adapter';
+} from '@vasto/express-adapter';
 
 const app = express();
 app.use(
   createExpressAdapter({
     supervisor,
-    apiBase: '/api/omni-queue',
-    uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
+    apiBase: '/api/vasto',
+    uiDir: path.resolve(process.cwd(), 'public/vasto-dashboard'),
     uiBase: '/',
     protectUiWithAuth: false,
   })
@@ -37,7 +37,7 @@ const server = app.listen(3210);
 
 createExpressWebSocketBinding(server, {
   supervisor,
-  apiBase: '/api/omni-queue',
+  apiBase: '/api/vasto',
 });
 ```
 
@@ -46,10 +46,10 @@ createExpressWebSocketBinding(server, {
 Publish the UI assets into that folder with:
 
 ```bash
-queue dashboard:publish --out=./public/omni-queue-dashboard
+queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@omni-queue/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
 
 ## Runtime configuration
 
@@ -57,9 +57,9 @@ If WebSocket upgrades are unavailable (proxy, serverless platform, CDN), force p
 
 ```html
 <script>
-  window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+  window.__VASTO_DASHBOARD_CONFIG__ = {
     transport: 'polling',          // 'auto' (default) | 'polling'
-    endpoint:  '/api/omni-queue',  // must match the apiBase option above
+    endpoint:  '/api/vasto',  // must match the apiBase option above
   };
 </script>
 ```

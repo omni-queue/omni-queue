@@ -11,7 +11,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 /** Numeric sort weight (lower = dequeued first). */
 const PRIORITY_SCORES: Record<JobPriority, number> = {
@@ -41,7 +41,7 @@ export interface RedisStoreConfig {
   client: Redis | RedisOptions;
 
   /**
-   * Key namespace prefix. Defaults to `omni`.
+   * Key namespace prefix. Defaults to `vasto`.
    */
   prefix?: string;
 }
@@ -49,12 +49,12 @@ export interface RedisStoreConfig {
 /**
  * Redis key layout:
  *
- *  omni:job:{id}               → JSON string of StoredJob
- *  omni:queue:{name}:ready     → sorted set, score = createdAt  (pending jobs)
- *  omni:queue:{name}:deferred  → sorted set, score = delayUntil (delayed jobs)
- *  omni:queue:{name}:leased    → sorted set, score = leaseUntil (inflight jobs)
- *  omni:dead:{id}              → JSON string of dead-lettered StoredJob
- *  omni:queue:{name}:dead      → sorted set, score = failedAt   (dead letter index)
+ *  vasto:job:{id}               → JSON string of StoredJob
+ *  vasto:queue:{name}:ready     → sorted set, score = createdAt  (pending jobs)
+ *  vasto:queue:{name}:deferred  → sorted set, score = delayUntil (delayed jobs)
+ *  vasto:queue:{name}:leased    → sorted set, score = leaseUntil (inflight jobs)
+ *  vasto:dead:{id}              → JSON string of dead-lettered StoredJob
+ *  vasto:queue:{name}:dead      → sorted set, score = failedAt   (dead letter index)
  */
 export class RedisStore implements QueueStorage {
   private client: Redis;
@@ -175,7 +175,7 @@ return ids
 
   constructor(config: RedisStoreConfig) {
     this.client = config.client instanceof Redis ? config.client : new Redis(config.client);
-    this.prefix = config.prefix ?? 'omni';
+    this.prefix = config.prefix ?? 'vasto';
   }
 
   // ---------------------------------------------------------------------------

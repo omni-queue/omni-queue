@@ -1,4 +1,4 @@
-import type { Job, Plugin, StoredJob } from '@omni-queue/core';
+import type { Job, Plugin, StoredJob } from '@vasto/core';
 
 export interface LoggingPluginLogger {
     debug?(message: string, meta?: Record<string, unknown>): void;
@@ -37,7 +37,7 @@ function buildMetaFromJob(job: Job | StoredJob, includePayload: boolean): Record
 export function LoggingPlugin(options: LoggingPluginOptions = {}): Plugin {
     const logger = options.logger ?? console;
     const includePayload = options.includePayload ?? false;
-    const prefix = options.prefix ?? '[omni-queue]';
+    const prefix = options.prefix ?? '[vasto]';
 
     return {
         name: 'LoggingPlugin',

@@ -10,7 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
-    "@omni-queue/mysql-store": "*"
+    "@vasto/core": "*",
+    "@vasto/mysql-store": "*"
   }
 }

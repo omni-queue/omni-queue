@@ -4,8 +4,8 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
-import { PostgresStore } from '@omni-queue/postgres-store';
+} from '@vasto/core';
+import { PostgresStore } from '@vasto/postgres-store';
 
 class PostgresEmailJob extends Job<{ to: string; subject: string }> {
   static jobName = 'postgres-email';

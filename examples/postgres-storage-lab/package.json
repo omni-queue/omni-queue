@@ -10,7 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
-    "@omni-queue/postgres-store": "*"
+    "@vasto/core": "*",
+    "@vasto/postgres-store": "*"
   }
 }

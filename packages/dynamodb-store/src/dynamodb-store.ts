@@ -29,7 +29,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 type JobDoc = StoredJob & {
   priorityRank: number;
@@ -118,9 +118,9 @@ export class DynamoDbStore implements QueueStorage {
       this.ownsBaseClient = true;
     }
 
-    this.table = config.tableName ?? 'omni_queue_jobs';
-    this.dlTable = config.deadLetterTableName ?? 'omni_queue_dead_letter';
-    this.completedTable = config.completedTableName ?? 'omni_queue_completed';
+    this.table = config.tableName ?? 'vasto_jobs';
+    this.dlTable = config.deadLetterTableName ?? 'vasto_dead_letter';
+    this.completedTable = config.completedTableName ?? 'vasto_completed';
 
     this.archiveRetentionMs =
       typeof config.archiveRetentionMs === 'number' &&

@@ -11,7 +11,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 export interface PostgresStoreConfig {
   /**
@@ -20,17 +20,17 @@ export interface PostgresStoreConfig {
   pool: Pool | PoolConfig;
 
   /**
-   * Table name for the jobs queue. Defaults to `omni_queue_jobs`.
+   * Table name for the jobs queue. Defaults to `vasto_jobs`.
    */
   tableName?: string;
 
   /**
-   * Table name for dead-letter jobs. Defaults to `omni_queue_dead_letter`.
+   * Table name for dead-letter jobs. Defaults to `vasto_dead_letter`.
    */
   deadLetterTableName?: string;
 
   /**
-   * Table name for completed jobs history. Defaults to `omni_queue_completed`.
+   * Table name for completed jobs history. Defaults to `vasto_completed`.
    */
   completedTableName?: string;
 
@@ -55,9 +55,9 @@ export class PostgresStore implements QueueStorage {
 
   constructor(config: PostgresStoreConfig) {
     this.pool = config.pool instanceof Pool ? config.pool : new Pool(config.pool);
-    this.table = config.tableName ?? 'omni_queue_jobs';
-    this.dlTable = config.deadLetterTableName ?? 'omni_queue_dead_letter';
-    this.completedTable = config.completedTableName ?? 'omni_queue_completed';
+    this.table = config.tableName ?? 'vasto_jobs';
+    this.dlTable = config.deadLetterTableName ?? 'vasto_dead_letter';
+    this.completedTable = config.completedTableName ?? 'vasto_completed';
     this.archiveRetentionMs =
       typeof config.archiveRetentionMs === 'number' && Number.isFinite(config.archiveRetentionMs) && config.archiveRetentionMs > 0
         ? Math.floor(config.archiveRetentionMs)

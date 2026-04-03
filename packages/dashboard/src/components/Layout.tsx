@@ -72,8 +72,8 @@ export function Layout() {
       >
         <div className="flex items-center justify-between h-16 px-5 border-b border-slate-800">
           <div className="flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">OQ</div>
-            <span className="font-semibold tracking-tight text-sm">Omni Queue</span>
+            <div className="w-7 h-7 rounded-lg bg-indigo-600 flex items-center justify-center text-white text-xs font-bold">V</div>
+            <span className="font-semibold tracking-tight text-sm">Vasto</span>
           </div>
           <button onClick={() => setSidebarOpen(false)} className="lg:hidden text-slate-400 hover:text-white">
             <X className="h-4 w-4" />

@@ -1,7 +1,7 @@
 {
-  "name": "@omni-queue/core",
+  "name": "@vasto/core",
   "version": "0.1.0",
-  "description": "Core abstractions and interfaces for Omni-Queue",
+  "description": "Core abstractions and interfaces for Vasto",
   "keywords": [
     "queue",
     "job",
@@ -14,7 +14,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/binarygeotech/omni-queue.git",
+    "url": "https://github.com/binarygeotech/vasto.git",
     "directory": "packages/core"
   },
   "type": "module",

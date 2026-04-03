@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@fastify/middie": "^9.0.3",
-    "@omni-queue/core": "*",
-    "@omni-queue/fastify-adapter": "*",
+    "@vasto/core": "*",
+    "@vasto/fastify-adapter": "*",
     "fastify": "^5.6.1"
   },
   "devDependencies": {
-    "@omni-queue/cli": "*"
+    "@vasto/cli": "*"
   }
 }

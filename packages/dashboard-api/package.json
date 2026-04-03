@@ -1,7 +1,7 @@
 {
-  "name": "@omni-queue/dashboard-api",
+  "name": "@vasto/dashboard-api",
   "version": "0.1.0",
-  "description": "HTTP bindings for Omni Queue dashboard APIs",
+  "description": "HTTP bindings for Vasto dashboard APIs",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
@@ -23,7 +23,7 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@omni-queue/core": "*"
+    "@vasto/core": "*"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

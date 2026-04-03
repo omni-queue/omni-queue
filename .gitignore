@@ -52,4 +52,4 @@ tmp/
 examples/*/queue-data
 examples/*/dist
 examples/*/node_modules
-examples/*/public/omni-queue-dashboard
+examples/*/public/vasto-dashboard

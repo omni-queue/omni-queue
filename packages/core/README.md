@@ -1,6 +1,6 @@
-# @omni-queue/core
+# @vasto/core
 
-Core runtime package for Omni Queue.
+Core runtime package for Vasto.
 
 ## What this package provides
 
@@ -62,7 +62,7 @@ import {
 	Supervisor,
 	defineQueues,
 	defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 class ExampleJob extends Job<{ value: string }> {
 	static jobName = 'example-job';

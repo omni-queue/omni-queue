@@ -5,7 +5,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 class PrepareAssetJob extends Job<{ assetId: string }> {
   static jobName = 'prepare-asset';

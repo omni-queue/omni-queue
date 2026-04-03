@@ -19,18 +19,18 @@
     "queue:start": "queue start",
     "queue:dashboard": "queue dashboard",
     "queue:workers:list": "queue workers:list",
-    "queue:generate:isolation": "queue generate isolation",
-    "omni:generate:isolation": "omni generate isolation"
+    "queue:generate:isolation": "vasto generate isolation",
+    "vasto:generate:isolation": "vasto generate isolation"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
-    "@omni-queue/dashboard-api": "*",
-    "@omni-queue/otel-plugin": "*",
-    "@omni-queue/plugins": "*",
+    "@vasto/core": "*",
+    "@vasto/dashboard-api": "*",
+    "@vasto/otel-plugin": "*",
+    "@vasto/plugins": "*",
     "express": "^4.21.2"
   },
   "devDependencies": {
-    "@omni-queue/cli": "*",
+    "@vasto/cli": "*",
     "concurrently": "^9.1.0"
   }
 }

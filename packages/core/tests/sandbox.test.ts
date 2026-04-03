@@ -72,13 +72,19 @@ describe('sandboxPolicySignature', () => {
 
 describe('buildSandboxedChildEnv', () => {
   it('returns full env copy when policy is disabled', () => {
-    const base = { HOME: '/home/user', SECRET: 'abc' };
+    const base: NodeJS.ProcessEnv = { NODE_ENV: 'test', HOME: '/home/user', SECRET: 'abc' };
     const result = buildSandboxedChildEnv(base, undefined);
     expect(result).toEqual(base);
   });
 
   it('prunes env to allowlist + essential keys when policy has envAllowlist', () => {
-    const base = { HOME: '/home/user', SECRET: 'abc', MY_VAR: 'keep', PATH: '/usr/bin' };
+    const base: NodeJS.ProcessEnv = {
+      NODE_ENV: 'test',
+      HOME: '/home/user',
+      SECRET: 'abc',
+      MY_VAR: 'keep',
+      PATH: '/usr/bin',
+    };
     const result = buildSandboxedChildEnv(base, {
       enabled: true,
       envAllowlist: ['MY_VAR'],
@@ -90,7 +96,7 @@ describe('buildSandboxedChildEnv', () => {
   });
 
   it('injects SANDBOX_POLICY_ENV into the child env', () => {
-    const result = buildSandboxedChildEnv({}, { enabled: true, denyNetwork: true });
+    const result = buildSandboxedChildEnv({ NODE_ENV: 'test' }, { enabled: true, denyNetwork: true });
     expect(result[SANDBOX_POLICY_ENV]).toBeDefined();
     const policy = JSON.parse(result[SANDBOX_POLICY_ENV]!) as { denyNetwork: boolean };
     expect(policy.denyNetwork).toBe(true);
@@ -108,7 +114,7 @@ describe('parseSandboxPolicy', () => {
   });
 
   it('round-trips through buildSandboxedChildEnv', () => {
-    const base = {};
+    const base: NodeJS.ProcessEnv = { NODE_ENV: 'test' };
     const env = buildSandboxedChildEnv(base, { enabled: true, denyNetwork: true });
     const parsed = parseSandboxPolicy(env[SANDBOX_POLICY_ENV]);
     expect(parsed?.enabled).toBe(true);
@@ -118,7 +124,13 @@ describe('parseSandboxPolicy', () => {
 
 describe('pruneEnvironment', () => {
   it('keeps only allowed keys plus essential builtins', () => {
-    const env = { PATH: '/usr/bin', HOME: '/root', SECRET: 'x', ALLOWED: 'y' };
+    const env: NodeJS.ProcessEnv = {
+      NODE_ENV: 'test',
+      PATH: '/usr/bin',
+      HOME: '/root',
+      SECRET: 'x',
+      ALLOWED: 'y',
+    };
     const result = pruneEnvironment(env, ['ALLOWED']);
     expect('ALLOWED' in result).toBe(true);
     expect('PATH' in result).toBe(true);
@@ -127,7 +139,7 @@ describe('pruneEnvironment', () => {
   });
 
   it('excludes undefined values', () => {
-    const env: NodeJS.ProcessEnv = { FOO: undefined, BAR: 'baz' };
+    const env: NodeJS.ProcessEnv = { NODE_ENV: 'test', FOO: undefined, BAR: 'baz' };
     const result = pruneEnvironment(env, ['FOO', 'BAR']);
     expect('FOO' in result).toBe(false);
     expect(result['BAR']).toBe('baz');

@@ -200,7 +200,7 @@ type DashboardRuntimeConfig = {
 
 declare global {
   interface Window {
-    __OMNI_QUEUE_DASHBOARD_CONFIG__?: DashboardRuntimeConfig;
+    __VASTO_DASHBOARD_CONFIG__?: DashboardRuntimeConfig;
   }
 }
 
@@ -209,7 +209,7 @@ function getRuntimeConfig(): DashboardRuntimeConfig | undefined {
     return undefined;
   }
 
-  return window.__OMNI_QUEUE_DASHBOARD_CONFIG__;
+  return window.__VASTO_DASHBOARD_CONFIG__;
 }
 
 export const API_BASE: string =

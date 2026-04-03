@@ -63,7 +63,7 @@ export function exportPrometheus(
   const lines: string[] = [];
 
   if (includeHelp) {
-    lines.push('# Omni Queue metrics');
+    lines.push('# Vasto metrics');
   }
 
   for (const point of snapshot.counters) appendCounter(lines, point);

@@ -12,7 +12,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@omni-queue/core';
+} from '@vasto/core';
 import { Pool, PoolOptions, RowDataPacket, createPool } from 'mysql2/promise';
 
 export interface MySqlStoreConfig {
@@ -40,9 +40,9 @@ export class MySqlStore implements QueueStorage {
 
   constructor(config: MySqlStoreConfig) {
     this.pool = isPool(config.pool) ? config.pool : createPool(config.pool);
-    this.table = config.tableName ?? 'omni_queue_jobs';
-    this.dlTable = config.deadLetterTableName ?? 'omni_queue_dead_letter';
-    this.completedTable = config.completedTableName ?? 'omni_queue_completed';
+    this.table = config.tableName ?? 'vasto_jobs';
+    this.dlTable = config.deadLetterTableName ?? 'vasto_dead_letter';
+    this.completedTable = config.completedTableName ?? 'vasto_completed';
     this.archiveRetentionMs =
       typeof config.archiveRetentionMs === 'number' && Number.isFinite(config.archiveRetentionMs) && config.archiveRetentionMs > 0
         ? Math.floor(config.archiveRetentionMs)

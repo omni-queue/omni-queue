@@ -12,20 +12,20 @@
     "worker": "npm run generate:isolation && npm run build && node dist/worker.js",
     "dev": "npm run worker",
     "start": "npm run worker",
-    "generate:isolation": "queue generate isolation",
+    "generate:isolation": "vasto generate isolation",
     "dashboard:publish": "queue dashboard:publish",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
-    "@omni-queue/dashboard-api": "*",
-    "@omni-queue/redis-store": "*",
-    "@omni-queue/plugins": "*",
+    "@vasto/core": "*",
+    "@vasto/dashboard-api": "*",
+    "@vasto/redis-store": "*",
+    "@vasto/plugins": "*",
     "express": "^4.21.2",
     "dotenv": "^17.3.1"
   },
   "devDependencies": {
-    "@omni-queue/cli": "*",
+    "@vasto/cli": "*",
     "concurrently": "^9.1.0"
   }
 }

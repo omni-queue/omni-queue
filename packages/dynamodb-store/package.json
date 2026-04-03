@@ -1,14 +1,14 @@
 {
-  "name": "@omni-queue/dynamodb-store",
+  "name": "@vasto/dynamodb-store",
   "version": "0.1.0",
-  "description": "DynamoDB storage adapter for Omni-Queue",
+  "description": "DynamoDB storage adapter for Vasto",
   "keywords": [
     "queue",
     "job",
     "dynamodb",
     "aws",
     "storage",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -37,7 +37,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.891.0",
     "@aws-sdk/lib-dynamodb": "^3.891.0",
-    "@omni-queue/core": "*"
+    "@vasto/core": "*"
   },
   "publishConfig": {
     "access": "public"

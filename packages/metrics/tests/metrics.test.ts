@@ -3,7 +3,7 @@ import { MetricsCollector } from '../src/collector';
 import { exportDataDog, exportPrometheus, exportStatsD } from '../src/exporters';
 import { QueueDepthPoller } from '../src/depth-poller';
 
-describe('@omni-queue/metrics', () => {
+describe('@vasto/metrics', () => {
   it('collects counters, gauges, and histograms', () => {
     const collector = new MetricsCollector();
 
@@ -33,10 +33,10 @@ describe('@omni-queue/metrics', () => {
     expect(prom).toContain('queue_depth');
     expect(prom).toContain('job_duration_ms_count');
 
-    const statsd = exportStatsD(snapshot, { prefix: 'omniq' });
-    expect(statsd.some((line) => line.startsWith('omniq_jobs_processed_total:2|c'))).toBe(true);
+    const statsd = exportStatsD(snapshot, { prefix: 'vasto' });
+    expect(statsd.some((line) => line.startsWith('vasto_jobs_processed_total:2|c'))).toBe(true);
 
-    const datadog = exportDataDog(snapshot, { prefix: 'omniq' });
+    const datadog = exportDataDog(snapshot, { prefix: 'vasto' });
     expect(datadog.some((line) => line.includes('|#queue:emails'))).toBe(true);
   });
 

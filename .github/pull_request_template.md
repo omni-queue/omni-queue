@@ -17,7 +17,7 @@ npm run check-types
 npm run build
 npm test
 REDIS_TEST_URL=redis://127.0.0.1:6380 \
-PG_TEST_URL=postgres://omniq:omniq@127.0.0.1:55432/omniq_test \
+PG_TEST_URL=postgres://vasto:vasto@127.0.0.1:55432/vasto_test \
 RUN_INTEGRATION_TESTS=true \
 npm run test:integration
 ```

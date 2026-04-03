@@ -1,8 +1,8 @@
-import type { Plugin, StoredJob } from '@omni-queue/core';
+import type { Plugin, StoredJob } from '@vasto/core';
 import type { MetricsCollector } from './collector';
 
 /**
- * Auto-collection plugin for Omni Queue runtime hooks.
+ * Auto-collection plugin for Vasto runtime hooks.
  * Captures enqueue, processing duration, failures, and progress updates.
  */
 export class QueueMetricsPlugin implements Plugin {

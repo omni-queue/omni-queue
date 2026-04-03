@@ -1,6 +1,6 @@
 # api-server example
 
-Demonstrates the canonical omni-queue deployment pattern:
+Demonstrates the canonical vasto deployment pattern:
 
 - **API Server** — an HTTP process that accepts requests and *dispatches* jobs to the queue.
 - **Queue Worker** — a separate process running the `Supervisor` that *picks up and executes* jobs.
@@ -55,7 +55,7 @@ npm run server
 ```bash
 curl -X POST http://localhost:3000/jobs/email \
   -H 'content-type: application/json' \
-  -d '{"to":"user@example.com","subject":"Welcome","body":"Hello from omni-queue!"}'
+  -d '{"to":"user@example.com","subject":"Welcome","body":"Hello from vasto!"}'
 ```
 
 Response:
@@ -114,5 +114,5 @@ src/
     send-email.job.ts        Job definition
     index.ts                 Barrel export
   storage/
-    file-queue-storage.ts    Cross-process file-based QueueStorage adapter
+    file-storage.ts    Cross-process file-based QueueStorage adapter
 ```

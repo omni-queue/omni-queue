@@ -7,7 +7,7 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 import { NextEmailJob } from './jobs';
 
 const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');

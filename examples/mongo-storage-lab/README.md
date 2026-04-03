@@ -8,7 +8,7 @@ Set `MONGODB_URL` and optionally `MONGODB_DB`:
 
 ```bash
 export MONGODB_URL=mongodb://127.0.0.1:27017
-export MONGODB_DB=omni_queue
+export MONGODB_DB=vasto
 ```
 
 ## Run

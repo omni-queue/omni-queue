@@ -1,19 +1,19 @@
-# `@omni-queue/mysql-store`
+# `@vasto/mysql-store`
 
-MySQL storage adapter for [Omni-Queue](../../README.md).
+MySQL storage adapter for [Vasto](../../README.md).
 
 Uses `mysql2` with transactional dequeue and `FOR UPDATE SKIP LOCKED` for concurrent safe leasing on MySQL 8+.
 
 ## Installation
 
 ```bash
-npm install @omni-queue/mysql-store mysql2
+npm install @vasto/mysql-store mysql2
 ```
 
 ## Usage
 
 ```ts
-import { MySqlStore } from '@omni-queue/mysql-store';
+import { MySqlStore } from '@vasto/mysql-store';
 
 const store = new MySqlStore({
 	pool: {

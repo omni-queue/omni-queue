@@ -1,6 +1,6 @@
-# `@omni-queue/next-adapter`
+# `@vasto/next-adapter`
 
-Next.js integration adapter for Omni-Queue dashboard API.
+Next.js integration adapter for Vasto dashboard API.
 
 Use the exported Node handler in a Pages Router API catch-all route and host it within your existing Next application.
 
@@ -8,25 +8,25 @@ Use the exported Node handler in a Pages Router API catch-all route and host it 
 
 ```ts
 import path from 'node:path';
-import { omniQueueNextAdapter } from '@omni-queue/next-adapter';
+import { vastoNextAdapter } from '@vasto/next-adapter';
 
-export default omniQueueNextAdapter({
+export default vastoNextAdapter({
   supervisor,
-  apiBase: '/api/omni-queue',
-  uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
+  apiBase: '/api/vasto',
+  uiDir: path.resolve(process.cwd(), 'public/vasto-dashboard'),
   protectUiWithAuth: false,
 });
 ```
 
-If you own the underlying Node server, use `bindOmniQueueNextWebSocket()` to attach dashboard WebSocket upgrades with the same auth settings.
+If you own the underlying Node server, use `bindVastoNextWebSocket()` to attach dashboard WebSocket upgrades with the same auth settings.
 
 If WebSocket upgrades are not available in your Next deployment model, prefer runtime transport override in your host page/template (no dashboard rebuild required):
 
 ```html
 <script>
-  window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+  window.__VASTO_DASHBOARD_CONFIG__ = {
     transport: 'polling',          // 'auto' (default) | 'polling'
-    endpoint:  '/api/omni-queue',  // must match the apiBase option above
+    endpoint:  '/api/vasto',  // must match the apiBase option above
   };
 </script>
 ```
@@ -36,7 +36,7 @@ You can also test per-request with the URL query param: `?transport=polling`. Fo
 Publish the UI assets into that folder with:
 
 ```bash
-queue dashboard:publish --out=./public/omni-queue-dashboard
+queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@omni-queue/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.

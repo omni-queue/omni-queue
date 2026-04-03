@@ -1,26 +1,26 @@
 import http from 'node:http';
 import {
-  bindOmniQueueWebSocket,
-  omniQueueAdapter,
+  bindVastoWebSocket,
+  vastoAdapter,
   type DashboardApiOptions,
   type DashboardWebSocketController,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 
 export interface NestLikeApplication {
   use: (...args: unknown[]) => unknown;
 }
 
-export function omniQueueNestAdapter(options: DashboardApiOptions) {
-  return omniQueueAdapter(options);
+export function vastoNestAdapter(options: DashboardApiOptions) {
+  return vastoAdapter(options);
 }
 
-export function bindOmniQueueNestWebSocket(
+export function bindVastoNestWebSocket(
   server: http.Server,
   options: DashboardApiOptions
 ): DashboardWebSocketController {
-  return bindOmniQueueWebSocket(server, options);
+  return bindVastoWebSocket(server, options);
 }
 
 export function registerNestAdapter(app: NestLikeApplication, options: DashboardApiOptions): void {
-  app.use(omniQueueNestAdapter(options));
+  app.use(vastoNestAdapter(options));
 }

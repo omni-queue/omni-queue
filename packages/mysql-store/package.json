@@ -1,13 +1,13 @@
 {
-  "name": "@omni-queue/mysql-store",
+  "name": "@vasto/mysql-store",
   "version": "0.1.0",
-  "description": "MySQL storage adapter for Omni-Queue",
+  "description": "MySQL storage adapter for Vasto",
   "keywords": [
     "queue",
     "job",
     "mysql",
     "storage",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
+    "@vasto/core": "*",
     "mysql2": "^3.14.4"
   },
   "publishConfig": {

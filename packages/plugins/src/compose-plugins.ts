@@ -1,4 +1,4 @@
-import type { Plugin } from '@omni-queue/core';
+import type { Plugin } from '@vasto/core';
 
 export function composePlugins(
   ...plugins: Array<Plugin | Plugin[] | null | undefined | false>

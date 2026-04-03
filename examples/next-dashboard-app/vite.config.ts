@@ -20,13 +20,13 @@ export default defineConfig({
     rollupOptions: {
       input: {
         runtime: 'src/runtime.ts',
-        dashboard: 'pages/api/omni-queue/[...omni-queue].ts',
+        dashboard: 'pages/api/vasto/[...vasto].ts',
         dashboardApi: 'pages/api/dashboard-api/[...dashboard-api].ts',
         dispatch: 'pages/api/jobs/email.ts',
         worker: 'src/worker.ts',
         home: 'pages/index.tsx'
       },
-      external: (id: string) => nodeExternals.has(id) || id.startsWith('node:') || id.startsWith('next/') || id.startsWith('@omni-queue/'),
+      external: (id: string) => nodeExternals.has(id) || id.startsWith('node:') || id.startsWith('next/') || id.startsWith('@vasto/'),
       output: { format: 'es', entryFileNames: '[name].js' }
     }
   }

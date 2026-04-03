@@ -48,7 +48,7 @@ export function LoginPage() {
             <Shield className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-xl font-semibold">Omni Queue Dashboard</h1>
+            <h1 className="text-xl font-semibold">Vasto Dashboard</h1>
             <p className="text-sm text-slate-400">Sign in with {modeLabel} to continue.</p>
           </div>
         </div>

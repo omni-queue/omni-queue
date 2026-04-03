@@ -24,7 +24,7 @@ export default defineConfig({
           return true;
         }
 
-        return id.startsWith('@omni-queue/');
+        return id.startsWith('@vasto/');
       },
       output: {
         format: 'es',

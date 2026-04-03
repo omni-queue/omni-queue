@@ -4,7 +4,7 @@ import { QueueSandboxConfig } from '../interfaces/queue-config';
 
 const requireBuiltin = createRequire(path.join(process.cwd(), 'package.json'));
 
-export const SANDBOX_POLICY_ENV = 'OMNI_QUEUE_SANDBOX_POLICY';
+export const SANDBOX_POLICY_ENV = 'VASTO_SANDBOX_POLICY';
 
 const ESSENTIAL_ENV_KEYS = new Set(['PATH', 'HOME', 'TMPDIR', 'NODE_OPTIONS', 'TZ']);
 

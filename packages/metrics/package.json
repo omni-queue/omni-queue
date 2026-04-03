@@ -1,7 +1,7 @@
 {
-  "name": "@omni-queue/metrics",
+  "name": "@vasto/metrics",
   "version": "0.1.0",
-  "description": "Metrics collection and exporters for Omni-Queue",
+  "description": "Metrics collection and exporters for Vasto",
   "keywords": [
     "queue",
     "job",
@@ -9,7 +9,7 @@
     "prometheus",
     "statsd",
     "datadog",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -36,7 +36,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/core": "*"
+    "@vasto/core": "*"
   },
   "publishConfig": {
     "access": "public"

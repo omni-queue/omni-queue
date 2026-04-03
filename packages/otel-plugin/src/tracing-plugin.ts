@@ -1,4 +1,4 @@
-import type { Plugin, StoredJob } from '@omni-queue/core';
+import type { Plugin, StoredJob } from '@vasto/core';
 import { context, trace, Span, SpanStatusCode, type Tracer } from '@opentelemetry/api';
 
 export interface TracingPluginOptions {
@@ -18,10 +18,10 @@ export class TracingPlugin implements Plugin {
     const span = this.tracer.startSpan(job.name, undefined, context.active());
 
     span.setAttributes({
-      'omni.queue.job.id': job.id,
-      'omni.queue.job.name': job.name,
-      'omni.queue.name': job.queue,
-      'omni.queue.attempts': job.attempts,
+      'vasto.queue.job.id': job.id,
+      'vasto.queue.job.name': job.name,
+      'vasto.queue.name': job.queue,
+      'vasto.queue.attempts': job.attempts,
     });
 
     this.spans.set(job.id, span);

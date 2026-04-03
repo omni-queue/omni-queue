@@ -1,5 +1,5 @@
-import { defineIsolation } from '@omni-queue/core';
-import { TracingPlugin } from '@omni-queue/otel-plugin';
+import { defineIsolation } from '@vasto/core';
+import { TracingPlugin } from '@vasto/otel-plugin';
 import { CleanupJob, GenerateReportJob, SendEmailJob } from '../jobs/index.js';
 export const { getRegistry, getPlugins } = defineIsolation({
     jobs: [SendEmailJob, GenerateReportJob, CleanupJob],

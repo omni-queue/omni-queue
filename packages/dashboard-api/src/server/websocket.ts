@@ -1,7 +1,7 @@
 import http from 'node:http';
 import net from 'node:net';
 import { createRequire } from 'node:module';
-import type { DashboardAuthOptions } from '@omni-queue/core';
+import type { DashboardAuthOptions } from '@vasto/core';
 import {
   authenticateDashboardRequest,
   hasDashboardPermissionForContext,

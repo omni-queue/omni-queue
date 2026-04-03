@@ -1,4 +1,4 @@
-import { Job } from '@omni-queue/core';
+import { Job } from '@vasto/core';
 export class TranscodeVideoJob extends Job {
     static jobName = 'TranscodeVideoJob';
     jobName = TranscodeVideoJob.jobName;

@@ -1,5 +1,5 @@
-import { defineIsolation } from '@omni-queue/core';
-import { LoggingPlugin } from '@omni-queue/plugins';
+import { defineIsolation } from '@vasto/core';
+import { LoggingPlugin } from '@vasto/plugins';
 import { TranscodeVideoJob } from '../jobs/transcode-video.job.js';
 export const { getRegistry, getPlugins } = defineIsolation({
     jobs: [TranscodeVideoJob],

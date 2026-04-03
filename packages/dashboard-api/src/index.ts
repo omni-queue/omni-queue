@@ -3,10 +3,10 @@ export {
   resolveDashboardWsPaths,
 } from './server/factories';
 export {
-  bindOmniQueueWebSocket,
+  bindVastoWebSocket,
   createDashboardMiddleware,
   createDashboardWebSocketBinding,
-  omniQueueAdapter,
+  vastoAdapter,
 } from './server/adapter';
 export {
   authenticateDashboardLogin,

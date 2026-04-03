@@ -1,4 +1,4 @@
-import type { DashboardAuthOptions, DashboardOptions, Supervisor } from '@omni-queue/core';
+import type { DashboardAuthOptions, DashboardOptions, Supervisor } from '@vasto/core';
 
 export interface DashboardApiOptions {
   supervisor: Supervisor;

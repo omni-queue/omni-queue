@@ -7,7 +7,7 @@ import {
   hasDashboardPermissionForContext,
   type DashboardApiOptions,
   type DashboardWebSocketController,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 
 function getAllowedQueues(context: { allowedQueues?: string[] }): Set<string> | null {
   if (!context.allowedQueues || context.allowedQueues.length === 0) {
@@ -61,7 +61,7 @@ function sendUnauthorized(
   socket: net.Socket,
   auth: Parameters<typeof authenticateDashboardRequest>[1]
 ): void {
-  const realm = auth.type === 'none' ? 'omni-queue-dashboard' : (auth.realm ?? 'omni-queue-dashboard');
+  const realm = auth.type === 'none' ? 'vasto-dashboard' : (auth.realm ?? 'vasto-dashboard');
   const challenge = auth.type === 'bearer' ? `Bearer realm="${realm}"` : `Basic realm="${realm}"`;
   socket.write(`HTTP/1.1 401 Unauthorized\r\nWWW-Authenticate: ${challenge}\r\n\r\n`);
   socket.destroy();

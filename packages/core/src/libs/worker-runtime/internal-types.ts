@@ -41,8 +41,8 @@ export type ManagedScheduleTask = {
   storage?: QueueStorage;
 };
 
-export const INTERNAL_REPEATABLE_QUEUE = '__omni_internal_repeatables';
-export const INTERNAL_REPEATABLE_JOB = '__omni_repeatable_schedule__';
+export const INTERNAL_REPEATABLE_QUEUE = '__vasto_internal_repeatables';
+export const INTERNAL_REPEATABLE_JOB = '__vasto_repeatable_schedule__';
 export const INTERNAL_REPEATABLE_PAYLOAD_TYPE = 'repeatable-schedule';
 export const REPEATABLE_PAGE_LIMIT = 200;
 export const DEDUPE_QUERY_LIMIT = 1000;

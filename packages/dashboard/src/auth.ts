@@ -5,8 +5,8 @@ import {
   type DashboardLoginResponse,
 } from './types';
 
-const DASHBOARD_AUTH_TOKEN_KEY = 'omni-queue.dashboard.token';
-export const DASHBOARD_AUTH_EXPIRED_EVENT = 'omni-queue-dashboard-auth-expired';
+const DASHBOARD_AUTH_TOKEN_KEY = 'vasto.dashboard.token';
+export const DASHBOARD_AUTH_EXPIRED_EVENT = 'vasto-dashboard-auth-expired';
 
 function canUseStorage(): boolean {
   return typeof window !== 'undefined' && typeof window.localStorage !== 'undefined';

@@ -1,13 +1,13 @@
 # queue-system
 
-In-memory Omni Queue example demonstrating multi-queue processing, plugins, and dashboard integration.
+In-memory Vasto example demonstrating multi processing, plugins, and dashboard integration.
 
 ## What this example includes
 
 - Multiple queues: `emails`, `reports`, `maintenance`
 - Worker isolation via thread runtime modules
 - Built-in plugins (`DAGPlugin`, `RateLimiterPlugin`) + OTel tracing plugin
-- Dashboard API + WebSocket mounting through `@omni-queue/express-adapter`
+- Dashboard API + WebSocket mounting through `@vasto/express-adapter`
 
 ## Install from npm
 
@@ -19,7 +19,7 @@ npm install
 To publish dashboard assets with the CLI:
 
 ```bash
-npx @omni-queue/cli dashboard:publish --out=./public/omni-queue-dashboard --base=/dashboard --api-base=/api/dashboard
+npx @vasto/cli dashboard:publish --out=./public/vasto-dashboard --base=/dashboard --api-base=/api/dashboard
 ```
 
 ## Run the server

@@ -7,17 +7,17 @@ import {
   defineQueues,
   defineWorkers,
   resolveRuntimeModules,
-} from '@omni-queue/core';
-import { createExpressAdapter, createExpressWebSocketBinding } from '@omni-queue/express-adapter';
-import { TracingPlugin } from '@omni-queue/otel-plugin';
-import { DAGPlugin, RateLimiterPlugin } from '@omni-queue/plugins';
+} from '@vasto/core';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto/express-adapter';
+import { TracingPlugin } from '@vasto/otel-plugin';
+import { DAGPlugin, RateLimiterPlugin } from '@vasto/plugins';
 import { CleanupJob, GenerateReportJob, SendEmailJob } from './jobs/index.js';
 import { registerGracefulShutdown } from './graceful-shutdown.js';
 
 async function main() {
   const port = Number(process.env.PORT ?? '3110');
   const mainModules = resolveRuntimeModules('main');
-  const dashboardUiDir = path.resolve(process.cwd(), 'public/omni-queue-dashboard');
+  const dashboardUiDir = path.resolve(process.cwd(), 'public/vasto-dashboard');
 
   const registry = new JobRegistry();
   registry.registerAll([SendEmailJob, GenerateReportJob, CleanupJob]);
@@ -84,7 +84,7 @@ async function main() {
   // Dispatch sample jobs
   await supervisor.jobManager.dispatch(
     new SendEmailJob({
-      to: 'ops@omni-queue.local',
+      to: 'ops@vasto.local',
       subject: '[CRITICAL] Production alert',
       body: 'Immediate attention required.',
     }),
@@ -93,7 +93,7 @@ async function main() {
 
   await supervisor.jobManager.dispatch(
     new SendEmailJob({
-      to: 'dev@omni-queue.local',
+      to: 'dev@vasto.local',
       subject: 'Weekly newsletter',
       body: 'Here is your weekly digest.',
     }),
@@ -102,7 +102,7 @@ async function main() {
 
   await supervisor.jobManager.dispatch(
     new SendEmailJob({
-      to: 'support@omni-queue.local',
+      to: 'support@vasto.local',
       subject: 'Your ticket was updated',
       body: 'A reply was posted to your support ticket.',
     }),
@@ -111,8 +111,8 @@ async function main() {
 
   await supervisor.jobManager.dispatch(
     new SendEmailJob({
-      to: 'dev@omni-queue.local',
-      subject: 'Hello from Omni Queue',
+      to: 'dev@vasto.local',
+      subject: 'Hello from Vasto',
       body: 'This is a class-based job dispatch test.',
     })
   );
@@ -126,13 +126,13 @@ async function main() {
 
   await supervisor.jobManager.dispatch(
     new CleanupJob({
-      path: '/tmp/omni-queue-cache',
+      path: '/tmp/vasto-cache',
     })
   );
 
   await supervisor.jobManager.dispatchBatch('Daily operations batch', [
     new SendEmailJob({
-      to: 'batch@omni-queue.local',
+      to: 'batch@vasto.local',
       subject: 'Batch welcome email',
       body: 'This job is part of a tracked batch.',
     }),
@@ -141,7 +141,7 @@ async function main() {
       period: 'daily',
     }),
     new CleanupJob({
-      path: '/tmp/omni-queue-batch-cache',
+      path: '/tmp/vasto-batch-cache',
     }),
   ]);
 

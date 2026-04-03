@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { createElysiaAdapter, omniQueueElysiaAdapter, registerElysiaAdapter } from './index';
+import { createElysiaAdapter, vastoElysiaAdapter, registerElysiaAdapter } from './index';
 
-describe('@omni-queue/elysia-adapter exports', () => {
+describe('@vasto/elysia-adapter exports', () => {
 	it('exports adapter functions', () => {
 		expect(createElysiaAdapter).toBeTypeOf('function');
-		expect(omniQueueElysiaAdapter).toBeTypeOf('function');
+		expect(vastoElysiaAdapter).toBeTypeOf('function');
 		expect(registerElysiaAdapter).toBeTypeOf('function');
 	});
 });
