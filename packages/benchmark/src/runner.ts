@@ -21,6 +21,7 @@ import process from 'node:process';
 import { createRequire } from 'node:module';
 import dotenv from 'dotenv';
 import type { ScenarioOptions, ScenarioReport } from './types.js';
+import { writeChartArtifacts } from './chart-artifacts.js';
 
 const require = createRequire(import.meta.url);
 
@@ -174,7 +175,9 @@ async function main(): Promise<void> {
     fs.mkdirSync(resultsDir, { recursive: true });
     const outPath = path.join(resultsDir, `run-${Date.now()}.json`);
     fs.writeFileSync(outPath, JSON.stringify(payload, null, 2));
+    writeChartArtifacts(outPath, payload);
     console.log(`\nResults saved to: ${outPath}`);
+    console.log(`Chart artifacts saved to: ${outPath.replace(/\.json$/, '.csv')} and ${outPath.replace(/\.json$/, '.charts.md')}`);
   }
 
   console.log('\nDone.');

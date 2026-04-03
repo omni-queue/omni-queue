@@ -61,6 +61,9 @@ node --loader ts-node/esm src/runner.ts --all --save
 
 # Or explicitly provide a file
 node --loader ts-node/esm src/runner.ts --all --env-file .env.bench --save
+
+# Regenerate chart artifacts from an existing saved run
+npm run charts -- --input results/run-<timestamp>.json
 ```
 
 Saved files include:
@@ -68,6 +71,8 @@ Saved files include:
 - Machine metadata (CPU model/core count, memory, OS/arch, Node.js version)
 - Dependency versions used in the run
 - Per-scenario structured reports with raw result rows
+- Flat CSV output for spreadsheets/BI/charting tools
+- Mermaid chart markdown for quick visual comparison in docs/PRs
 
 ## Environment Variables
 
@@ -100,6 +105,12 @@ The runner automatically loads `.env` from `packages/benchmark` if present. You 
 ## Results
 
 Committed summary tables live in [`results/`](./results/). Raw per-run JSON files are gitignored.
+
+When you run with `--save`, the runner now emits three files side-by-side:
+
+- `run-<timestamp>.json` — full structured result payload
+- `run-<timestamp>.csv` — flattened chart-friendly rows
+- `run-<timestamp>.charts.md` — Mermaid charts generated from the saved JSON
 
 ## CI Smoke Benchmark
 

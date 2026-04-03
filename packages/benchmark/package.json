@@ -9,6 +9,7 @@
     "infra:up": "docker compose -f docker-compose.yml up -d",
     "infra:down": "docker compose -f docker-compose.yml down",
     "infra:reset": "docker compose -f docker-compose.yml down -v && docker compose -f docker-compose.yml up -d",
+    "charts": "node --loader ts-node/esm src/chart.ts",
     "run:all": "node --loader ts-node/esm src/runner.ts --all",
     "run:enqueue": "node --loader ts-node/esm src/runner.ts --scenario enqueue-throughput",
     "run:processing": "node --loader ts-node/esm src/runner.ts --scenario processing-throughput",

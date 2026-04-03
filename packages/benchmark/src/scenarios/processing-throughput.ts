@@ -55,7 +55,7 @@ async function runVastoMemory(opts: Required<ScenarioOptions>): Promise<Scenario
       queues: defineQueues({
         bench: { name: 'bench', connection: 'memory', concurrency: opts.concurrency, batchSize: 10 },
       }),
-      workers: defineWorkers({ w: { queues: ['bench'], concurrency: opts.concurrency } }),
+      workers: defineWorkers({ w: { queues: ['bench'], concurrency: 1 } }),
       registry,
       storageAdapters: { memory: storage },
     });

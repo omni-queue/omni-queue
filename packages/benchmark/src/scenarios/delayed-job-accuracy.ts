@@ -15,6 +15,7 @@ import {
   InMemoryQueueStorage,
   JobRegistry,
   Supervisor,
+  type SupervisorOptions,
   defineQueues,
   defineWorkers,
   Job,
@@ -47,12 +48,17 @@ async function runVastoMemory(opts: Required<ScenarioOptions>): Promise<Scenario
   const registry = new JobRegistry();
   registry.register(DelayedBenchJob);
 
-  const supervisor = new Supervisor({
+  const supervisorOptions: SupervisorOptions = {
     queues: defineQueues({ bench: { name: 'bench', connection: 'memory', concurrency: 10, batchSize: 10 } }),
-    workers: defineWorkers({ w: { queues: ['bench'], concurrency: 10 } }),
+    workers: defineWorkers({ w: { queues: ['bench'], concurrency: 1 } }),
     registry,
     storageAdapters: { memory: storage },
-  });
+    repeatables: {
+      promoterIntervalMs: 25,
+    },
+  };
+
+  const supervisor = new Supervisor(supervisorOptions);
 
   await supervisor.start('worker');
 

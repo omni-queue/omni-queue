@@ -21,7 +21,6 @@ import {
   buildReport,
   DEFAULT_OPTIONS,
   meanOf,
-  printReport,
   toOps,
 } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
@@ -50,7 +49,7 @@ async function vastoAtConcurrency(
 
     const supervisor = new Supervisor({
       queues: defineQueues({ bench: { name: 'bench', connection: 'memory', concurrency, batchSize: 10 } }),
-      workers: defineWorkers({ w: { queues: ['bench'], concurrency } }),
+      workers: defineWorkers({ w: { queues: ['bench'], concurrency: 1 } }),
       registry,
       storageAdapters: { memory: storage },
     });

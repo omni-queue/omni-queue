@@ -48,20 +48,24 @@ async function runVastoMemory(): Promise<ScenarioResult> {
   });
 
   const baselineMb = rssInMb();
+  let peakMb = baselineMb;
 
   for (let i = 0; i < JOB_COUNT; i++) {
     await supervisor.jobManager.dispatch(new MemJob({ index: i, data: 'benchmark-payload-memory-test' }));
+    if (i % 250 === 0) {
+      peakMb = Math.max(peakMb, rssInMb());
+    }
   }
 
   // GC pressure settle
   await new Promise((r) => setTimeout(r, 200));
-  const peakMb = rssInMb();
+  peakMb = Math.max(peakMb, rssInMb());
 
   return {
     library: 'vasto-memory',
     scenario: SCENARIO,
     iterations: 1,
-    memoryMb: peakMb - baselineMb,
+    memoryMb: Math.max(0, peakMb - baselineMb),
     meta: { totalRssMb: peakMb, baselineMb, jobCount: JOB_COUNT },
   };
 }
@@ -77,6 +81,7 @@ async function runBullMQ(opts: Required<ScenarioOptions>): Promise<ScenarioResul
   await queue.obliterate({ force: true }).catch(() => {});
 
   const baselineMb = rssInMb();
+  let peakMb = baselineMb;
 
   const batch = Array.from({ length: JOB_COUNT }, (_, i) => ({
     name: 'bench',
@@ -85,7 +90,7 @@ async function runBullMQ(opts: Required<ScenarioOptions>): Promise<ScenarioResul
   await queue.addBulk(batch);
 
   await new Promise((r) => setTimeout(r, 200));
-  const peakMb = rssInMb();
+  peakMb = Math.max(peakMb, rssInMb());
 
   await queue.obliterate({ force: true }).catch(() => {});
   await queue.close();
@@ -94,7 +99,7 @@ async function runBullMQ(opts: Required<ScenarioOptions>): Promise<ScenarioResul
     library: 'bullmq',
     scenario: SCENARIO,
     iterations: 1,
-    memoryMb: peakMb - baselineMb,
+    memoryMb: Math.max(0, peakMb - baselineMb),
     meta: { totalRssMb: peakMb, baselineMb, jobCount: JOB_COUNT, note: 'client-side overhead only' },
   };
 }
@@ -112,11 +117,15 @@ async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioRes
   await queue.ready();
 
   const baselineMb = rssInMb();
+  let peakMb = baselineMb;
 
   await withTimeout(
     (async () => {
       for (let i = 0; i < JOB_COUNT; i++) {
         await queue.createJob({ index: i, data: 'benchmark-payload-memory-test' }).save();
+        if (i % 250 === 0) {
+          peakMb = Math.max(peakMb, rssInMb());
+        }
       }
     })(),
     30000,
@@ -124,7 +133,7 @@ async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioRes
   );
 
   await new Promise((r) => setTimeout(r, 200));
-  const peakMb = rssInMb();
+  peakMb = Math.max(peakMb, rssInMb());
 
   await queue.destroy().catch(() => {});
   await queue.close(0).catch(() => {});
@@ -133,7 +142,7 @@ async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioRes
     library: 'bee-queue',
     scenario: SCENARIO,
     iterations: 1,
-    memoryMb: peakMb - baselineMb,
+    memoryMb: Math.max(0, peakMb - baselineMb),
     meta: { totalRssMb: peakMb, baselineMb, jobCount: JOB_COUNT, note: 'client-side overhead only' },
   };
 }

@@ -18,12 +18,12 @@ import { LifecycleEventBus } from './lifecycle-events';
  */
 export class ScheduledJobPromoter {
   private running = false;
-  private interval?: ReturnType<typeof setInterval>;
+  private timer?: ReturnType<typeof setTimeout>;
 
   constructor(
     private storage: QueueStorage,
     private queues: Record<string, QueueConfig>,
-    private pollingIntervalMs: number = 1000,
+    private pollingIntervalMs: number = 100,
     private globalPlugins: Plugin[] = [],
     private lifecycleEvents?: LifecycleEventBus
   ) {}
@@ -32,22 +32,32 @@ export class ScheduledJobPromoter {
     if (this.running) return;
 
     this.running = true;
-    this.poll();
+    void this.tick();
   }
 
   stop(): void {
     this.running = false;
-    if (this.interval) clearInterval(this.interval);
+    if (this.timer) clearTimeout(this.timer);
   }
 
-  private poll(): void {
+  private scheduleNext(): void {
     if (!this.running) return;
 
-    this.interval = setInterval(() => {
-      this.promote().catch((error) => {
-        console.error('[promoter] Error promoting delayed jobs:', error);
-      });
+    this.timer = setTimeout(() => {
+      void this.tick();
     }, this.pollingIntervalMs);
+  }
+
+  private async tick(): Promise<void> {
+    if (!this.running) return;
+
+    try {
+      await this.promote();
+    } catch (error) {
+      console.error('[promoter] Error promoting delayed jobs:', error);
+    } finally {
+      this.scheduleNext();
+    }
   }
 
   private async promote(): Promise<void> {

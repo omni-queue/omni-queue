@@ -38,6 +38,7 @@ export interface SupervisorOptions {
   dashboard?: DashboardOptions;
   repeatables?: {
     recoverOnStart?: boolean;
+    promoterIntervalMs?: number;
   };
 }
 
@@ -151,7 +152,7 @@ export class Supervisor {
       this.promoter = new ScheduledJobPromoter(
         this.storageAdapters[defaultStorageKey]!,
         this.queues,
-        1000,
+        this.repeatablesConfig?.promoterIntervalMs ?? 100,
         [], // Global plugins would be passed here
         this.lifecycleEvents
       );
