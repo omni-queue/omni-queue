@@ -180,3 +180,5 @@ For the canonical mapping from each feature area to concrete runnable projects, 
 ## Notes on scope
 
 This catalog documents implemented features, not planned features. For future work and sequencing, use [ROADMAP](ROADMAP.md).
+
+For a future implementation blueprint on durable queue events, see [Event Queue Implementation Plan](event-queue-implementation-plan.md).

@@ -193,6 +193,35 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 - [ ] Enterprise operations playbooks
 - [ ] Advanced patterns cookbook
 
+## Phase 7: Durable Event Queue
+
+**Goal**: Evolve the in-memory lifecycle event bus into a durable, distributed event queue pipeline with at-least-once delivery, replay, and external publishing.
+
+### 7.1 Contract + Plumbing
+- [ ] `QueueLifecycleEnvelope` type definition
+- [ ] `EventBridgePlugin` mapping hooks → envelopes → `system.events` queue
+- [ ] `eventQueue` config option in `SupervisorOptions`
+- [ ] Unit tests: envelope emission and allowlist filtering
+
+### 7.2 Durable Persistence + Replay
+- [ ] Event storage schema (`events`, `event_delivery` tables / collections)
+- [ ] `EventPersistJob` worker
+- [ ] Optional event log methods on `QueueStorage` interface
+- [ ] `supervisor.queryEvents()` cursor-based replay API
+- [ ] Persistence and replay tests
+
+### 7.3 External Publishing + DLQ Hardening
+- [ ] `EventSink` interface and `EventPublishJob` worker
+- [ ] Event-specific retry policy and DLQ route (`system.events.dlq`)
+- [ ] Event pipeline metrics (dispatch, lag, failure, DLQ depth)
+- [ ] Retry/DLQ tests
+
+### 7.4 Multi-Tenant Policy Controls (optional stretch)
+- [ ] Tenant-scoped event filtering
+- [ ] PII/data minimization redaction policies
+- [ ] Retention and archival policies
+- [ ] Policy enforcement tests
+
 ## Success Metrics
 
 | Metric | Current | Near-term target | Long-term target |
@@ -236,6 +265,9 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 │   └── capacity-planning-toolkit.md   # Sizing formulas and examples
 ├── phase-6/
 │   └── phase-6-proposal.md
+├── phase-7/
+│   └── phase-7-proposal.md           # Durable event queue implementation plan
+├── event-queue-implementation-plan.md # Detailed blueprint for Phase 7
 ├── migration-guides/
 │   └── from-bullmq.md                 # BullMQ compatibility and migration path
 ├── quickstarts/
@@ -252,5 +284,6 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 ## Current Status
 
 - **Active Phase**: Phase 6 planning (Phase 5.5 parity closure implemented)
-- **Last Updated**: March 29, 2026
+- **Phase 7**: Durable event queue — planned, blueprint complete (see `event-queue-implementation-plan.md`)
+- **Last Updated**: April 3, 2026
 - **Tracking**: GitHub Projects (Vasto Evolution)
