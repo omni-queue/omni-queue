@@ -1,6 +1,7 @@
 import { QueueConfig } from '../interfaces/queue-config';
 import { QueueStorage } from '../interfaces/queue-storage';
 import { WorkerConfig } from '../interfaces/worker-config';
+import { StoredJob } from '../types';
 import { RateLimitCoordinator } from './rate-limiter';
 import { JobManager } from './worker-runtime';
 import type { LifecycleEventInput } from './lifecycle-events';
@@ -80,19 +81,23 @@ export class ResilientWorker {
 
       const jobs = await storage.dequeue({
         queue: queueName,
-        batchSize: 1,
+        batchSize: queueConfig.batchSize || 1,
         leaseMs: queueConfig.visibilityTimeout || 30000,
       });
 
       processedAnyJobs ||= jobs.length > 0;
 
-      for (const job of jobs) {
-        try {
-          await this.runtime.execute(job);
+      const results = await Promise.allSettled(
+        jobs.map((job: StoredJob) => this.runtime.execute(job))
+      );
+
+      for (const result of results) {
+        if (result.status === 'fulfilled') {
           this.onExecutionSucceeded(queueName);
-        } catch (error) {
-          this.onExecutionFailed(queueName, queueConfig, error);
+          continue;
         }
+
+        this.onExecutionFailed(queueName, queueConfig, result.reason);
       }
     }
 

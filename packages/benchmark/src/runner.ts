@@ -19,11 +19,24 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { createRequire } from 'node:module';
+import util from 'node:util';
 import dotenv from 'dotenv';
 import type { ScenarioOptions, ScenarioReport } from './types.js';
 import { writeChartArtifacts } from './chart-artifacts.js';
 
 const require = createRequire(import.meta.url);
+
+function formatError(err: unknown): string {
+  if (err instanceof Error) {
+    return err.stack ?? `${err.name}: ${err.message}`;
+  }
+
+  try {
+    return util.inspect(err, { depth: 5, breakLength: 120 });
+  } catch {
+    return 'Unknown error';
+  }
+}
 
 const SCENARIOS = [
   'enqueue-throughput',
@@ -119,8 +132,9 @@ async function main(): Promise<void> {
       const report = await (mod as { run: (opts: ScenarioOptions) => Promise<ScenarioReport> }).run(opts);
       allResults.push({ scenario: name, status: 'ok', report });
     } catch (err) {
-      console.error(`\n[ERROR] Scenario "${name}" failed:`, err);
-      allResults.push({ scenario: name, status: 'error', error: String(err) });
+      const formattedError = formatError(err);
+      console.error(`\n[ERROR] Scenario "${name}" failed:\n${formattedError}`);
+      allResults.push({ scenario: name, status: 'error', error: formattedError });
     }
   }
 

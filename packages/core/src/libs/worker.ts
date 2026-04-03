@@ -88,13 +88,11 @@ export class Worker {
 
         const jobs = await storage.dequeue({
           queue: queueName,
-          batchSize: 1,
+          batchSize: queueConfig.batchSize || 1,
           leaseMs: queueConfig.visibilityTimeout || 30000,
         });
 
-        for (const job of jobs) {
-          await this.runtime.execute(job);
-        }
+        await Promise.allSettled(jobs.map((job: StoredJob) => this.runtime.execute(job)));
       }
 
       await sleep(100);
