@@ -1,11 +1,11 @@
-# Omni-Queue Evolution Roadmap
+# Vasto Evolution Roadmap
 
-**Goal**: Position omni-queue as a **superior alternative to BullMQ** with **Laravel Horizon's operational excellence**.
+**Goal**: Evolve vasto as a production-grade queue runtime inspired by BullMQ and Laravel Horizon's operational excellence.
 
 ## Phase 1: Core Job Lifecycle
 
 ### Objective
-Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
+Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and pluggable architecture.
 
 ### **Foundation (Pre-1.1)** **[DONE]**
 - [x] Core `Supervisor` & `JobManager` orchestration
@@ -56,7 +56,7 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 ## Phase 2: Observability & Dashboard
 
 ### 2.1 Metrics Collection & Export **[DONE]**
-- [x] @omni-queue/metrics package
+- [x] @vasto/metrics package
 - [x] Prometheus client integration
 - [x] StatsD & DataDog exporters
 - [x] Auto-collected metrics (queue depth, duration, failures)
@@ -100,23 +100,23 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 ## Phase 4: Ecosystem & Integration
 
 ### 4.1 Official Adapters **[DONE]**
-- [x] @omni-queue/mysql-store
-- [x] @omni-queue/postgres-store
-- [x] @omni-queue/mongo-store
-- [x] @omni-queue/dynamodb-store
+- [x] @vasto/mysql-store
+- [x] @vasto/postgres-store
+- [x] @vasto/mongo-store
+- [x] @vasto/dynamodb-store
 
 ### 4.2 Framework Integrations **[DONE]**
-- [x] @omni-queue/express-adapter (default via dashboard-api)
-- [x] @omni-queue/next-adapter
-- [x] @omni-queue/fastify-adapter
-- [x] @omni-queue/nest-adapter
-- [x] @omni-queue/hono-adapter
+- [x] @vasto/express-adapter (default via dashboard-api)
+- [x] @vasto/next-adapter
+- [x] @vasto/fastify-adapter
+- [x] @vasto/nest-adapter
+- [x] @vasto/hono-adapter
 
 ### 4.3 CLI Tooling **[DONE]**
-- [x] `omni-queue init`
-- [x] `omni-queue generate job`
-- [x] `omni-queue monitor`
-- [x] `omni-queue dlq:*` commands
+- [x] `vasto init`
+- [x] `vasto generate job`
+- [x] `vasto monitor`
+- [x] `vasto dlq:*` commands
 
 ### 4.4 BullMQ Parity Gap Sprint (Pre-Phase 5) **[DONE]**
 - [x] Durable repeatable jobs (persisted schedules + restart recovery)
@@ -206,7 +206,7 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 
 ## Key Differentiators
 
-| Feature | BullMQ | Omni-Queue |
+| Feature | BullMQ | Vasto |
 |---------|--------|-----------|
 | **Worker Isolation** | Sandboxed only | **Flexible: inline/thread/process** |
 | **Storage** | Redis only | **Pluggable: Redis, SQL, In-memory** |
@@ -253,4 +253,4 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 
 - **Active Phase**: Phase 6 planning (Phase 5.5 parity closure implemented)
 - **Last Updated**: March 29, 2026
-- **Tracking**: GitHub Projects (Omni-Queue Evolution)
+- **Tracking**: GitHub Projects (Vasto Evolution)

@@ -16,7 +16,7 @@ Use this pattern when an HTTP route should enqueue work and immediately return a
 ## Generate a starter
 
 ```bash
-queue generate api-job --name=send-email --queue=api-jobs
+vasto generate api-job --name=send-email -=api-jobs
 ```
 
 ## Example route

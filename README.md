@@ -1,81 +1,70 @@
-# omni-queue
+# Vasto
 
-**A superior BullMQ alternative with Laravel Horizon's operational excellence.**
+**A TypeScript-first queue runtime inspired by BullMQ and Laravel Horizon's operational excellence.**
 
-Omni-queue is a TypeScript-first job queue system that gives you flexible worker isolation, pluggable storage backends, and an auto-scaling supervisor — all out of the box.
+[![CI](https://github.com/vasto/vasto/actions/workflows/ci.yml/badge.svg)](https://github.com/vasto/vasto/actions)
+[![npm](https://img.shields.io/npm/v/@vasto/core)](https://www.npmjs.com/package/@vasto/core)
+[![Docs](https://img.shields.io/badge/docs-vastohq.github.io%2Fvasto-blue)](https://vastohq.github.io/vasto/)
 
-[![CI](https://github.com/omni-queue/omni-queue/actions/workflows/ci.yml/badge.svg)](https://github.com/omni-queue/omni-queue/actions)
-[![npm](https://img.shields.io/npm/v/@omni-queue/core)](https://www.npmjs.com/package/@omni-queue/core)
+Vasto is a TypeScript-first job queue system that gives you flexible worker isolation, pluggable storage backends, and an auto-scaling supervisor — all out of the box.
 
-## Documentation Hub
+- **Flexible isolation** — inline, thread, or process workers per queue
+- **Pluggable storage** — Redis, Postgres, MySQL, MongoDB, DynamoDB, file, in-memory
+- **Auto-scaling supervisor** — orchestrates workers, retries, scheduling, and lifecycle
+- **First-party dashboard** — monitoring, metrics, and failed-job management included
 
-- [Implemented feature catalog](docs/operations/feature-catalog.md)
-- [Operations roadmap](docs/operations/ROADMAP.md)
-- [Documentation index](docs/operations/README.md)
-- [BullMQ migration guide](docs/operations/migration-guides/from-bullmq.md)
-- [Adapter quickstarts](docs/operations/quickstarts/README.md)
-- [Dashboard integration guide](docs/operations/quickstarts/dashboard-integration.md)
-- [Contributing guide](CONTRIBUTING.md)
-- [Security policy](SECURITY.md)
-- [Code of conduct](CODE_OF_CONDUCT.md)
-- [Release process](docs/operations/releasing.md)
-- [Changelog](CHANGELOG.md)
+```typescript
+import { InMemoryQueueStorage, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
 
-## Adoption Paths
+class SendEmailJob {
+  static jobName = 'SendEmailJob';
+  constructor(public payload: { to: string; subject: string }) {}
+  queue() { return 'emails'; }
+}
 
-Choose the entry point that matches your use case:
+const registry = new JobRegistry();
+registry.register(SendEmailJob);
 
-- **Evaluating Omni Queue against BullMQ:** start with the [BullMQ Parity Assessment](docs/operations/migration-guides/bullmq-parity-assessment.md) then the [migration guide](docs/operations/migration-guides/from-bullmq.md)
-- **Building an HTTP-triggered queue flow:** use the [adapter quickstarts](docs/operations/quickstarts/README.md)
-- **Scaffolding new jobs quickly:** use the CLI starter generators below
-- **Planning production rollout:** review the [operations roadmap](docs/operations/ROADMAP.md) and phase docs
+const supervisor = new Supervisor({
+  queues: defineQueues({ emails: { name: 'emails', connection: 'memory' } }),
+  workers: defineWorkers({ main: { queues: ['emails'], isolation: 'inline' } }),
+  registry,
+  storageAdapters: { memory: new InMemoryQueueStorage() },
+});
 
----
-
-## Key Differentiators
-
-| Feature | BullMQ | omni-queue |
-|---------|--------|------------|
-| **Worker Isolation** | Sandboxed only | **Flexible: inline / thread / process** |
-| **Storage Backends** | Redis only | **Pluggable: Redis, Postgres, MySQL, MongoDB, DynamoDB, In-memory** |
-| **Auto-scaling Supervisor** | ❌ | **✅ Built-in** |
-| **Delayed & Scheduled Jobs** | ✅ | **✅ runAt / intervalMs / cron** |
-| **Job Priorities** | ✅ | **✅ critical / high / normal / low** |
-| **Plugin System** | Via events | **✅ First-class lifecycle hooks** |
-| **Dashboard** | Bull Board (3rd-party) | **✅ First-party dashboard + API package** |
+await supervisor.jobManager.dispatch(new SendEmailJob({ to: 'hello@example.com', subject: 'Hi!' }));
+await supervisor.start();
+```
 
 ---
 
-## Packages
+## Table of Contents
 
-| Package | Description |
-|---------|-------------|
-| [`@omni-queue/core`](packages/core) | Core runtime: supervisor, job manager, in-memory storage |
-| [`@omni-queue/cli`](packages/cli) | Project scaffolding, job generators, monitoring, and DLQ commands |
-| [`@omni-queue/metrics`](packages/metrics) | Metrics collector, exporters, and auto-collection plugin |
-| [`@omni-queue/redis-store`](packages/redis-store) | Redis (ioredis) storage adapter |
-| [`@omni-queue/postgres-store`](packages/postgres-store) | Postgres (`pg`) storage adapter |
-| [`@omni-queue/mysql-store`](packages/mysql-store) | MySQL storage adapter |
-| [`@omni-queue/mongo-store`](packages/mongo-store) | MongoDB storage adapter |
-| [`@omni-queue/dynamodb-store`](packages/dynamodb-store) | DynamoDB storage adapter |
-| [`@omni-queue/dashboard-api`](packages/dashboard-api) | Shared dashboard API primitives (routes, auth, websocket binding, config resolution) |
-| [`@omni-queue/dashboard`](packages/dashboard) | First-party dashboard frontend |
-| [`@omni-queue/express-adapter`](packages/express-adapter) | Express adapter (`createExpressAdapter`, `createExpressWebSocketBinding`) |
-| [`@omni-queue/next-adapter`](packages/next-adapter) | Next.js integration |
-| [`@omni-queue/fastify-adapter`](packages/fastify-adapter) | Fastify integration |
-| [`@omni-queue/nest-adapter`](packages/nest-adapter) | Nest integration |
-| [`@omni-queue/hono-adapter`](packages/hono-adapter) | Hono integration |
-| [`@omni-queue/elysia-adapter`](packages/elysia-adapter) | Elysia/Bun integration |
-| [`@omni-queue/otel-plugin`](packages/otel-plugin) | OpenTelemetry tracing plugin |
-| [`@omni-queue/plugins`](packages/plugins) | Built-in plugins: DAG, rate-limiter |
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [CLI Starters](#cli-starters)
+- [Dispatch Options](#dispatch-options)
+- [Storage Backends](#storage-backends)
+- [Plugin System](#plugin-system)
+- [Key Differentiators](#key-differentiators)
+- [Packages](#packages)
+- [Running Tests](#running-tests)
+- [Examples](#examples)
+- [Adoption Paths](#adoption-paths)
+- [Documentation](#documentation)
+- [Roadmap](#roadmap)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
-## Quick Start
+## Installation
 
 ```bash
-npm install @omni-queue/core
+npm install @vasto/core
 ```
+
+## Quick Start
 
 ```typescript
 import {
@@ -84,7 +73,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 // 1. Define a job
 class SendEmailJob {
@@ -115,15 +104,15 @@ await supervisor.jobManager.dispatch(new SendEmailJob({ to: 'hello@example.com',
 await supervisor.start();
 ```
 
-### CLI starters
+## CLI Starters
 
 Use the CLI to generate production-oriented starter files:
 
 ```bash
-queue generate job --name=send-email
-queue generate api-job --name=send-email
-queue generate workflow --name=asset-pipeline
-queue generate scheduled --name=daily-digest
+vasto generate job --name=send-email
+vasto generate api-job --name=send-email
+vasto generate workflow --name=asset-pipeline
+vasto generate scheduled --name=daily-digest
 ```
 
 These templates are intended to give new adopters a clean starting point for typed jobs, HTTP-triggered background work, DAG-style workflows, and scheduled execution.
@@ -181,21 +170,30 @@ await jobManager.schedule(new MyJob(payload), {
 ### In-memory (development / testing)
 
 ```typescript
-import { InMemoryQueueStorage } from '@omni-queue/core';
+import { InMemoryQueueStorage } from '@vasto/core';
 const storage = new InMemoryQueueStorage();
 ```
+
+### File (cross-process local development)
+
+```typescript
+import { FileQueueStorage } from '@vasto/core';
+const storage = new FileQueueStorage('./queue-data');
+```
+
+Jobs are persisted as JSON files in the given directory. Uses `fs.renameSync` for atomic claim semantics, making it safe for multiple worker processes polling the same directory.
 
 ### Redis
 
 ```typescript
-import { RedisStore } from '@omni-queue/redis-store';
+import { RedisStore } from '@vasto/redis-store';
 const storage = new RedisStore({ client: { host: 'localhost', port: 6379 } });
 ```
 
 ### Postgres
 
 ```typescript
-import { PostgresStore } from '@omni-queue/postgres-store';
+import { PostgresStore } from '@vasto/postgres-store';
 const storage = new PostgresStore({ pool: { connectionString: process.env.DATABASE_URL } });
 await storage.migrate(); // create tables
 ```
@@ -205,7 +203,7 @@ await storage.migrate(); // create tables
 ## Plugin System
 
 ```typescript
-import type { Plugin } from '@omni-queue/core';
+import type { Plugin } from '@vasto/core';
 
 const LogPlugin: Plugin = {
   name: 'LogPlugin',
@@ -221,12 +219,42 @@ const LogPlugin: Plugin = {
 
 ---
 
-## Implemented Features (Consolidated)
+## Key Differentiators
 
-For a complete and continuously updated list of implemented capabilities (runtime behavior, reliability/security controls, dashboard/auth, storage adapters, framework adapters, and CLI surfaces), see:
+| Feature | BullMQ | Vasto |
+|---------|--------|------------|
+| **Worker Isolation** | Sandboxed only | **Flexible: inline / thread / process** |
+| **Storage Backends** | Redis only | **Pluggable: Redis, Postgres, MySQL, MongoDB, DynamoDB, File, In-memory** |
+| **Auto-scaling Supervisor** | ❌ | **✅ Built-in** |
+| **Delayed & Scheduled Jobs** | ✅ | **✅ runAt / intervalMs / cron** |
+| **Job Priorities** | ✅ | **✅ critical / high / normal / low** |
+| **Plugin System** | Via events | **✅ First-class lifecycle hooks** |
+| **Dashboard** | Bull Board (3rd-party) | **✅ First-party dashboard + API package** |
 
-- [Feature catalog](docs/operations/feature-catalog.md)
-- [Core package README](packages/core/README.md)
+---
+
+## Packages
+
+| Package | Description |
+|---------|-------------|
+| [`@vasto/core`](packages/core) | Core runtime: supervisor, job manager, in-memory and file storage |
+| [`@vasto/cli`](packages/cli) | Project scaffolding, job generators, monitoring, and DLQ commands |
+| [`@vasto/metrics`](packages/metrics) | Metrics collector, exporters, and auto-collection plugin |
+| [`@vasto/redis-store`](packages/redis-store) | Redis (ioredis) storage adapter |
+| [`@vasto/postgres-store`](packages/postgres-store) | Postgres (`pg`) storage adapter |
+| [`@vasto/mysql-store`](packages/mysql-store) | MySQL storage adapter |
+| [`@vasto/mongo-store`](packages/mongo-store) | MongoDB storage adapter |
+| [`@vasto/dynamodb-store`](packages/dynamodb-store) | DynamoDB storage adapter |
+| [`@vasto/dashboard-api`](packages/dashboard-api) | Shared dashboard API primitives (routes, auth, websocket binding, config resolution) |
+| [`@vasto/dashboard`](packages/dashboard) | First-party dashboard frontend |
+| [`@vasto/express-adapter`](packages/express-adapter) | Express adapter (`createExpressAdapter`, `createExpressWebSocketBinding`) |
+| [`@vasto/next-adapter`](packages/next-adapter) | Next.js integration |
+| [`@vasto/fastify-adapter`](packages/fastify-adapter) | Fastify integration |
+| [`@vasto/nest-adapter`](packages/nest-adapter) | Nest integration |
+| [`@vasto/hono-adapter`](packages/hono-adapter) | Hono integration |
+| [`@vasto/elysia-adapter`](packages/elysia-adapter) | Elysia/Bun integration |
+| [`@vasto/otel-plugin`](packages/otel-plugin) | OpenTelemetry tracing plugin |
+| [`@vasto/plugins`](packages/plugins) | Built-in plugins: DAG, rate-limiter |
 
 ---
 
@@ -243,15 +271,6 @@ RUN_INTEGRATION_TESTS=true \
 npm run test:integration
 ```
 
-## CI Workflows
-
-Two GitHub Actions workflows protect `main`:
-
-- `CI` (`.github/workflows/ci.yml`): install, build, typecheck, and monorepo test sweep.
-- `Integration Tests` (`.github/workflows/integration-tests.yml`): Redis + Postgres adapter integration validation when core/storage paths change.
-
-You can run the same checks locally with `npm run build`, `npm run check-types`, `npm test`, and `npm run test:integration`.
-
 ---
 
 ## Examples
@@ -259,7 +278,7 @@ You can run the same checks locally with `npm run build`, `npm run check-types`,
 | Example | Description |
 |---------|-------------|
 | [`examples/api-server`](examples/api-server) | Two-process API producer + worker consumer using file-based storage |
-| [`examples/queue-system`](examples/queue-system) | Multi-queue system with plugins and workers |
+| [`examples/queue-system`](examples/queue-system) | Multi system with plugins and workers |
 | [`examples/redis-isolation`](examples/redis-isolation) | Redis-backed HTTP API with delayed + scheduled dispatch |
 | [`examples/workflow-system`](examples/workflow-system) | DAG workflow + batch + one-time scheduling in a focused in-memory project |
 | [`examples/reliability-lab`](examples/reliability-lab) | Retry/backoff policy, DLQ operations, queue pause/resume/drain, and reliability snapshot |
@@ -281,6 +300,34 @@ You can run the same checks locally with `npm run build`, `npm run check-types`,
 | [`examples/nest-dashboard-app`](examples/nest-dashboard-app) | Nest dashboard adapter app with controller dispatch and mounted dashboard middleware |
 
 For guided setup flows, see [docs/operations/quickstarts/README.md](docs/operations/quickstarts/README.md).
+
+---
+
+## Adoption Paths
+
+Choose the entry point that matches your use case:
+
+- **Migrating from BullMQ with confidence:** start with the [BullMQ compatibility assessment](docs/operations/migration-guides/bullmq-parity-assessment.md) then the [migration guide](docs/operations/migration-guides/from-bullmq.md)
+- **Building an HTTP-triggered queue flow:** use the [adapter quickstarts](docs/operations/quickstarts/README.md)
+- **Scaffolding new jobs quickly:** use the [CLI starters](#cli-starters) above
+- **Planning production rollout:** review the [operations roadmap](docs/operations/ROADMAP.md) and phase docs
+
+---
+
+## Documentation
+
+- [Implemented feature catalog](docs/operations/feature-catalog.md)
+- [Operations roadmap](docs/operations/ROADMAP.md)
+- [Documentation index](docs/operations/README.md)
+- [BullMQ migration guide](docs/operations/migration-guides/from-bullmq.md)
+- [Adapter quickstarts](docs/operations/quickstarts/README.md)
+- [Dashboard integration guide](docs/operations/quickstarts/dashboard-integration.md)
+- [Core package README](packages/core/README.md)
+- [Contributing guide](CONTRIBUTING.md)
+- [Security policy](SECURITY.md)
+- [Code of conduct](CODE_OF_CONDUCT.md)
+- [Release process](docs/operations/releasing.md)
+- [Changelog](CHANGELOG.md)
 
 ---
 

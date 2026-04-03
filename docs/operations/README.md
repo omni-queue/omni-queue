@@ -1,11 +1,11 @@
 # Operations Documentation
 
-This section is the operator and adopter entry point for Omni Queue.
+This section is the operator and adopter entry point for Vasto.
 
 It is organized to help three common audiences:
 
 1. **Teams evaluating a migration from BullMQ**
-2. **Developers integrating Omni Queue into an application framework**
+2. **Developers integrating Vasto into an application framework**
 3. **Operators preparing a production rollout**
 
 ## Start here
@@ -46,9 +46,9 @@ It is organized to help three common audiences:
 2. Read the [BullMQ migration guide](migration-guides/from-bullmq.md)
 3. Pick the closest [adapter quickstart](quickstarts/README.md)
 4. Generate starter code with the CLI:
-   - `queue generate api-job --name=send-email`
-   - `queue generate workflow --name=asset-pipeline`
-   - `queue generate scheduled --name=daily-digest`
+   - `vasto generate api-job --name=send-email`
+   - `vasto generate workflow --name=asset-pipeline`
+   - `vasto generate scheduled --name=daily-digest`
 
 ### If you are starting a greenfield project
 
@@ -57,7 +57,7 @@ It is organized to help three common audiences:
 3. Choose an adapter in [quickstarts](quickstarts/README.md)
 4. Review [capacity planning](phase-5/capacity-planning-toolkit.md) before production rollout
 
-### If you are operating Omni Queue in production
+### If you are operating Vasto in production
 
 1. Review the [implemented feature catalog](feature-catalog.md)
 2. Review the [phase 5 proposal](phase-5/phase-5-proposal.md)

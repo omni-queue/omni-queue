@@ -1,11 +1,11 @@
 # Nest adapter quickstart
 
-Use this pattern when a Nest controller or service should hand work to Omni Queue.
+Use this pattern when a Nest controller or service should hand work to Vasto.
 
 ## Generate a starter
 
 ```bash
-queue generate api-job --name=provision-account --queue=nest-api
+vasto generate api-job --name=provision-account -=nest-api
 ```
 
 ## Example service usage
@@ -37,39 +37,39 @@ export class AccountsService {
 ```ts
 import path from 'node:path';
 import {
-  bindOmniQueueNestWebSocket,
-  omniQueueNestAdapter,
-} from '@omni-queue/nest-adapter';
+  bindVastoNestWebSocket,
+  vastoNestAdapter,
+} from '@vasto/nest-adapter';
 
 app.use(
-  omniQueueNestAdapter({
+  vastoNestAdapter({
     supervisor,
-    apiBase: '/api/omni-queue',
-    uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
+    apiBase: '/api/vasto',
+    uiDir: path.resolve(process.cwd(), 'public/vasto-dashboard'),
     uiBase: '/',
     protectUiWithAuth: false,
   })
 );
 
-bindOmniQueueNestWebSocket(app.getHttpServer(), {
+bindVastoNestWebSocket(app.getHttpServer(), {
   supervisor,
-  apiBase: '/api/omni-queue',
+  apiBase: '/api/vasto',
 });
 ```
 
 Publish the UI assets once:
 
 ```bash
-queue dashboard:publish --out=./public/omni-queue-dashboard
+queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
 If WebSocket upgrades are blocked by a proxy or serverless environment, force polling at runtime by injecting this before the dashboard `<script>` tag in your page template:
 
 ```html
 <script>
-  window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+  window.__VASTO_DASHBOARD_CONFIG__ = {
     transport: 'polling',          // 'auto' (default) | 'polling'
-    endpoint:  '/api/omni-queue',  // must match apiBase above
+    endpoint:  '/api/vasto',  // must match apiBase above
   };
 </script>
 ```

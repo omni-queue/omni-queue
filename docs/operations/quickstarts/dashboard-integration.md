@@ -1,6 +1,6 @@
 # Dashboard Integration Guide
 
-Use this guide to run, mount, and operate the Omni Queue dashboard across example apps and adapters.
+Use this guide to run, mount, and operate the Vasto dashboard across example apps and adapters.
 
 ## When to use this guide
 
@@ -47,7 +47,7 @@ Then open `http://localhost:4173`.
 Generate static dashboard files into your app's public directory:
 
 ```bash
-npx @omni-queue/cli dashboard:publish --out=./public/omni-queue-dashboard --base=/secured-dashboard --api-base=/api/dashboard-api
+npx @vasto/cli dashboard:publish --out=./public/vasto-dashboard --base=/secured-dashboard --api-base=/api/dashboard-api
 ```
 
 Use values matching your adapter mount configuration.
@@ -81,7 +81,7 @@ Common environment variables used by adapter examples:
 
 - `DASHBOARD_API_BASE`: dashboard API mount path (default `/api/dashboard-api`)
 - `DASHBOARD_UI_BASE`: dashboard UI mount path (default `/secured-dashboard`)
-- `DASHBOARD_UI_DIR`: static asset directory (default `public/omni-queue-dashboard`)
+- `DASHBOARD_UI_DIR`: static asset directory (default `public/vasto-dashboard`)
 - `QUEUE_DATA_DIR`: local shared storage directory for server/worker (default `queue-data`)
 
 ## Runtime UI config (no rebuild required)
@@ -90,7 +90,7 @@ You can override transport and endpoint via host-page runtime config:
 
 ```html
 <script>
-  window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+  window.__VASTO_DASHBOARD_CONFIG__ = {
     transport: 'polling',
     endpoint: '/api/dashboard-api',
     uiBase: '/secured-dashboard',
@@ -125,8 +125,8 @@ Supported transport values:
 
 ## Package boundaries
 
-- `@omni-queue/dashboard-api`: shared API/auth/websocket primitives used by framework adapters.
-- `@omni-queue/dashboard`: frontend UI package.
-- Adapter packages (`@omni-queue/*-adapter`): framework-specific integration layer.
+- `@vasto/dashboard-api`: shared API/auth/websocket primitives used by framework adapters.
+- `@vasto/dashboard`: frontend UI package.
+- Adapter packages (`@vasto/*-adapter`): framework-specific integration layer.
 
-Queue runtime semantics remain in `@omni-queue/core`.
+Queue runtime semantics remain in `@vasto/core`.

@@ -1,4 +1,4 @@
-# Releasing omni-queue
+# Releasing vasto
 
 This guide describes the recommended release workflow for maintainers.
 
@@ -26,8 +26,8 @@ npm run test:integration
 For focused validation while iterating:
 
 ```bash
-npm --workspace @omni-queue/core run build
-npm --workspace @omni-queue/core run test -- <pattern>
+npm --workspace @vasto/core run build
+npm --workspace @vasto/core run test -- <pattern>
 ```
 
 CI reference:

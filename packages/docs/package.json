@@ -1,0 +1,14 @@
+{
+  "name": "@vasto/docs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Vasto documentation website powered by VitePress",
+  "scripts": {
+    "dev": "vitepress dev docs",
+    "build": "vitepress build docs --outDir dist",
+    "preview": "vitepress preview docs"
+  },
+  "devDependencies": {
+    "vitepress": "^1.6.4"
+  }
+}
