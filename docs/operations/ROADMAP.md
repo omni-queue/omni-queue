@@ -29,21 +29,18 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 - [x] Add cron scheduling support (node-cron)
 - [x] Example: Redis isolation with delayed jobs
 - [x] Documentation & tests
-- **Estimated**: 3-4 weeks (assumes foundation ready)
 
 ### 1.2 Job Priorities & Priority Queues **[DONE]**
 - [x] Add priority field to StoredJob type
 - [x] Implement priority bucket dequeue strategy
 - [x] Update PooledExecutor for priority ordering
 - [x] Example: Email routing (critical, high, normal, low)
-- **Estimated**: 1.5-2 weeks
 
 ### 1.3 Job Progress Tracking **[DONE]**
 - [x] Add setProgress() API to JobManager
 - [x] Extend QueueStorage with progress storage
 - [x] Add onProgress plugin hook
 - [x] Real-time progress updates via plugins
-- **Estimated**: 1 week
 
 ### 1.4 Dead Letter Queue (DLQ) **[DONE]**
 - [x] Add maxAttempts to QueueConfig
@@ -51,7 +48,6 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 - [x] Add getDLQ() supervisor API
 - [x] Plugin hook: onFailedPermanently
 - [x] Example: Failed job inspection & retry
-- **Estimated**: 2 weeks
 
 ## Phase 2: Observability & Dashboard
 
@@ -60,7 +56,6 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 - [x] Prometheus client integration
 - [x] StatsD & DataDog exporters
 - [x] Auto-collected metrics (queue depth, duration, failures)
-- **Estimated**: 2-3 weeks
 
 ### 2.2 Web Dashboard (MVP) **[DONE]**
 - [x] React + Tailwind UI
@@ -69,13 +64,11 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 - [x] Failed job triage & retry UI
 - [x] Real-time updates (SSE/WebSocket)
 - [x] Worker scaling controls
-- **Estimated**: 4-5 weeks
 
 ### 2.3 Job Archive & Audit **[DONE]**
 - [x] SQL-based job archive
 - [x] Configurable retention policies
 - [x] Query builder for historical analysis
-- **Estimated**: 2 weeks
 
 ## Phase 3: Advanced Features
 
@@ -83,19 +76,16 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 - [x] JobFlow builder API
 - [x] Parent-child dependency tracking
 - [x] Atomic failure handling
-- **Estimated**: 3-4 weeks
 
 ### 3.2 Queue Pause/Resume with Drain **[DONE]**
 - [x] Graceful shutdown logic
 - [x] Drain: wait for in-flight jobs
 - [x] API: supervisor.pauseQueue(), resumeQueue()
-- **Estimated**: 1.5 weeks
 
 ### 3.3 Job Timeout & Cancellation **[DONE]**
 - [x] Per-job execution timer
 - [x] Signal handling for process workers
 - [x] Configurable timeout behavior (kill, retry)
-- **Estimated**: 2 weeks
 
 ## Phase 4: Ecosystem & Integration
 
@@ -221,28 +211,6 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 - [ ] PII/data minimization redaction policies
 - [ ] Retention and archival policies
 - [ ] Policy enforcement tests
-
-## Success Metrics
-
-| Metric | Current | Near-term target | Long-term target |
-|--------|---------|------------------|------------------|
-| Feature Completeness vs BullMQ | ~30% | ~50% | ~80% |
-| GitHub Stars | - | 500+ | 1500+ |
-| npm Downloads/week | - | 5k+ | 20k+ |
-| Missing Core Features | 12+ | 6+ | 2+ |
-| Has Web Dashboard | ❌ | ❌ | ✅ |
-| Metrics Export | ❌ | ✅ | ✅ |
-
-## Key Differentiators
-
-| Feature | BullMQ | Vasto |
-|---------|--------|-----------|
-| **Worker Isolation** | Sandboxed only | **Flexible: inline/thread/process** |
-| **Storage** | Redis only | **Pluggable: Redis, SQL, In-memory** |
-| **Auto-scaling Supervisor** | ❌ | **✅ Built-in** |
-| **Dashboard** | Bull Board (3rd-party) | **First-party, Horizon-quality** |
-| **Job Flows** | ❌ | **✅ DAG-based** |
-| **Metrics** | Via plugins | **Built-in, multi-backend** |
 
 ## Documentation Structure
 
