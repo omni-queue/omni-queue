@@ -743,10 +743,7 @@ export class JobManager {
         const leaseMs = queueConfig.visibilityTimeout || 30000;
         const executionTimeoutMs = resolveExecutionTimeoutMs(queueConfig, workerConfig);
         const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
-
-        const heartbeat = setInterval(() => {
-          storage.extendLease(ctx.job.id, leaseMs);
-        }, leaseMs / 2);
+        const stopHeartbeat = this.createLeaseHeartbeat(storage, ctx.job.id, leaseMs);
 
         try {
           this.lifecycleEvents?.emit({
@@ -840,7 +837,7 @@ export class JobManager {
             );
           }
 
-          clearInterval(heartbeat);
+          stopHeartbeat();
 
           if (typeof (storage as QueueStorage & { addCompletedJob?: unknown }).addCompletedJob === 'function') {
             await storage.addCompletedJob(ctx.job, result);
@@ -865,7 +862,7 @@ export class JobManager {
 
           return result;
         } catch (err) {
-          clearInterval(heartbeat);
+          stopHeartbeat();
 
           attempt++;
 
@@ -944,10 +941,7 @@ export class JobManager {
       const leaseMs = queueConfig.visibilityTimeout || 30000;
       const executionTimeoutMs = resolveExecutionTimeoutMs(queueConfig, workerConfig);
       const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
-
-      const heartbeat = setInterval(() => {
-        storage.extendLease(ctx.job.id, leaseMs);
-      }, leaseMs / 2);
+      const stopHeartbeat = this.createLeaseHeartbeat(storage, ctx.job.id, leaseMs);
 
       try {
         const isolationType = this.resolveIsolationType(ctx.instance, workerConfig);
@@ -1017,7 +1011,7 @@ export class JobManager {
           );
         }
 
-        clearInterval(heartbeat);
+        stopHeartbeat();
 
         if (typeof (storage as QueueStorage & { addCompletedJob?: unknown }).addCompletedJob === 'function') {
           await storage.addCompletedJob(ctx.job, result);
@@ -1028,7 +1022,7 @@ export class JobManager {
 
         return result;
       } catch (err) {
-        clearInterval(heartbeat);
+        stopHeartbeat();
 
         attempt++;
 
@@ -1269,6 +1263,32 @@ export class JobManager {
           reject(error);
         });
     });
+  }
+
+  private createLeaseHeartbeat(
+    storage: QueueStorage,
+    jobId: string,
+    leaseMs: number,
+  ): () => void {
+    const firstDelay = Math.max(1, Math.floor(leaseMs / 2));
+    let initialTimer: ReturnType<typeof setTimeout> | undefined;
+    let repeatingTimer: ReturnType<typeof setInterval> | undefined;
+
+    initialTimer = setTimeout(() => {
+      void storage.extendLease(jobId, leaseMs);
+      repeatingTimer = setInterval(() => {
+        void storage.extendLease(jobId, leaseMs);
+      }, firstDelay);
+    }, firstDelay);
+
+    return () => {
+      if (initialTimer) {
+        clearTimeout(initialTimer);
+      }
+      if (repeatingTimer) {
+        clearInterval(repeatingTimer);
+      }
+    };
   }
 
   private async dispatchFlowNode(flow: FlowRuntime, node: FlowRuntimeNode): Promise<void> {
