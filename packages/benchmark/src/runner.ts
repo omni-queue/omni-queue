@@ -6,6 +6,7 @@
  *   node --loader ts-node/esm src/runner.ts --all
  *   node --loader ts-node/esm src/runner.ts --scenario enqueue-throughput
  *   node --loader ts-node/esm src/runner.ts --scenario processing-throughput --iterations 5
+ *   node --loader ts-node/esm src/runner.ts --all --env-file .env.bench
  *   node --loader ts-node/esm src/runner.ts --all --save          # write results/latest.json
  *
  * Environment variables (all optional):
@@ -18,6 +19,7 @@ import os from 'node:os';
 import path from 'node:path';
 import process from 'node:process';
 import { createRequire } from 'node:module';
+import dotenv from 'dotenv';
 import type { ScenarioOptions, ScenarioReport } from './types.js';
 
 const require = createRequire(import.meta.url);
@@ -37,6 +39,7 @@ function parseArgs(): {
   scenarios: ScenarioName[];
   opts: ScenarioOptions;
   save: boolean;
+  envFile?: string;
 } {
   const args = process.argv.slice(2);
   const all = args.includes('--all');
@@ -45,6 +48,7 @@ function parseArgs(): {
   const scenarioArg = args.find((_, i) => args[i - 1] === '--scenario');
   const iterArg = args.find((_, i) => args[i - 1] === '--iterations');
   const warmupArg = args.find((_, i) => args[i - 1] === '--warmup');
+  const envFileArg = args.find((_, i) => args[i - 1] === '--env-file');
 
   let scenarios: ScenarioName[];
 
@@ -69,11 +73,34 @@ function parseArgs(): {
     ...(warmupArg != null ? { warmupIterations: parseInt(warmupArg, 10) } : {}),
   };
 
-  return { scenarios, opts, save };
+  return {
+    scenarios,
+    opts,
+    save,
+    ...(envFileArg != null ? { envFile: envFileArg } : {}),
+  };
+}
+
+function loadEnvironment(envFile?: string): void {
+  if (envFile) {
+    const resolvedEnvPath = path.resolve(process.cwd(), envFile);
+    if (!fs.existsSync(resolvedEnvPath)) {
+      console.error(`Env file not found: ${resolvedEnvPath}`);
+      process.exit(1);
+    }
+    dotenv.config({ path: resolvedEnvPath, override: true });
+    return;
+  }
+
+  const defaultEnvPath = path.resolve(process.cwd(), '.env');
+  if (fs.existsSync(defaultEnvPath)) {
+    dotenv.config({ path: defaultEnvPath, override: true });
+  }
 }
 
 async function main(): Promise<void> {
-  const { scenarios, opts, save } = parseArgs();
+  const { scenarios, opts, save, envFile } = parseArgs();
+  loadEnvironment(envFile);
 
   console.log('='.repeat(60));
   console.log('  Vasto Benchmark Suite');

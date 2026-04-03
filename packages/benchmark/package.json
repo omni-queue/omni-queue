@@ -24,6 +24,7 @@
   "devDependencies": {
     "bullmq": "^5.28.6",
     "bee-queue": "^1.7.1",
+    "dotenv": "^16.4.5",
     "pg-boss": "^10.0.0",
     "ioredis": "^5.3.2",
     "pg": "^8.11.0",

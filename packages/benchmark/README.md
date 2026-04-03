@@ -54,6 +54,13 @@ node --loader ts-node/esm src/runner.ts --scenario enqueue-throughput --iteratio
 
 # Save raw output to results/run-<timestamp>.json
 node --loader ts-node/esm src/runner.ts --all --save
+
+# Load vars from .env (auto-loaded if present)
+cp .env.example .env
+node --loader ts-node/esm src/runner.ts --all --save
+
+# Or explicitly provide a file
+node --loader ts-node/esm src/runner.ts --all --env-file .env.bench --save
 ```
 
 Saved files include:
@@ -68,6 +75,8 @@ Saved files include:
 |---|---|---|
 | `REDIS_URL` | *(unset — Redis scenarios skipped)* | Redis connection for BullMQ and bee-queue |
 | `POSTGRES_URL` | *(unset — pg-boss skipped)* | Postgres DSN for pg-boss |
+
+The runner automatically loads `.env` from `packages/benchmark` if present. You can override this with `--env-file <path>`.
 
 ## Scenarios
 
