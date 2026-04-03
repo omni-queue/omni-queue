@@ -45,6 +45,14 @@ export interface PostgresStoreConfig {
   archiveMaxRowsPerQueue?: number;
 }
 
+function ensureSqlIdentifier(name: string, label: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    throw new Error(`Invalid ${label}: ${name}. Only letters, numbers, and underscores are allowed.`);
+  }
+
+  return name;
+}
+
 export class PostgresStore implements QueueStorage {
   private pool: Pool;
   private table: string;
@@ -55,9 +63,9 @@ export class PostgresStore implements QueueStorage {
 
   constructor(config: PostgresStoreConfig) {
     this.pool = config.pool instanceof Pool ? config.pool : new Pool(config.pool);
-    this.table = config.tableName ?? 'vasto_jobs';
-    this.dlTable = config.deadLetterTableName ?? 'vasto_dead_letter';
-    this.completedTable = config.completedTableName ?? 'vasto_completed';
+    this.table = ensureSqlIdentifier(config.tableName ?? 'vasto_jobs', 'tableName');
+    this.dlTable = ensureSqlIdentifier(config.deadLetterTableName ?? 'vasto_dead_letter', 'deadLetterTableName');
+    this.completedTable = ensureSqlIdentifier(config.completedTableName ?? 'vasto_completed', 'completedTableName');
     this.archiveRetentionMs =
       typeof config.archiveRetentionMs === 'number' && Number.isFinite(config.archiveRetentionMs) && config.archiveRetentionMs > 0
         ? Math.floor(config.archiveRetentionMs)

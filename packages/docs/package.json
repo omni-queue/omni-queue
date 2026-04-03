@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "vitepress dev docs",
     "build": "vitepress build docs --outDir dist",
-    "preview": "vitepress preview docs"
+    "preview": "vite preview dist"
   },
   "devDependencies": {
-    "vitepress": "^1.6.4"
+    "vitepress": "2.0.0-alpha.17"
   }
 }

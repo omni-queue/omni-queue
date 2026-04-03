@@ -30,6 +30,14 @@ function isPool(value: Pool | PoolOptions): value is Pool {
   return typeof (value as Partial<Pool>).getConnection === 'function';
 }
 
+function ensureSqlIdentifier(name: string, label: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    throw new Error(`Invalid ${label}: ${name}. Only letters, numbers, and underscores are allowed.`);
+  }
+
+  return name;
+}
+
 export class MySqlStore implements QueueStorage {
   private pool: Pool;
   private table: string;
@@ -40,9 +48,9 @@ export class MySqlStore implements QueueStorage {
 
   constructor(config: MySqlStoreConfig) {
     this.pool = isPool(config.pool) ? config.pool : createPool(config.pool);
-    this.table = config.tableName ?? 'vasto_jobs';
-    this.dlTable = config.deadLetterTableName ?? 'vasto_dead_letter';
-    this.completedTable = config.completedTableName ?? 'vasto_completed';
+    this.table = ensureSqlIdentifier(config.tableName ?? 'vasto_jobs', 'tableName');
+    this.dlTable = ensureSqlIdentifier(config.deadLetterTableName ?? 'vasto_dead_letter', 'deadLetterTableName');
+    this.completedTable = ensureSqlIdentifier(config.completedTableName ?? 'vasto_completed', 'completedTableName');
     this.archiveRetentionMs =
       typeof config.archiveRetentionMs === 'number' && Number.isFinite(config.archiveRetentionMs) && config.archiveRetentionMs > 0
         ? Math.floor(config.archiveRetentionMs)
