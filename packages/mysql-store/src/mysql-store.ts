@@ -53,6 +53,20 @@ function priorityRank(priority: unknown): number {
   }
 }
 
+function canUseMinimalEnqueue(job: StoredJob): boolean {
+  return (
+    job.state === 'queued' &&
+    job.attempts === 0 &&
+    job.maxAttempts == null &&
+    job.idempotencyKey == null &&
+    job.delayUntil == null &&
+    job.scheduledCron == null &&
+    job.lastScheduledAt == null &&
+    job.progress == null &&
+    (job.priority == null || job.priority === 'normal')
+  );
+}
+
 export class MySqlStore implements QueueStorage {
   private pool: Pool;
   private table: string;
@@ -168,6 +182,75 @@ export class MySqlStore implements QueueStorage {
         job.createdAt,
         job.updatedAt,
       ]
+    );
+  }
+
+  async enqueueBatch(jobs: StoredJob[]): Promise<void> {
+    if (jobs.length === 0) {
+      return;
+    }
+
+    if (jobs.every(canUseMinimalEnqueue)) {
+      const placeholders = jobs.map(() => '(?, ?, ?, ?, ?, ?)').join(',');
+      const values: Array<string | number | null> = [];
+
+      for (const job of jobs) {
+        values.push(
+          job.id,
+          job.name,
+          JSON.stringify(job.payload),
+          job.queue,
+          job.createdAt,
+          job.updatedAt,
+        );
+      }
+
+      await this.pool.query(
+        `
+        INSERT INTO ${this.table}
+          (id, name, payload, queue, created_at, updated_at)
+        VALUES ${placeholders}
+        ON DUPLICATE KEY UPDATE
+          id = IF(idempotency_key IS NOT NULL, id, VALUES(id))
+        `,
+        values,
+      );
+
+      return;
+    }
+
+    const placeholders = jobs.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(',');
+    const values: Array<string | number | null> = [];
+
+    for (const job of jobs) {
+      values.push(
+        job.id,
+        job.name,
+        JSON.stringify(job.payload),
+        job.queue,
+        job.state,
+        job.attempts,
+        job.maxAttempts ?? null,
+        job.idempotencyKey ?? null,
+        job.delayUntil ?? null,
+        job.scheduledCron ?? null,
+        job.lastScheduledAt ?? null,
+        job.priority ?? 'normal',
+        job.progress ?? null,
+        job.createdAt,
+        job.updatedAt,
+      );
+    }
+
+    await this.pool.query(
+      `
+      INSERT INTO ${this.table}
+        (id, name, payload, queue, state, attempts, max_attempts, idempotency_key, delay_until, scheduled_cron, last_scheduled_at, priority, progress, created_at, updated_at)
+      VALUES ${placeholders}
+      ON DUPLICATE KEY UPDATE
+        id = IF(idempotency_key IS NOT NULL, id, VALUES(id))
+      `,
+      values,
     );
   }
 

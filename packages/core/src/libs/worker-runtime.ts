@@ -118,9 +118,12 @@ export class JobManager {
       storage: QueueStorage;
       enqueueHooks: Array<{ onEnqueue: (job: any) => Promise<void> }>;
     }>();
+    const queueNames: string[] = new Array(jobs.length);
 
-    for (const job of jobs) {
+    for (let i = 0; i < jobs.length; i++) {
+      const job = jobs[i];
       const queueName = job.queue();
+      queueNames[i] = queueName;
       if (queueContexts.has(queueName)) continue;
 
       const queueConfig = this.resolveQueueConfig(queueName);
@@ -151,14 +154,17 @@ export class JobManager {
       const jobsByStorage = new Map<QueueStorage, StoredJob[]>();
       const hookPromises: Promise<void>[] = [];
       const now = Date.now();
+      const shouldEmitLifecycle = this.lifecycleEvents != null;
 
       for (let i = start; i < end; i++) {
         const job = jobs[i];
-        const queueName = job.queue();
+        const queueName = queueNames[i]!;
         const context = queueContexts.get(queueName)!;
 
-        for (const plugin of context.enqueueHooks) {
-          hookPromises.push(plugin.onEnqueue(job));
+        if (context.enqueueHooks.length > 0) {
+          for (const plugin of context.enqueueHooks) {
+            hookPromises.push(plugin.onEnqueue(job));
+          }
         }
 
         const storedJob: StoredJob = {
@@ -172,14 +178,13 @@ export class JobManager {
           updatedAt: now,
         };
 
-        const baseTags = [`queue:${queueName}`, `job:${job.jobName}`];
-        const extraTags = typeof job.tags === 'function' ? job.tags() : [];
-        const allTags = extraTags.length > 0
-          ? Array.from(new Set([...baseTags, ...extraTags]))
-          : baseTags;
-
-        if (allTags.length > 0) {
-          storedJob.tags = allTags;
+        const queueTag = `queue:${queueName}`;
+        const jobTag = `job:${job.jobName}`;
+        const extraTags = typeof job.tags === 'function' ? job.tags() : undefined;
+        if (extraTags != null && extraTags.length > 0) {
+          storedJob.tags = Array.from(new Set([queueTag, jobTag, ...extraTags]));
+        } else {
+          storedJob.tags = [queueTag, jobTag];
         }
 
         // Group by storage
@@ -221,12 +226,14 @@ export class JobManager {
         // Record IDs and emit events
         for (const storedJob of storedJobs) {
           ids.push(storedJob.id);
-          this.lifecycleEvents?.emit({
-            type: 'job.enqueued',
-            queueName: storedJob.queue,
-            jobId: storedJob.id,
-            jobName: storedJob.name,
-          });
+          if (shouldEmitLifecycle) {
+            this.lifecycleEvents?.emit({
+              type: 'job.enqueued',
+              queueName: storedJob.queue,
+              jobId: storedJob.id,
+              jobName: storedJob.name,
+            });
+          }
         }
       }
     }

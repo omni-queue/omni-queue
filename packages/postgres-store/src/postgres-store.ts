@@ -342,21 +342,16 @@ export class PostgresStore implements QueueStorage {
     }
 
     if (jobs.every(canUseMinimalEnqueue)) {
-      const ids: string[] = [];
-      const names: string[] = [];
-      const payloads: string[] = [];
-      const queues: string[] = [];
-      const createdAts: number[] = [];
-      const updatedAts: number[] = [];
-
-      for (const job of jobs) {
-        ids.push(job.id);
-        names.push(job.name);
-        payloads.push(JSON.stringify(job.payload));
-        queues.push(job.queue);
-        createdAts.push(job.createdAt);
-        updatedAts.push(job.updatedAt);
-      }
+      const payload = JSON.stringify(
+        jobs.map((job) => ({
+          id: job.id,
+          name: job.name,
+          payload: job.payload,
+          queue: job.queue,
+          created_at: job.createdAt,
+          updated_at: job.updatedAt,
+        })),
+      );
 
       await this.pool.query(
         {
@@ -365,15 +360,22 @@ export class PostgresStore implements QueueStorage {
         INSERT INTO ${this.table}
           (id, name, payload, queue, created_at, updated_at)
         SELECT
-          ($1::text[])[idx],
-          ($2::text[])[idx],
-          (($3::text[])[idx])::jsonb,
-          ($4::text[])[idx],
-          ($5::bigint[])[idx],
-          ($6::bigint[])[idx]
-        FROM generate_subscripts($1::text[], 1) AS idx
+          id,
+          name,
+          payload,
+          queue,
+          created_at,
+          updated_at
+        FROM json_to_recordset($1::json) AS j(
+          id text,
+          name text,
+          payload jsonb,
+          queue text,
+          created_at bigint,
+          updated_at bigint
+        )
         `,
-          values: [ids, names, payloads, queues, createdAts, updatedAts],
+          values: [payload],
         },
       );
       return;

@@ -187,17 +187,24 @@ export async function createVastoFixture(options: VastoFixtureOptions): Promise<
   const trackCompletedJobs = envFlag('VASTO_BENCH_TRACK_COMPLETED');
   const benchPartitionByQueue = options.partitionByQueue ?? !envFlag('VASTO_BENCH_DISABLE_QUEUE_PARTITIONS');
   const benchEnqueueChunkSize = options.enqueueChunkSize ?? envOptionalInt('VASTO_BENCH_ENQUEUE_CHUNK_SIZE');
+  const configuredPoolMax = envOptionalInt('VASTO_BENCH_PG_POOL_MAX');
+  const configuredPoolMin = envOptionalInt('VASTO_BENCH_PG_POOL_MIN');
+  const configuredPoolIdleTimeoutMs = envOptionalInt('VASTO_BENCH_PG_POOL_IDLE_TIMEOUT_MS');
   const configuredBase = process.env.VASTO_BENCH_PG_TABLE_BASE?.trim();
   const tableBase = configuredBase
     ? asSqlIdentifier(configuredBase, 'VASTO_BENCH_PG_TABLE_BASE')
     : `vasto_bench_${token}`;
   const tableName = `${tableBase}_jobs`;
   const deadLetterTableName = `${tableBase}_dead_letter`;
+  const defaultPoolMax = Math.max(20, options.concurrency * 4);
+  const poolMax = configuredPoolMax ?? defaultPoolMax;
+  const poolMin = configuredPoolMin != null ? Math.min(configuredPoolMin, poolMax) : Math.min(4, poolMax);
+  const poolIdleTimeoutMs = configuredPoolIdleTimeoutMs ?? 10_000;
   const pool = new Pool({
     connectionString: options.postgresUrl,
-    max: Math.max(20, options.concurrency * 4),
-    min: 4,
-    idleTimeoutMillis: 10_000,
+    max: poolMax,
+    min: poolMin,
+    idleTimeoutMillis: poolIdleTimeoutMs,
   });
   const storage = new PostgresStore({
     pool,
