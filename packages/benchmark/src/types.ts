@@ -2,7 +2,15 @@
  * Shared types for all benchmark scenarios.
  */
 
-export type LibraryName = 'vasto-memory' | 'vasto-redis' | 'bullmq' | 'bee-queue' | 'pg-boss';
+export type LibraryName =
+  | 'vasto-memory'
+  | 'vasto-redis'
+  | 'vasto-postgres'
+  | 'vasto-postgres-unpartitioned'
+  | 'vasto-postgres-partitioned'
+  | 'bullmq'
+  | 'bee-queue'
+  | 'pg-boss';
 
 export interface ScenarioResult {
   library: LibraryName;
@@ -48,6 +56,6 @@ export interface ScenarioOptions {
   concurrency?: number;
   /** Redis URL (defaults to REDIS_URL env; empty means Redis-backed scenarios are skipped) */
   redisUrl?: string;
-  /** Postgres DSN (defaults to POSTGRES_URL env; empty means pg-boss scenarios are skipped) */
+  /** Postgres DSN (defaults to POSTGRES_URL env; empty means Postgres-backed scenarios are skipped) */
   postgresUrl?: string;
 }

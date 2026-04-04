@@ -9,6 +9,9 @@ import { sleep } from '../utils';
 
 export class ResilientWorker {
   private running = false;
+  private idleBackoffMs = 1;
+  private idleTimer?: ReturnType<typeof setTimeout>;
+  private idleResolve?: () => void;
   private rateLimits = new RateLimitCoordinator();
   private backpressureActive = new Map<string, boolean>();
   private circuitState = new Map<
@@ -50,60 +53,104 @@ export class ResilientWorker {
 
   async tick() {
     const queueOrder = this.getQueueOrder();
-    let processedAnyJobs = false;
-
-    for (const queueName of queueOrder) {
-      if (this.canProcessQueue && !this.canProcessQueue(queueName)) {
-        continue;
-      }
-
-      const queueConfig = this.queues[queueName];
-      if (!queueConfig) {
-        continue;
-      }
-
-      if (!(await this.checkBackpressure(queueName, queueConfig))) {
-        continue;
-      }
-
-      if (!this.canExecuteByCircuitBreaker(queueName, queueConfig)) {
-        continue;
-      }
-
-      if (!(await this.canConsumeByRateLimit(queueName, queueConfig))) {
-        continue;
-      }
-
-      const storage = this.storageAdapters[queueConfig.connection];
-      if (!storage) {
-        continue;
-      }
-
-      const jobs = await storage.dequeue({
-        queue: queueName,
-        batchSize: queueConfig.batchSize || 1,
-        leaseMs: queueConfig.visibilityTimeout || 30000,
-      });
-
-      processedAnyJobs ||= jobs.length > 0;
-
-      const results = await Promise.allSettled(
-        jobs.map((job: StoredJob) => this.runtime.execute(job))
-      );
-
-      for (const result of results) {
-        if (result.status === 'fulfilled') {
-          this.onExecutionSucceeded(queueName);
-          continue;
+    const perQueueProcessed = await Promise.all(
+      queueOrder.map(async (queueName) => {
+        if (this.canProcessQueue && !this.canProcessQueue(queueName)) {
+          return false;
         }
 
-        this.onExecutionFailed(queueName, queueConfig, result.reason);
-      }
+        const queueConfig = this.queues[queueName];
+        if (!queueConfig) {
+          return false;
+        }
+
+        if (!(await this.checkBackpressure(queueName, queueConfig))) {
+          return false;
+        }
+
+        if (!this.canExecuteByCircuitBreaker(queueName, queueConfig)) {
+          return false;
+        }
+
+        if (!(await this.canConsumeByRateLimit(queueName, queueConfig))) {
+          return false;
+        }
+
+        const storage = this.storageAdapters[queueConfig.connection];
+        if (!storage) {
+          return false;
+        }
+
+        const jobs = await storage.dequeue({
+          queue: queueName,
+          batchSize: queueConfig.batchSize || 1,
+          leaseMs: queueConfig.visibilityTimeout || 30000,
+        });
+
+        if (jobs.length === 0) {
+          return false;
+        }
+
+        const results = await Promise.allSettled(
+          jobs.map((job: StoredJob) => this.runtime.execute(job))
+        );
+
+        for (const result of results) {
+          if (result.status === 'fulfilled') {
+            this.onExecutionSucceeded(queueName);
+            continue;
+          }
+
+          this.onExecutionFailed(queueName, queueConfig, result.reason);
+        }
+
+        return true;
+      })
+    );
+
+    const processedAnyJobs = perQueueProcessed.some(Boolean);
+    if (processedAnyJobs) {
+      this.idleBackoffMs = 1;
+      return;
     }
 
-    if (!processedAnyJobs) {
-      await sleep(25);
+    await this.waitForIdle(this.idleBackoffMs);
+    this.idleBackoffMs = Math.min(this.idleBackoffMs * 2, 10);
+  }
+
+  private waitForIdle(delayMs: number): Promise<void> {
+    if (delayMs <= 0) {
+      return Promise.resolve();
     }
+
+    return new Promise((resolve) => {
+      let settled = false;
+      const finish = () => {
+        if (settled) {
+          return;
+        }
+
+        settled = true;
+        if (this.idleTimer) {
+          clearTimeout(this.idleTimer);
+          this.idleTimer = undefined;
+        }
+        this.idleResolve = undefined;
+        resolve();
+      };
+
+      this.idleResolve = finish;
+      this.idleTimer = setTimeout(finish, delayMs);
+    });
+  }
+
+  wake(queueName?: string): void {
+    if (queueName && !this.config.queues.includes(queueName)) {
+      return;
+    }
+
+    this.idleBackoffMs = 1;
+    this.idleResolve?.();
   }
 
   private async checkBackpressure(queueName: string, queueConfig: QueueConfig): Promise<boolean> {
@@ -284,7 +331,7 @@ export class ResilientWorker {
   }
 
   getQueueOrder() {
-    return this.config.queues.sort((a: string, b: string) => {
+    return [...this.config.queues].sort((a: string, b: string) => {
       const pa = this.queues[a]?.priority === 'high' ? 1 : 0;
       const pb = this.queues[b]?.priority === 'high' ? 1 : 0;
 
@@ -294,5 +341,6 @@ export class ResilientWorker {
 
   stop() {
     this.running = false;
+    this.idleResolve?.();
   }
 }

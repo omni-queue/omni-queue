@@ -147,6 +147,7 @@ export class DynamoDbStore implements QueueStorage {
         { name: 'queue', type: ScalarAttributeType.S },
         { name: 'state', type: ScalarAttributeType.S },
         { name: 'createdAt', type: ScalarAttributeType.N },
+        { name: 'leaseUntil', type: ScalarAttributeType.N },
         { name: 'idempotencyKey', type: ScalarAttributeType.S },
       ],
       globalSecondaryIndexes: [
@@ -161,6 +162,14 @@ export class DynamoDbStore implements QueueStorage {
         {
           IndexName: 'idempotencyKey-index',
           KeySchema: [{ AttributeName: 'idempotencyKey', KeyType: 'HASH' }],
+          Projection: { ProjectionType: 'ALL' },
+        },
+        {
+          IndexName: 'queue-leaseUntil',
+          KeySchema: [
+            { AttributeName: 'queue', KeyType: 'HASH' },
+            { AttributeName: 'leaseUntil', KeyType: 'RANGE' },
+          ],
           Projection: { ProjectionType: 'ALL' },
         },
       ],
@@ -1036,6 +1045,26 @@ export class DynamoDbStore implements QueueStorage {
     now: number,
     limit: number
   ): Promise<Array<{ id: string; priorityRank: number; createdAt: number }>> {
+    if (queue) {
+      const [queued, expiredLeases] = await Promise.all([
+        this.queryQueuedCandidates(queue, now, Math.max(limit * 2, 100)),
+        this.queryExpiredLeaseCandidates(queue, now, Math.max(limit, 50)),
+      ]);
+
+      const mergedById = new Map<string, JobDoc>();
+      for (const item of queued) {
+        mergedById.set(item.id, item);
+      }
+      for (const item of expiredLeases) {
+        mergedById.set(item.id, item);
+      }
+
+      return Array.from(mergedById.values())
+        .sort((left, right) => left.priorityRank - right.priorityRank || left.createdAt - right.createdAt)
+        .slice(0, limit)
+        .map((job) => ({ id: job.id, priorityRank: job.priorityRank, createdAt: job.createdAt }));
+    }
+
     const all = await this.scanAll<JobDoc>(this.table);
     return all
       .filter((job) => {
@@ -1056,6 +1085,82 @@ export class DynamoDbStore implements QueueStorage {
       .sort((left, right) => left.priorityRank - right.priorityRank || left.createdAt - right.createdAt)
       .slice(0, limit)
       .map((job) => ({ id: job.id, priorityRank: job.priorityRank, createdAt: job.createdAt }));
+  }
+
+  private async queryQueuedCandidates(queue: string, now: number, limit: number): Promise<JobDoc[]> {
+    const items: JobDoc[] = [];
+    let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+    do {
+      const page = await this.docClient.send(
+        new QueryCommand({
+          TableName: this.table,
+          IndexName: 'queue-state-createdAt',
+          KeyConditionExpression: 'queue = :queue',
+          FilterExpression: '#state = :queued AND (attribute_not_exists(delayUntil) OR delayUntil <= :now)',
+          ExpressionAttributeNames: {
+            '#state': 'state',
+          },
+          ExpressionAttributeValues: {
+            ':queue': queue,
+            ':queued': 'queued',
+            ':now': now,
+          },
+          Limit: Math.max(limit * 2, 50),
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+
+      if (page.Items) {
+        items.push(...(page.Items as JobDoc[]));
+      }
+
+      if (items.length >= limit) {
+        break;
+      }
+
+      lastEvaluatedKey = page.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastEvaluatedKey);
+
+    return items;
+  }
+
+  private async queryExpiredLeaseCandidates(queue: string, now: number, limit: number): Promise<JobDoc[]> {
+    const items: JobDoc[] = [];
+    let lastEvaluatedKey: Record<string, unknown> | undefined;
+
+    do {
+      const page = await this.docClient.send(
+        new QueryCommand({
+          TableName: this.table,
+          IndexName: 'queue-leaseUntil',
+          KeyConditionExpression: 'queue = :queue AND leaseUntil < :now',
+          FilterExpression: '#state = :leased',
+          ExpressionAttributeNames: {
+            '#state': 'state',
+          },
+          ExpressionAttributeValues: {
+            ':queue': queue,
+            ':now': now,
+            ':leased': 'leased',
+          },
+          Limit: Math.max(limit * 2, 25),
+          ExclusiveStartKey: lastEvaluatedKey,
+        })
+      );
+
+      if (page.Items) {
+        items.push(...(page.Items as JobDoc[]));
+      }
+
+      if (items.length >= limit) {
+        break;
+      }
+
+      lastEvaluatedKey = page.LastEvaluatedKey as Record<string, unknown> | undefined;
+    } while (lastEvaluatedKey);
+
+    return items;
   }
 
   private async tryLeaseCandidate(

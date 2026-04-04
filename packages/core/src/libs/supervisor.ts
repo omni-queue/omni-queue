@@ -34,11 +34,13 @@ export interface SupervisorOptions {
   workers: Record<string, WorkerConfig>;
   registry: JobRegistry;
   storageAdapters: Record<string, QueueStorage>;
+  enqueueChunkSize?: number;
   globalPlugins?: Plugin[];
   dashboard?: DashboardOptions;
   repeatables?: {
     recoverOnStart?: boolean;
     promoterIntervalMs?: number;
+    promoterEnabled?: boolean;
   };
 }
 
@@ -58,6 +60,7 @@ export class Supervisor {
   private lifecycleEvents = new LifecycleEventBus();
   private reliabilityStatus = new Map<string, QueueReliabilityStatus>();
   private repeatablesConfig?: SupervisorOptions['repeatables'];
+  private globalPlugins: Plugin[] = [];
 
   constructor(
     queuesOrOptions: Record<string, QueueConfig> | SupervisorOptions,
@@ -70,6 +73,7 @@ export class Supervisor {
     let finalWorkers: Record<string, WorkerConfig>;
     let finalRegistry: JobRegistry;
     let finalStorageAdapters: Record<string, QueueStorage>;
+    let finalEnqueueChunkSize: number | undefined;
     let finalGlobalPlugins: Plugin[] = [];
     let finalDashboard: DashboardOptions | undefined;
 
@@ -79,6 +83,7 @@ export class Supervisor {
       finalWorkers = queuesOrOptions.workers;
       finalRegistry = queuesOrOptions.registry;
       finalStorageAdapters = queuesOrOptions.storageAdapters;
+      finalEnqueueChunkSize = queuesOrOptions.enqueueChunkSize;
       finalGlobalPlugins = queuesOrOptions.globalPlugins || [];
       finalDashboard = queuesOrOptions.dashboard;
       this.repeatablesConfig = queuesOrOptions.repeatables;
@@ -92,9 +97,12 @@ export class Supervisor {
       finalWorkers = workerDefs;
       finalRegistry = registry;
       finalStorageAdapters = storageAdapters;
+      finalEnqueueChunkSize = undefined;
       finalGlobalPlugins = globalPlugins || [];
       finalDashboard = undefined;
     }
+
+    this.globalPlugins = finalGlobalPlugins;
 
     // Initialize JobManager internally
     this.jobManager = new JobManager(
@@ -103,7 +111,8 @@ export class Supervisor {
       finalRegistry,
       finalStorageAdapters,
       finalGlobalPlugins,
-      this.lifecycleEvents
+      this.lifecycleEvents,
+      ...(finalEnqueueChunkSize != null ? [{ bulkDispatchChunkSize: finalEnqueueChunkSize }] : [])
     );
     this.batchManager = new BatchManager();
     this.jobManager.setBatchManager(this.batchManager);
@@ -120,6 +129,18 @@ export class Supervisor {
 
     this.lifecycleEvents.subscribe((event) => {
       this.updateReliabilityState(event);
+
+      if (event.type === 'job.promoted' && event.queueName) {
+        this.wakeWorkersForQueue(event.queueName);
+      }
+
+      if (event.type === 'queue.resumed' && event.queueName) {
+        this.wakeWorkersForQueue(event.queueName);
+      }
+
+      if (event.type === 'schedule.created' && event.scheduleAt != null) {
+        this.promoter?.requestRescheduleAt(event.scheduleAt);
+      }
     });
   }
 
@@ -148,12 +169,12 @@ export class Supervisor {
 
     // Start scheduled job promoter (Phase 1.1)
     const defaultStorageKey = Object.keys(this.storageAdapters)[0];
-    if (defaultStorageKey && this.storageAdapters[defaultStorageKey]) {
+    if (this.repeatablesConfig?.promoterEnabled !== false && defaultStorageKey && this.storageAdapters[defaultStorageKey]) {
       this.promoter = new ScheduledJobPromoter(
         this.storageAdapters[defaultStorageKey]!,
         this.queues,
         this.repeatablesConfig?.promoterIntervalMs ?? 100,
-        [], // Global plugins would be passed here
+        this.globalPlugins,
         this.lifecycleEvents
       );
       this.promoter.start();
@@ -171,12 +192,16 @@ export class Supervisor {
 
   async monitor() {
     while (this.running) {
-      for (const [name, config] of Object.entries(this.workerDefs)) {
-        const depth = await this.getQueueDepth(config.queues);
+      const scalingDecisions = await Promise.all(
+        Object.entries(this.workerDefs).map(async ([name, config]) => {
+          const depth = await this.getQueueDepth(config.queues);
+          const target = this.calculateConcurrency(depth, config, name);
+          return { name, config, target };
+        })
+      );
 
-        const target = this.calculateConcurrency(depth, config, name);
-
-        this.scaleTo(name, config, target);
+      for (const decision of scalingDecisions) {
+        this.scaleTo(decision.name, decision.config, decision.target);
       }
 
       await sleep(2000);
@@ -184,23 +209,23 @@ export class Supervisor {
   }
 
   async getQueueDepth(queueNames: string[]) {
-    let total = 0;
+    const depths = await Promise.all(
+      queueNames.map(async (q) => {
+        const config = this.queues[q];
+        if (!config) {
+          return 0;
+        }
 
-    for (const q of queueNames) {
-      const config = this.queues[q];
-      if (!config) {
-        continue;
-      }
+        const storage = this.storageAdapters[config.connection];
+        if (!storage) {
+          return 0;
+        }
 
-      const storage = this.storageAdapters[config.connection];
-      if (!storage) {
-        continue;
-      }
+        return storage.getQueueDepth(q);
+      })
+    );
 
-      total += await storage.getQueueDepth(q);
-    }
-
-    return total;
+    return depths.reduce((total, value) => total + value, 0);
   }
 
   /**
@@ -542,7 +567,7 @@ export class Supervisor {
     ]);
 
     if (candidates.some((list) => list.some((job) => job.id === jobId))) {
-      await storage.ack(jobId);
+      await storage.ack(jobId, queueName);
       return true;
     }
 
@@ -882,6 +907,16 @@ export class Supervisor {
       type: 'worker.started',
       workerName: name,
     });
+  }
+
+  private wakeWorkersForQueue(queueName: string): void {
+    for (const workers of this.workers.values()) {
+      for (const worker of workers) {
+        if (typeof worker.wake === 'function') {
+          worker.wake(queueName);
+        }
+      }
+    }
   }
 
   scaleWorker(name: string, config: any) {

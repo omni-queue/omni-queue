@@ -11,14 +11,7 @@
 import { Queue as BullMQQueue } from 'bullmq';
 import BeeQueue from 'bee-queue';
 import PgBoss from 'pg-boss';
-import {
-  InMemoryQueueStorage,
-  JobRegistry,
-  Supervisor,
-  defineQueues,
-  defineWorkers,
-  Job,
-} from '@vasto/core';
+import { Job } from '@vasto/core';
 import {
   buildReport,
   DEFAULT_OPTIONS,
@@ -29,9 +22,16 @@ import {
   withTimeout,
 } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
+import { createVastoFixture } from '../vasto-fixture.js';
 
 const JOBS_PER_ROUND = 1000;
+const ENQUEUE_CHUNK_SIZE = JOBS_PER_ROUND;
 const SCENARIO = 'enqueue-throughput';
+
+function envFlag(name: string): boolean {
+  const raw = process.env[name]?.trim().toLowerCase();
+  return raw === '1' || raw === 'true' || raw === 'yes';
+}
 
 // ---------------------------------------------------------------------------
 // Vasto in-memory
@@ -44,34 +44,53 @@ class BenchJob extends Job<{ index: number; data: string }> {
   override async handle() { /* no-op */ }
 }
 
-async function runVastoMemory(opts: Required<ScenarioOptions>): Promise<ScenarioResult> {
-  const storage = new InMemoryQueueStorage();
-  const registry = new JobRegistry();
-  registry.register(BenchJob);
-
-  const supervisor = new Supervisor({
-    queues: defineQueues({ bench: { name: 'bench', connection: 'memory', concurrency: 1, batchSize: 10 } }),
-    workers: defineWorkers({ w: { queues: ['bench'], concurrency: 1 } }),
-    registry,
-    storageAdapters: { memory: storage },
+async function runVasto(
+  backend: 'memory' | 'redis' | 'postgres',
+  opts: Required<ScenarioOptions>,
+  runOptions?: {
+    partitionByQueue?: boolean;
+    libraryOverride?: ScenarioResult['library'];
+  },
+): Promise<ScenarioResult> {
+  const fixture = await createVastoFixture({
+    backend,
+    jobClass: BenchJob,
+    concurrency: 1,
+    batchSize: 10,
+    enqueueChunkSize: JOBS_PER_ROUND,
+    ...(runOptions?.partitionByQueue != null ? { partitionByQueue: runOptions.partitionByQueue } : {}),
+    redisUrl: opts.redisUrl,
+    postgresUrl: opts.postgresUrl,
   });
 
-  const durations = await runRounds(async () => {
-    for (let i = 0; i < JOBS_PER_ROUND; i++) {
-      await supervisor.jobManager.dispatch(new BenchJob({ index: i, data: 'benchmark-payload' }));
-    }
-  }, opts);
+  try {
+    const durations = await runRounds(async () => {
+      for (let start = 0; start < JOBS_PER_ROUND; start += ENQUEUE_CHUNK_SIZE) {
+        const end = Math.min(start + ENQUEUE_CHUNK_SIZE, JOBS_PER_ROUND);
+        const jobs = Array.from(
+          { length: end - start },
+          (_, offset) => new BenchJob({ index: start + offset, data: 'benchmark-payload' }),
+        );
 
-  await storage.clear?.();
+        if (typeof fixture.supervisor.jobManager.dispatchMany === 'function') {
+          await fixture.supervisor.jobManager.dispatchMany(jobs);
+        } else {
+          await Promise.all(jobs.map((job) => fixture.supervisor.jobManager.dispatch(job)));
+        }
+      }
+    }, opts);
 
-  const mean = meanOf(durations);
-  return {
-    library: 'vasto-memory',
-    scenario: SCENARIO,
-    iterations: opts.iterations,
-    ops: toOps(JOBS_PER_ROUND, mean),
-    meanMs: mean,
-  };
+    const mean = meanOf(durations);
+    return {
+      library: runOptions?.libraryOverride ?? fixture.library,
+      scenario: SCENARIO,
+      iterations: opts.iterations,
+      ops: toOps(JOBS_PER_ROUND, mean),
+      meanMs: mean,
+    };
+  } finally {
+    await fixture.cleanup();
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -197,10 +216,13 @@ export async function run(opts: ScenarioOptions = {}): Promise<ScenarioReport> {
 
   console.log(`\nRunning ${SCENARIO} (${JOBS_PER_ROUND} jobs/round × ${resolved.iterations} rounds)...`);
 
-  results.push(await runVastoMemory(resolved));
+  results.push(await runVasto('memory', resolved));
   console.log(`  vasto-memory done`);
 
   if (resolved.redisUrl) {
+    results.push(await runVasto('redis', resolved));
+    console.log(`  vasto-redis done`);
+
     results.push(await runBullMQ(resolved));
     console.log(`  bullmq done`);
 
@@ -209,6 +231,23 @@ export async function run(opts: ScenarioOptions = {}): Promise<ScenarioReport> {
   }
 
   if (resolved.postgresUrl) {
+    if (envFlag('VASTO_BENCH_COMPARE_PARTITIONS')) {
+      results.push(await runVasto('postgres', resolved, {
+        partitionByQueue: false,
+        libraryOverride: 'vasto-postgres-unpartitioned',
+      }));
+      console.log(`  vasto-postgres-unpartitioned done`);
+
+      results.push(await runVasto('postgres', resolved, {
+        partitionByQueue: true,
+        libraryOverride: 'vasto-postgres-partitioned',
+      }));
+      console.log(`  vasto-postgres-partitioned done`);
+    } else {
+      results.push(await runVasto('postgres', resolved));
+      console.log(`  vasto-postgres done`);
+    }
+
     results.push(await runPgBoss(resolved));
     console.log(`  pg-boss done`);
   }

@@ -38,6 +38,21 @@ function ensureSqlIdentifier(name: string, label: string): string {
   return name;
 }
 
+function priorityRank(priority: unknown): number {
+  switch (priority) {
+    case 'critical':
+      return 0;
+    case 'high':
+      return 1;
+    case 'normal':
+      return 2;
+    case 'low':
+      return 3;
+    default:
+      return 2;
+  }
+}
+
 export class MySqlStore implements QueueStorage {
   private pool: Pool;
   private table: string;
@@ -166,18 +181,22 @@ export class MySqlStore implements QueueStorage {
       await conn.beginTransaction();
 
       const queueCondition = queue ? 'AND queue = ?' : '';
-      const params: Array<string | number> = [now, now];
-      if (queue) params.push(queue);
-      params.push(batchSize);
+      const selectLimit = Math.max(batchSize * 2, batchSize);
 
-      const [rows] = await conn.query<DbRow[]>(
+      const queuedParams: Array<string | number> = [now];
+      if (queue) queuedParams.push(queue);
+      queuedParams.push(selectLimit);
+
+      const leasedParams: Array<string | number> = [now];
+      if (queue) leasedParams.push(queue);
+      leasedParams.push(selectLimit);
+
+      const [queuedRows] = await conn.query<DbRow[]>(
         `
         SELECT *
         FROM ${this.table}
-        WHERE (
-          (state = 'queued' AND (delay_until IS NULL OR delay_until <= ?))
-          OR (state = 'leased' AND lease_until IS NOT NULL AND lease_until < ?)
-        )
+        WHERE state = 'queued'
+          AND (delay_until IS NULL OR delay_until <= ?)
         ${queueCondition}
         ORDER BY
           CASE priority
@@ -191,15 +210,54 @@ export class MySqlStore implements QueueStorage {
         LIMIT ?
         FOR UPDATE SKIP LOCKED
         `,
-        params
+        queuedParams
       );
 
-      if (rows.length === 0) {
+      const [leasedRows] = await conn.query<DbRow[]>(
+        `
+        SELECT *
+        FROM ${this.table}
+        WHERE state = 'leased'
+          AND lease_until IS NOT NULL
+          AND lease_until < ?
+        ${queueCondition}
+        ORDER BY
+          CASE priority
+            WHEN 'critical' THEN 0
+            WHEN 'high' THEN 1
+            WHEN 'normal' THEN 2
+            WHEN 'low' THEN 3
+            ELSE 2
+          END ASC,
+          created_at ASC
+        LIMIT ?
+        FOR UPDATE SKIP LOCKED
+        `,
+        leasedParams
+      );
+
+      const byId = new Map<string, DbRow>();
+      for (const row of queuedRows) {
+        byId.set(String(row['id']), row);
+      }
+      for (const row of leasedRows) {
+        byId.set(String(row['id']), row);
+      }
+
+      const selectedRows = Array.from(byId.values())
+        .sort(
+          (left, right) =>
+            priorityRank(left['priority']) - priorityRank(right['priority']) ||
+            Number(left['created_at']) - Number(right['created_at'])
+        )
+        .slice(0, batchSize);
+
+      if (selectedRows.length === 0) {
         await conn.commit();
         return [];
       }
 
-      const ids = rows.map((row) => String(row['id']));
+      const ids = selectedRows.map((row) => String(row['id']));
       const placeholders = ids.map(() => '?').join(', ');
       await conn.query(
         `
@@ -213,7 +271,7 @@ export class MySqlStore implements QueueStorage {
       );
 
       await conn.commit();
-      return rows.map((row) => this.rowToJob(row));
+      return selectedRows.map((row) => this.rowToJob(row));
     } catch (error) {
       await conn.rollback();
       throw error;

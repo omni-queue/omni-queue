@@ -32,7 +32,7 @@ app.listen(3000);
 
 ## Notes
 
-- publish the UI assets with `queue dashboard:publish --out=./public/vasto-dashboard`
+- publish the UI assets with `vasto dashboard:publish --out=./public/vasto-dashboard`
 - `dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules`
 - live updates use native WebSocket transport at `<apiBase>/ws` (for example `/api/vasto/ws`)
 - for built assets, force polling with runtime config (no rebuild):

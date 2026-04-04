@@ -10,7 +10,7 @@ export default function HomePage() {
       {supervisorMode === 'api' ? (
         <p>API mode does not process jobs. Run <code>npm run worker</code> or set <code>SUPERVISOR_MODE=hybrid</code>.</p>
       ) : null}
-      <pre>{`queue dashboard:publish --out=./public/vasto-dashboard --base=/api/dashboard-api --api-base=/api/dashboard-api`}</pre>
+      <pre>{vasto dashboard:publish --out=./public/vasto-dashboard --base=/api/dashboard-api --api-base=/api/dashboard-api`}</pre>
     </main>
   );
 }

@@ -102,20 +102,20 @@ Official adapters:
 
 Implemented CLI surfaces (`@vasto/cli`):
 
-- `queue init`
+- `vasto init`
 - `vasto generate job`
 - `vasto generate api-job`
 - `vasto generate workflow`
 - `vasto generate scheduled`
 - `vasto generate isolation`
-- `queue monitor`
-- `queue dlq:list`
-- `queue dlq:retry`
-- `queue dlq:retry-all`
-- `queue workers:list`
-- `queue dashboard`
-- `queue dev`
-- `queue start`
+- `vasto monitor`
+- `vasto dlq:list`
+- `vasto dlq:retry`
+- `vasto dlq:retry-all`
+- `vasto workers:list`
+- `vasto dashboard`
+- `vasto dev`
+- `vasto start`
 
 ## Observability and Telemetry
 

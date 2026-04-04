@@ -10,16 +10,11 @@
 
 import { Queue as BullMQQueue } from 'bullmq';
 import BeeQueue from 'bee-queue';
-import {
-  InMemoryQueueStorage,
-  JobRegistry,
-  Supervisor,
-  defineQueues,
-  defineWorkers,
-  Job,
-} from '@vasto/core';
+import PgBoss from 'pg-boss';
+import { Job } from '@vasto/core';
 import { buildReport, DEFAULT_OPTIONS, printReport, rssInMb, withTimeout } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
+import { createVastoFixture } from '../vasto-fixture.js';
 
 const JOB_COUNT = 10_000;
 const SCENARIO = 'memory-footprint';
@@ -35,39 +30,48 @@ class MemJob extends Job<{ index: number; data: string }> {
 // Vasto in-memory
 // ---------------------------------------------------------------------------
 
-async function runVastoMemory(): Promise<ScenarioResult> {
-  const storage = new InMemoryQueueStorage();
-  const registry = new JobRegistry();
-  registry.register(MemJob);
-
-  const supervisor = new Supervisor({
-    queues: defineQueues({ bench: { name: 'bench', connection: 'memory', concurrency: 1, batchSize: 10 } }),
-    workers: defineWorkers({ w: { queues: ['bench'], concurrency: 1 } }),
-    registry,
-    storageAdapters: { memory: storage },
+async function runVasto(
+  backend: 'memory' | 'redis' | 'postgres',
+  opts: Required<ScenarioOptions>,
+): Promise<ScenarioResult> {
+  const fixture = await createVastoFixture({
+    backend,
+    jobClass: MemJob,
+    concurrency: 1,
+    batchSize: 10,
+    redisUrl: opts.redisUrl,
+    postgresUrl: opts.postgresUrl,
   });
 
-  const baselineMb = rssInMb();
-  let peakMb = baselineMb;
+  try {
+    const baselineMb = rssInMb();
+    let peakMb = baselineMb;
 
-  for (let i = 0; i < JOB_COUNT; i++) {
-    await supervisor.jobManager.dispatch(new MemJob({ index: i, data: 'benchmark-payload-memory-test' }));
-    if (i % 250 === 0) {
-      peakMb = Math.max(peakMb, rssInMb());
+    for (let i = 0; i < JOB_COUNT; i++) {
+      await fixture.supervisor.jobManager.dispatch(new MemJob({ index: i, data: 'benchmark-payload-memory-test' }));
+      if (i % 250 === 0) {
+        peakMb = Math.max(peakMb, rssInMb());
+      }
     }
+
+    await new Promise((r) => setTimeout(r, 200));
+    peakMb = Math.max(peakMb, rssInMb());
+
+    return {
+      library: fixture.library,
+      scenario: SCENARIO,
+      iterations: 1,
+      memoryMb: Math.max(0, peakMb - baselineMb),
+      meta: {
+        totalRssMb: peakMb,
+        baselineMb,
+        jobCount: JOB_COUNT,
+        ...(backend === 'memory' ? {} : { note: 'client-side overhead only' }),
+      },
+    };
+  } finally {
+    await fixture.cleanup();
   }
-
-  // GC pressure settle
-  await new Promise((r) => setTimeout(r, 200));
-  peakMb = Math.max(peakMb, rssInMb());
-
-  return {
-    library: 'vasto-memory',
-    scenario: SCENARIO,
-    iterations: 1,
-    memoryMb: Math.max(0, peakMb - baselineMb),
-    meta: { totalRssMb: peakMb, baselineMb, jobCount: JOB_COUNT },
-  };
 }
 
 // ---------------------------------------------------------------------------
@@ -148,6 +152,43 @@ async function runBeeQueue(opts: Required<ScenarioOptions>): Promise<ScenarioRes
 }
 
 // ---------------------------------------------------------------------------
+// pg-boss
+// ---------------------------------------------------------------------------
+
+async function runPgBoss(opts: Required<ScenarioOptions>): Promise<ScenarioResult> {
+  const queueName = `bench-pgboss-mem-${Date.now()}`;
+  const boss = new PgBoss(opts.postgresUrl);
+
+  await boss.start();
+  await boss.deleteQueue(queueName).catch(() => {});
+  await boss.createQueue(queueName).catch(() => {});
+
+  const baselineMb = rssInMb();
+  let peakMb = baselineMb;
+
+  const batch = Array.from({ length: JOB_COUNT }, (_, i) => ({
+    name: queueName,
+    data: { index: i, data: 'benchmark-payload-memory-test' },
+  }));
+
+  await boss.insert(batch);
+  await new Promise((r) => setTimeout(r, 200));
+  peakMb = Math.max(peakMb, rssInMb());
+
+  await boss.purgeQueue(queueName).catch(() => {});
+  await boss.deleteQueue(queueName).catch(() => {});
+  await boss.stop();
+
+  return {
+    library: 'pg-boss',
+    scenario: SCENARIO,
+    iterations: 1,
+    memoryMb: Math.max(0, peakMb - baselineMb),
+    meta: { totalRssMb: peakMb, baselineMb, jobCount: JOB_COUNT, note: 'client-side overhead only' },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -157,10 +198,13 @@ export async function run(opts: ScenarioOptions = {}): Promise<ScenarioReport> {
 
   console.log(`\nRunning ${SCENARIO} (${JOB_COUNT.toLocaleString()} queued jobs, no workers)...`);
 
-  results.push(await runVastoMemory());
+  results.push(await runVasto('memory', resolved));
   console.log(`  vasto-memory done`);
 
   if (resolved.redisUrl) {
+    results.push(await runVasto('redis', resolved));
+    console.log(`  vasto-redis done`);
+
     results.push(await runBullMQ(resolved));
     console.log(`  bullmq done`);
 
@@ -168,9 +212,17 @@ export async function run(opts: ScenarioOptions = {}): Promise<ScenarioReport> {
     console.log(`  bee-queue done`);
   }
 
+  if (resolved.postgresUrl) {
+    results.push(await runVasto('postgres', resolved));
+    console.log(`  vasto-postgres done`);
+
+    results.push(await runPgBoss(resolved));
+    console.log(`  pg-boss done`);
+  }
+
   // Footnote
   const report = buildReport(SCENARIO, results);
   printReport(report);
-  console.log('> Note: RSS delta for Redis-backed libraries reflects client heap only; job data lives in Redis.\n');
+  console.log('> Note: RSS delta for Redis-backed and Postgres-backed libraries mostly reflects client heap only; queued job data lives in the remote store.\n');
   return report;
 }

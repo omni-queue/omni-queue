@@ -177,9 +177,24 @@ export class MongoStore implements QueueStorage {
       baseFilter.queue = queue;
     }
 
-    for (let index = 0; index < batchSize; index += 1) {
+    const candidateDocs = await this.jobs
+      .find(baseFilter, { projection: { id: 1 } })
+      .sort({ priorityRank: 1, createdAt: 1 })
+      .limit(Math.max(batchSize * 4, batchSize))
+      .toArray();
+
+    for (let index = 0; index < candidateDocs.length; index += 1) {
+      if (jobs.length >= batchSize) {
+        break;
+      }
+
+      const candidate = candidateDocs[index];
+      if (!candidate?.id) {
+        continue;
+      }
+
       const result = await this.jobs.findOneAndUpdate(
-        baseFilter,
+        { ...baseFilter, id: candidate.id },
         {
           $set: {
             state: 'leased',
