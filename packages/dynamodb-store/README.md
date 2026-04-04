@@ -1,25 +1,25 @@
-# `@omni-queue/dynamodb-store`
+# `@vasto/dynamodb-store`
 
-DynamoDB storage adapter for [Omni-Queue](../../README.md).
+DynamoDB storage adapter for [Vasto](../../README.md).
 
 Uses AWS SDK v3 (`@aws-sdk/client-dynamodb` + `@aws-sdk/lib-dynamodb`) for queue lifecycle operations and historical archive reads.
 
 ## Installation
 
 ```bash
-npm install @omni-queue/dynamodb-store @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
+npm install @vasto/dynamodb-store @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
 ```
 
 ## Usage
 
 ```ts
-import { DynamoDbStore } from '@omni-queue/dynamodb-store';
+import { DynamoDbStore } from '@vasto/dynamodb-store';
 
 const store = new DynamoDbStore({
   region: 'us-east-1',
-  tableName: 'omni_queue_jobs',
-  deadLetterTableName: 'omni_queue_dead_letter',
-  completedTableName: 'omni_queue_completed',
+  tableName: 'vasto_jobs',
+  deadLetterTableName: 'vasto_dead_letter',
+  completedTableName: 'vasto_completed',
 });
 
 await store.migrate();

@@ -10,7 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
-    "@omni-queue/metrics": "*"
+    "@vasto/core": "*",
+    "@vasto/metrics": "*"
   }
 }

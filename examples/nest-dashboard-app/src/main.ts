@@ -11,8 +11,8 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
-import { bindOmniQueueNestWebSocket, omniQueueNestAdapter } from '@omni-queue/nest-adapter';
+} from '@vasto/core';
+import { bindVastoNestWebSocket, vastoNestAdapter } from '@vasto/nest-adapter';
 
 function normalizeBasePath(value: string): string {
   const trimmed = value.trim();
@@ -59,7 +59,7 @@ class AppModule {}
 async function bootstrap() {
   const API_BASE = normalizeBasePath(process.env.DASHBOARD_API_BASE ?? '/api/dashboard-api');
   const UI_BASE = normalizeBasePath(process.env.DASHBOARD_UI_BASE ?? '/secured-dashboard');
-  const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
+  const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/vasto-dashboard');
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
 
   await supervisor.start(supervisorMode);
@@ -109,8 +109,8 @@ async function bootstrap() {
     res.status(202).json({ status: 'queued', jobId });
   });
 
-  app.use(omniQueueNestAdapter(dashboardOptions));
-  const dashboardWsController = bindOmniQueueNestWebSocket(app.getHttpServer(), dashboardOptions);
+  app.use(vastoNestAdapter(dashboardOptions));
+  const dashboardWsController = bindVastoNestWebSocket(app.getHttpServer(), dashboardOptions);
   app.getHttpServer().once('close', () => {
     dashboardWsController.close();
   });

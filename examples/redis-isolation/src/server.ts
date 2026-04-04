@@ -1,9 +1,9 @@
 import express from 'express';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { DashboardAuthContext } from '@omni-queue/core';
-import { JobManager, Supervisor } from '@omni-queue/core';
-import { createExpressAdapter, createExpressWebSocketBinding } from '@omni-queue/express-adapter';
+import type { DashboardAuthContext } from '@vasto/core';
+import { JobManager, Supervisor } from '@vasto/core';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto/express-adapter';
 import 'dotenv/config';
 import {
   GenerateThumbnailJob,
@@ -47,7 +47,7 @@ function buildAdminContext(): DashboardAuthContext {
 }
 
 function createDashboardSessionToken(username: string): string {
-  return Buffer.from(`omni-queue-dashboard:server:${username}`).toString('base64url');
+  return Buffer.from(`vasto-dashboard:server:${username}`).toString('base64url');
 }
 
 function resolveDashboardCredentialsFromEnv(): { username?: string; password?: string } {
@@ -59,7 +59,7 @@ function resolveDashboardCredentialsFromEnv(): { username?: string; password?: s
 
 async function main() {
   const port = Number(process.env.PORT ?? '3100');
-  const dashboardUiDir = path.resolve(process.cwd(), 'public/omni-queue-dashboard');
+  const dashboardUiDir = path.resolve(process.cwd(), 'public/vasto-dashboard');
   const store = createRedisStoreFromEnv();
   const queues = createQueues();
   const workers = createProducerWorkers();

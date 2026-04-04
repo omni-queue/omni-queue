@@ -14,7 +14,7 @@ import {
   JobRegistry,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 import { FileQueueStorage } from './storage/file-queue-storage.js';
 import { SendEmailJob } from './jobs/index.js';
 

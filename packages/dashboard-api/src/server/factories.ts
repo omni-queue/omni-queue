@@ -1,4 +1,4 @@
-import type { DashboardAuthOptions } from '@omni-queue/core';
+import type { DashboardAuthOptions } from '@vasto/core';
 import type { DashboardApiOptions } from '../types';
 import { normalizeBase } from '../utils/http';
 

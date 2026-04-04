@@ -1,6 +1,6 @@
-# @omni-queue/elysia-adapter
+# @vasto/elysia-adapter
 
-Elysia integration adapter for Omni-Queue dashboard hosting.
+Elysia integration adapter for Vasto dashboard hosting.
 
 This adapter gives Elysia and Bun users a supported integration path today by proxying the current dashboard HTTP/static surface through an internal adapter instance and mounting it into your Elysia app.
 
@@ -17,14 +17,14 @@ This adapter gives Elysia and Bun users a supported integration path today by pr
 ```ts
 import path from 'node:path';
 import { Elysia } from 'elysia';
-import { registerElysiaAdapter } from '@omni-queue/elysia-adapter';
+import { registerElysiaAdapter } from '@vasto/elysia-adapter';
 
 const app = new Elysia();
 
 const dashboard = registerElysiaAdapter(app, {
   supervisor,
-  apiBase: '/api/omni-queue',
-  uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
+  apiBase: '/api/vasto',
+  uiDir: path.resolve(process.cwd(), 'public/vasto-dashboard'),
   uiBase: '/',
   protectUiWithAuth: false,
 });
@@ -41,9 +41,9 @@ If you need to force polling mode for specific deployments, prefer runtime overr
 
 ```html
 <script>
-  window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+  window.__VASTO_DASHBOARD_CONFIG__ = {
     transport: 'polling',          // 'auto' (default) | 'polling'
-    endpoint:  '/api/omni-queue',  // must match the apiBase option above
+    endpoint:  '/api/vasto',  // must match the apiBase option above
   };
 </script>
 ```
@@ -53,7 +53,7 @@ You can also test per-request with the URL query param: `?transport=polling`. Fo
 Publish the UI assets into that folder with:
 
 ```bash
-queue dashboard:publish --out=./public/omni-queue-dashboard
+queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@omni-queue/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.

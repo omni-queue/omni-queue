@@ -14,7 +14,7 @@ function loadExpress(): any {
   return require('express');
 }
 
-export function omniQueueAdapter(options: DashboardApiOptions): any {
+export function vastoAdapter(options: DashboardApiOptions): any {
   const express = loadExpress();
   const app = express();
   const resolved = resolveDashboardConfig(options);
@@ -56,7 +56,7 @@ export function omniQueueAdapter(options: DashboardApiOptions): any {
   return app;
 }
 
-export function bindOmniQueueWebSocket(
+export function bindVastoWebSocket(
   server: http.Server,
   options: DashboardApiOptions
 ): DashboardWebSocketController {
@@ -71,12 +71,12 @@ export function bindOmniQueueWebSocket(
 }
 
 export function createDashboardMiddleware(options: DashboardApiOptions) {
-  return omniQueueAdapter(options);
+  return vastoAdapter(options);
 }
 
 export function createDashboardWebSocketBinding(
   server: http.Server,
   options: DashboardApiOptions
 ): DashboardWebSocketController {
-  return bindOmniQueueWebSocket(server, options);
+  return bindVastoWebSocket(server, options);
 }

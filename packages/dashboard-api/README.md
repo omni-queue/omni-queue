@@ -1,10 +1,10 @@
-# @omni-queue/dashboard-api
+# @vasto/dashboard-api
 
-HTTP bindings for Omni Queue dashboard APIs.
+HTTP bindings for Vasto dashboard APIs.
 
 ## Purpose
 
-`@omni-queue/core` only stores dashboard configuration on `Supervisor`. This package turns that configuration into:
+`@vasto/core` only stores dashboard configuration on `Supervisor`. This package turns that configuration into:
 
 - shared dashboard primitives for provider adapters:
   - dashboard config + WS path resolution helpers (`resolveDashboardConfig`, `resolveDashboardWsPaths`)
@@ -13,18 +13,18 @@ HTTP bindings for Omni Queue dashboard APIs.
 
 It does not create an Express app, start a server, or serve static UI files directly. Those responsibilities belong to the provider adapter.
 
-Default provider adapter package: `@omni-queue/express-adapter`.
+Default provider adapter package: `@vasto/express-adapter`.
 
 ## Example
 
 ```ts
 import express from 'express';
 import path from 'node:path';
-import { Supervisor } from '@omni-queue/core';
+import { Supervisor } from '@vasto/core';
 import {
   createExpressAdapter,
   createExpressWebSocketBinding,
-} from '@omni-queue/express-adapter';
+} from '@vasto/express-adapter';
 
 const supervisor = new Supervisor({
   queues,
@@ -59,7 +59,7 @@ app.use(
     supervisor,
     apiBase: '/queue-manager',
     auth: dashboardAuth,
-    uiDir: path.resolve(process.cwd(), 'public/omni-queue-dashboard'),
+    uiDir: path.resolve(process.cwd(), 'public/vasto-dashboard'),
     uiBase: '/',
     protectUiWithAuth: false,
   })
@@ -73,8 +73,8 @@ createExpressWebSocketBinding(server, {
 });
 
 // publish assets first:
-// queue dashboard:publish --out=./public/omni-queue-dashboard
-// (resolved from installed @omni-queue/dashboard in node_modules)
+// queue dashboard:publish --out=./public/vasto-dashboard
+// (resolved from installed @vasto/dashboard in node_modules)
 ```
 
 The dashboard UI now handles login itself. Serve the static shell publicly (`protectUiWithAuth: false`), then protect the API and WebSocket endpoints with `authHandler` + `sessionValidator`.

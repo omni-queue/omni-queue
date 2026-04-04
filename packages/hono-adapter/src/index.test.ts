@@ -1,9 +1,9 @@
 import { describe, expect, it } from 'vitest';
-import { bindOmniQueueHonoWebSocket, omniQueueHonoAdapter } from './index';
+import { bindVastoHonoWebSocket, vastoHonoAdapter } from './index';
 
-describe('@omni-queue/hono-adapter exports', () => {
+describe('@vasto/hono-adapter exports', () => {
   it('exports adapter functions', () => {
-    expect(omniQueueHonoAdapter).toBeTypeOf('function');
-    expect(bindOmniQueueHonoWebSocket).toBeTypeOf('function');
+    expect(vastoHonoAdapter).toBeTypeOf('function');
+    expect(bindVastoHonoWebSocket).toBeTypeOf('function');
   });
 });

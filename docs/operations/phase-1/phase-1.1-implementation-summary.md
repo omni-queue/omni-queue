@@ -97,7 +97,7 @@ Implements:
 - Prevents delayed jobs from being dequeued before promotion
 
 Files:
-- `packages/core/src/libs/in-memory-queue-storage.ts`
+- `packages/core/src/libs/in-memory-storage.ts`
 
 #### Redis adapter (implemented for delayed/deferred basics)
 
@@ -124,7 +124,7 @@ Files:
 - Prevents delayed jobs from being claimed before promotion
 
 Files:
-- `examples/api-server/src/storage/file-queue-storage.ts`
+- `examples/api-server/src/storage/file-storage.ts`
 
 #### Postgres adapter
 

@@ -9,8 +9,8 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
-import { bindOmniQueueFastifyWebSocket, omniQueueFastifyAdapter } from '@omni-queue/fastify-adapter';
+} from '@vasto/core';
+import { bindVastoFastifyWebSocket, vastoFastifyAdapter } from '@vasto/fastify-adapter';
 
 function normalizeBasePath(value: string): string {
   const trimmed = value.trim();
@@ -31,7 +31,7 @@ class FastifyEmailJob extends Job<{ to: string; subject: string; body: string }>
 async function main() {
   const API_BASE = normalizeBasePath(process.env.DASHBOARD_API_BASE ?? '/api/dashboard-api');
   const UI_BASE = normalizeBasePath(process.env.DASHBOARD_UI_BASE ?? '/secured-dashboard');
-  const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
+  const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/vasto-dashboard');
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
   const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
   const recoverRepeatables = process.env.RECOVER_REPEATABLES === 'true';
@@ -61,7 +61,7 @@ async function main() {
     protectUiWithAuth: false,
   };
 
-  const dashboardHandler = omniQueueFastifyAdapter(dashboardOptions);
+  const dashboardHandler = vastoFastifyAdapter(dashboardOptions);
 
   for (const routePath of new Set([API_BASE, `${API_BASE}/*`, UI_BASE, `${UI_BASE}/*`])) {
     app.all(routePath, async (request, reply) => {
@@ -70,7 +70,7 @@ async function main() {
     });
   }
 
-  const dashboardWsController = bindOmniQueueFastifyWebSocket(app.server, dashboardOptions);
+  const dashboardWsController = bindVastoFastifyWebSocket(app.server, dashboardOptions);
   app.addHook('onClose', async () => {
     dashboardWsController.close();
   });

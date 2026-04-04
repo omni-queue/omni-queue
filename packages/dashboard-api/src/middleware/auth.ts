@@ -9,7 +9,7 @@ import type {
   DashboardRole,
   DashboardSessionCredentials,
   DashboardSessionValidator,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 type DashboardPermission = 'read' | 'operate' | 'admin';
 
@@ -69,7 +69,7 @@ export function resolveDashboardAuthHandler(auth: DashboardAuthOptions): Dashboa
 }
 
 export function resolveDashboardChallenge(auth: DashboardAuthOptions): string {
-  const realm = auth.type === 'none' ? 'omni-queue-dashboard' : (auth.realm ?? 'omni-queue-dashboard');
+  const realm = auth.type === 'none' ? 'vasto-dashboard' : (auth.realm ?? 'vasto-dashboard');
   return `Bearer realm="${realm}"`;
 }
 

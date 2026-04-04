@@ -5,7 +5,7 @@ Use this pattern for Route Handlers or Server Actions that should offload backgr
 ## Generate a starter
 
 ```bash
-queue generate api-job --name=rebuild-search-index --queue=web-hooks
+vasto generate api-job --name=rebuild-search-index -=web-hooks
 ```
 
 ## Example route handler

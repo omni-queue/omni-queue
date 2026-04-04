@@ -23,7 +23,7 @@ export class BatchManager {
 
   registerBatch(batchId: string, name: string, jobs: Array<Pick<BatchJobRecord, 'id' | 'name' | 'queue' | 'payload'>>): BatchRecord {
     const createdAt = Date.now();
-    const record: BatchRecord = {
+    let record: BatchRecord = {
       id: batchId,
       name,
       totalJobs: jobs.length,
@@ -42,7 +42,18 @@ export class BatchManager {
       })),
     };
 
-    this.batches.set(batchId, record);
+    const batch = this.batches.get(batchId);
+    
+    if (!batch) {
+      this.batches.set(batchId, record);
+    } else {
+      batch.totalJobs += jobs.length;
+      batch.jobs.push(...record.jobs);
+      this.recompute(batch);
+
+      record = batch; // Return the updated batch record
+    }
+
     return cloneBatch(record);
   }
 

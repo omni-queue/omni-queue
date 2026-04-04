@@ -1,13 +1,13 @@
 {
-  "name": "@omni-queue/express-adapter",
+  "name": "@vasto/express-adapter",
   "version": "0.1.0",
-  "description": "Default Express adapter for Omni-Queue dashboard-api",
+  "description": "Default Express adapter for Vasto dashboard-api",
   "keywords": [
     "queue",
     "dashboard",
     "express",
     "adapter",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/dashboard-api": "*",
+    "@vasto/dashboard-api": "*",
     "express": "^4.21.2",
     "ws": "^8.18.0"
   },

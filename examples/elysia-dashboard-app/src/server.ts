@@ -8,8 +8,8 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
-import { registerElysiaAdapter } from '@omni-queue/elysia-adapter';
+} from '@vasto/core';
+import { registerElysiaAdapter } from '@vasto/elysia-adapter';
 import { ElysiaEmailJob } from './jobs';
 
 function normalizeBasePath(value: string): string {
@@ -22,7 +22,7 @@ function normalizeBasePath(value: string): string {
 async function main() {
   const API_BASE = normalizeBasePath(process.env.DASHBOARD_API_BASE ?? '/api/dashboard-api');
   const UI_BASE = normalizeBasePath(process.env.DASHBOARD_UI_BASE ?? '/secured-dashboard');
-  const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
+  const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/vasto-dashboard');
   const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
   const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
   const recoverRepeatables = process.env.RECOVER_REPEATABLES === 'true';

@@ -1,8 +1,8 @@
-import type { DashboardAuthContext, DashboardAuthOptions } from '@omni-queue/core';
+import type { DashboardAuthContext, DashboardAuthOptions } from '@vasto/core';
 import {
   authenticateDashboardRequest,
   hasDashboardPermissionForContext,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 import type { Request, Response } from 'express';
 
 type DashboardPermission = 'read' | 'operate' | 'admin';
@@ -39,7 +39,7 @@ export function sendUnauthorized(
   auth: DashboardAuthOptions,
   message = 'Unauthorized'
 ): void {
-  const realm = auth.type === 'none' ? 'omni-queue-dashboard' : (auth.realm ?? 'omni-queue-dashboard');
+  const realm = auth.type === 'none' ? 'vasto-dashboard' : (auth.realm ?? 'vasto-dashboard');
   const challenge = auth.type === 'bearer' ? `Bearer realm="${realm}"` : `Basic realm="${realm}"`;
   res.status(401).set('www-authenticate', challenge).json({ error: message });
 }

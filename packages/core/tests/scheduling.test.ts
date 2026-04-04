@@ -21,7 +21,7 @@ import { JobRegistry } from '../src/libs/registry';
 import { JobManager } from '../src/libs/worker-runtime';
 import { Supervisor } from '../src/libs/supervisor';
 
-const INTERNAL_REPEATABLE_QUEUE = '__omni_internal_repeatables';
+const INTERNAL_REPEATABLE_QUEUE = '__vasto_internal_repeatables';
 
 class ScheduledTestJob extends Job<{ value: string }> {
   static jobName = 'scheduled-test-job';
@@ -285,7 +285,7 @@ describe('JobManager.schedule', () => {
     const scheduleId = 'persisted-no-recover';
     await storage.enqueue({
       id: `repeatable:${scheduleId}`,
-      name: '__omni_repeatable_schedule__',
+      name: '__vasto_repeatable_schedule__',
       payload: {
         type: 'repeatable-schedule',
         definition: {
@@ -417,7 +417,7 @@ describe('JobManager.schedule', () => {
   });
 
   it('removes persisted repeatable schedule records from file storage queued state', async () => {
-    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'omni-queue-repeatable-'));
+    const tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vasto-repeatable-'));
 
     try {
       const storage = new FileQueueStorage(tmpDir);

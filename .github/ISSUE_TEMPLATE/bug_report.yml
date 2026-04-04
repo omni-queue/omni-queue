@@ -1,5 +1,5 @@
 name: Bug report
-description: Report a reproducible bug in omni-queue.
+description: Report a reproducible bug in vasto.
 title: "bug: "
 labels:
   - bug
@@ -80,6 +80,6 @@ body:
     attributes:
       label: Affected package(s)
       description: Which workspace package(s) are affected?
-      placeholder: e.g. @omni-queue/core, @omni-queue/hono-adapter
+      placeholder: e.g. @vasto/core, @vasto/hono-adapter
     validations:
       required: true

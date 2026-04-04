@@ -1,15 +1,14 @@
 {
-  "name": "@omni-queue/cli",
+  "name": "@vasto/cli",
   "version": "0.1.0",
-  "description": "CLI for Omni-Queue runtime operations",
+  "description": "CLI for Vasto runtime operations",
   "type": "module",
   "main": "./dist/index.cjs",
   "module": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "bin": {
-    "queue": "./dist/index.cjs",
-    "omni": "./dist/index.cjs",
-    "omni-queue": "./dist/index.cjs"
+    "vasto": "./dist/index.cjs",
+    "vst": "./dist/index.cjs"
   },
   "files": [
     "dist"
@@ -24,5 +23,8 @@
   },
   "publishConfig": {
     "access": "public"
+  },
+  "devDependencies": {
+    "@types/node": "^20.19.37"
   }
 }

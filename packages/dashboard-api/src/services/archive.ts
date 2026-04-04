@@ -1,4 +1,4 @@
-import type { ArchiveRetentionPolicy, CompletedJobRecord, JobArchiveQuery, Supervisor } from '@omni-queue/core';
+import type { ArchiveRetentionPolicy, CompletedJobRecord, JobArchiveQuery, Supervisor } from '@vasto/core';
 
 export type ArchiveQueryInput = {
   queueName?: string;

@@ -1,6 +1,6 @@
 # Incident Playbooks (Phase 5.3)
 
-This runbook covers the primary queue-operability incidents for Omni-Queue deployments.
+This runbook covers the primary queue-operability incidents for Vasto deployments.
 
 ## 1) Queue Saturation (Depth Growth)
 

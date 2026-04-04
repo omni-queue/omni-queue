@@ -1,11 +1,11 @@
 # Migration Guides
 
-This directory contains migration-oriented documentation for teams adopting Omni Queue from other job systems.
+This directory contains migration-oriented documentation for teams adopting Vasto from other job systems.
 
 ## Available guides
 
 - [From BullMQ](from-bullmq.md) — Migration path with concept mapping and rollout checklist
-- [BullMQ Parity Assessment](bullmq-parity-assessment.md) — Detailed feature-by-feature comparison (~100% parity in evaluated scope)
+- [BullMQ Compatibility Assessment](bullmq-parity-assessment.md) — Feature mapping notes to support migration planning
 
 ## Recommended workflow
 

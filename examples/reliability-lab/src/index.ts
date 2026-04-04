@@ -7,7 +7,7 @@ import {
   defineWorkers,
   type RetryDecision,
   type RetryDecisionContext,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 class FlakyInvoiceJob extends Job<{ invoiceId: string }> {
   static jobName = 'flaky-invoice';

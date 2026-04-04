@@ -1,6 +1,6 @@
 # Implemented Feature Catalog
 
-This catalog is the canonical, implementation-focused inventory of capabilities currently shipped across the Omni Queue monorepo.
+This catalog is the canonical, implementation-focused inventory of capabilities currently shipped across the Vasto monorepo.
 
 ## Core Runtime
 
@@ -65,12 +65,12 @@ This catalog is the canonical, implementation-focused inventory of capabilities 
 
 Implemented adapters:
 
-- `@omni-queue/redis-store`
-- `@omni-queue/postgres-store`
-- `@omni-queue/mysql-store`
-- `@omni-queue/mongo-store`
-- `@omni-queue/dynamodb-store`
-- in-memory storage in `@omni-queue/core`
+- `@vasto/redis-store`
+- `@vasto/postgres-store`
+- `@vasto/mysql-store`
+- `@vasto/mongo-store`
+- `@vasto/dynamodb-store`
+- in-memory storage in `@vasto/core`
 
 Notable capabilities:
 
@@ -81,8 +81,8 @@ Notable capabilities:
 
 ## Dashboard and API
 
-- First-party dashboard UI package (`@omni-queue/dashboard`).
-- Dashboard API package (`@omni-queue/dashboard-api`) with HTTP server/request-handler/middleware integration patterns.
+- First-party dashboard UI package (`@vasto/dashboard`).
+- Dashboard API package (`@vasto/dashboard-api`) with HTTP server/request-handler/middleware integration patterns.
 - RBAC model (`viewer`, `operator`, `admin`) and scoped auth contracts.
 - Tenant-aware filtering strategy for operator-facing endpoints and streams.
 - Real-time monitoring and operational controls.
@@ -91,36 +91,36 @@ Notable capabilities:
 
 Official adapters:
 
-- Express (`@omni-queue/express-adapter`)
-- Next.js (`@omni-queue/next-adapter`)
-- Fastify (`@omni-queue/fastify-adapter`)
-- Nest (`@omni-queue/nest-adapter`)
-- Hono (`@omni-queue/hono-adapter`)
-- Elysia (`@omni-queue/elysia-adapter`) — HTTP/static integration with native Bun WebSocket live updates (`/ws`), plus optional polling fallback.
+- Express (`@vasto/express-adapter`)
+- Next.js (`@vasto/next-adapter`)
+- Fastify (`@vasto/fastify-adapter`)
+- Nest (`@vasto/nest-adapter`)
+- Hono (`@vasto/hono-adapter`)
+- Elysia (`@vasto/elysia-adapter`) — HTTP/static integration with native Bun WebSocket live updates (`/ws`), plus optional polling fallback.
 
 ## CLI and Developer Tooling
 
-Implemented CLI surfaces (`@omni-queue/cli`):
+Implemented CLI surfaces (`@vasto/cli`):
 
-- `queue init`
-- `queue generate job`
-- `queue generate api-job`
-- `queue generate workflow`
-- `queue generate scheduled`
-- `queue generate isolation`
-- `queue monitor`
-- `queue dlq:list`
-- `queue dlq:retry`
-- `queue dlq:retry-all`
-- `queue workers:list`
-- `queue dashboard`
-- `queue dev`
-- `queue start`
+- `vasto init`
+- `vasto generate job`
+- `vasto generate api-job`
+- `vasto generate workflow`
+- `vasto generate scheduled`
+- `vasto generate isolation`
+- `vasto monitor`
+- `vasto dlq:list`
+- `vasto dlq:retry`
+- `vasto dlq:retry-all`
+- `vasto workers:list`
+- `vasto dashboard`
+- `vasto dev`
+- `vasto start`
 
 ## Observability and Telemetry
 
-- Metrics package (`@omni-queue/metrics`) with exporters and runtime collection hooks.
-- OpenTelemetry plugin package (`@omni-queue/otel-plugin`).
+- Metrics package (`@vasto/metrics`) with exporters and runtime collection hooks.
+- OpenTelemetry plugin package (`@vasto/otel-plugin`).
 - Lifecycle event stream and replay-oriented operator visibility.
 
 ## Examples and executable references
@@ -156,9 +156,9 @@ Implemented CLI surfaces (`@omni-queue/cli`):
 
 - `examples/next-dashboard-app`: Next.js Pages Router — catch-all dashboard route + job dispatch API route.
 - `examples/elysia-dashboard-app`: Elysia — `registerElysiaAdapter` + job dispatch endpoint (port 3020).
-- `examples/fastify-dashboard-app`: Fastify + `@fastify/middie` + `omniQueueFastifyAdapter` (port 3030).
-- `examples/hono-dashboard-app`: Hono + `@hono/node-server` + `omniQueueHonoAdapter` (port 3040).
-- `examples/nest-dashboard-app`: NestJS — `omniQueueNestAdapter` middleware + decorated controller (port 3050).
+- `examples/fastify-dashboard-app`: Fastify + `@fastify/middie` + `vastoFastifyAdapter` (port 3030).
+- `examples/hono-dashboard-app`: Hono + `@hono/node-server` + `vastoHonoAdapter` (port 3040).
+- `examples/nest-dashboard-app`: NestJS — `vastoNestAdapter` middleware + decorated controller (port 3050).
 
 ### Reference apps
 
@@ -180,3 +180,5 @@ For the canonical mapping from each feature area to concrete runnable projects, 
 ## Notes on scope
 
 This catalog documents implemented features, not planned features. For future work and sequencing, use [ROADMAP](ROADMAP.md).
+
+For a future implementation blueprint on durable queue events, see [Event Queue Implementation Plan](event-queue-implementation-plan.md).

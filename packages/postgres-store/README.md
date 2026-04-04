@@ -1,19 +1,19 @@
-# `@omni-queue/postgres-store`
+# `@vasto/postgres-store`
 
-PostgreSQL storage adapter for [Omni-Queue](../../README.md).
+PostgreSQL storage adapter for [Vasto](../../README.md).
 
 Uses `pg` under the hood with `FOR UPDATE SKIP LOCKED` for safe, concurrent job dequeuing without external locking.
 
 ## Installation
 
 ```bash
-npm install @omni-queue/postgres-store pg
+npm install @vasto/postgres-store pg
 ```
 
 ## Usage
 
 ```ts
-import { PostgresStore } from '@omni-queue/postgres-store';
+import { PostgresStore } from '@vasto/postgres-store';
 
 const store = new PostgresStore({
   pool: {
@@ -32,7 +32,7 @@ await store.migrate();
 Pass the store as a connection adapter to your queue config:
 
 ```ts
-import { defineQueues, defineWorkers } from '@omni-queue/core';
+import { defineQueues, defineWorkers } from '@vasto/core';
 
 const queues = defineQueues({
   default: {
@@ -61,13 +61,13 @@ The adapter auto-creates two tables via `migrate()`:
 
 | Table | Purpose |
 |---|---|
-| `omni_queue_jobs` | Active job queue |
-| `omni_queue_dead_letter` | Exhausted / permanently failed jobs |
+| `vasto_jobs` | Active job queue |
+| `vasto_dead_letter` | Exhausted / permanently failed jobs |
 
 ## Configuration
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `pool` | `Pool \| PoolConfig` | — | pg Pool instance or config object |
-| `tableName` | `string` | `omni_queue_jobs` | Jobs table name |
-| `deadLetterTableName` | `string` | `omni_queue_dead_letter` | Dead-letter table name |
+| `tableName` | `string` | `vasto_jobs` | Jobs table name |
+| `deadLetterTableName` | `string` | `vasto_dead_letter` | Dead-letter table name |

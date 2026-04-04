@@ -6,7 +6,7 @@ import type { StoredJob } from '../src/types';
 class HelloJob extends Job<{ name: string }> {
   static jobName = 'HelloJob';
   jobName = 'HelloJob';
-  queue() { return 'hello-queue'; }
+  queue() { return 'hello'; }
   async handle(_payload: { name: string }) {
     return `Hello ${_payload.name}`;
   }
@@ -19,7 +19,7 @@ function makeStorage() {
 describe('Queue.dispatch', () => {
   it('calls storage.enqueue with a well-formed StoredJob', async () => {
     const storage = makeStorage();
-    const queues = { 'hello-queue': { connection: 'default' } };
+    const queues = { 'hello': { connection: 'default' } };
     const adapters = { default: storage };
 
     const queue = new Queue(queues, adapters);
@@ -31,7 +31,7 @@ describe('Queue.dispatch', () => {
 
     const stored: StoredJob = storage.enqueue.mock.calls[0][0];
     expect(stored.name).toBe('HelloJob');
-    expect(stored.queue).toBe('hello-queue');
+    expect(stored.queue).toBe('hello');
     expect(stored.payload).toEqual({ name: 'world' });
     expect(stored.state).toBe('queued');
     expect(stored.attempts).toBe(0);
@@ -43,8 +43,8 @@ describe('Queue.dispatch', () => {
     const defaultStorage = makeStorage();
     const otherStorage = makeStorage();
     const queues = {
-      'hello-queue': { connection: 'default' },
-      'other-queue': { connection: 'other' },
+      'hello': { connection: 'default' },
+      'other': { connection: 'other' },
     };
     const adapters = { default: defaultStorage, other: otherStorage };
 

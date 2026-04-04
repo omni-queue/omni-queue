@@ -5,7 +5,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 class ChargeCustomerJob extends Job<{ orderId: string; amount: number }> {
   static jobName = 'charge-customer';

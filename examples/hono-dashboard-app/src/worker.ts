@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { FileQueueStorage, Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
+import { FileQueueStorage, Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
 
 class HonoEmailJob extends Job<{ to: string; subject: string; body: string }> {
   static jobName = 'hono-email';

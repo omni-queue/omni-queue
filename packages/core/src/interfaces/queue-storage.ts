@@ -74,16 +74,19 @@ export interface RateLimitConsumeRequest {
 
 export interface QueueStorage {
   enqueue(job: StoredJob): Promise<void>;
+  enqueueBatch?(jobs: StoredJob[]): Promise<void>;
   dequeue(options: LeaseOptions): Promise<StoredJob[]>;
-  ack(jobId: string): Promise<void>;
+  ack(jobId: string, queueName?: string): Promise<void>;
   fail(jobId: string, err: Error): Promise<void>;
   moveToDeadLetter(job: StoredJob): Promise<void>;
   getQueueDepth(queue: string): Promise<number>;
-  extendLease(jobId: string, leaseMs: number): Promise<void>;
+  extendLease(jobId: string, leaseMs: number, queueName?: string): Promise<void>;
   updateAttempts(id: string, attempts: number): Promise<void>;
 
   // Delayed/Scheduled job support (Phase 1.1)
   getDelayedJobs(queueName: string, beforeDate: number): Promise<StoredJob[]>;
+  promoteDelayedJobs?(queueName: string, beforeDate: number, limit?: number): Promise<StoredJob[]>;
+  getNextDelayedTimestamp?(queueName: string): Promise<number | undefined>;
   moveJobToQueue(queueName: string, jobId: string, toState: 'active' | 'deferred' | 'failed'): Promise<void>;
   queryDeferredJobs(query: DeferredJobsQuery): Promise<StoredJob[]>;
 

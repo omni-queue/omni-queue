@@ -5,14 +5,14 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 import {
   MetricsCollector,
   QueueMetricsPlugin,
   exportDataDog,
   exportPrometheus,
   exportStatsD,
-} from '@omni-queue/metrics';
+} from '@vasto/metrics';
 
 class MetricsEmailJob extends Job<{ to: string }> {
   static jobName = 'metrics-email';
@@ -59,8 +59,8 @@ async function main() {
 
   console.log('snapshot:', JSON.stringify(snapshot, null, 2));
   console.log('prometheus:\n' + exportPrometheus(snapshot));
-  console.log('statsd:', exportStatsD(snapshot, { prefix: 'omni_queue' }));
-  console.log('datadog:', exportDataDog(snapshot, { prefix: 'omni_queue' }));
+  console.log('statsd:', exportStatsD(snapshot, { prefix: 'vasto' }));
+  console.log('datadog:', exportDataDog(snapshot, { prefix: 'vasto' }));
 
   await supervisor.stop();
 }

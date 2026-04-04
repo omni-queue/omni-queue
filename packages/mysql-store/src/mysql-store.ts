@@ -12,7 +12,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@omni-queue/core';
+} from '@vasto/core';
 import { Pool, PoolOptions, RowDataPacket, createPool } from 'mysql2/promise';
 
 export interface MySqlStoreConfig {
@@ -30,6 +30,43 @@ function isPool(value: Pool | PoolOptions): value is Pool {
   return typeof (value as Partial<Pool>).getConnection === 'function';
 }
 
+function ensureSqlIdentifier(name: string, label: string): string {
+  if (!/^[A-Za-z_][A-Za-z0-9_]*$/.test(name)) {
+    throw new Error(`Invalid ${label}: ${name}. Only letters, numbers, and underscores are allowed.`);
+  }
+
+  return name;
+}
+
+function priorityRank(priority: unknown): number {
+  switch (priority) {
+    case 'critical':
+      return 0;
+    case 'high':
+      return 1;
+    case 'normal':
+      return 2;
+    case 'low':
+      return 3;
+    default:
+      return 2;
+  }
+}
+
+function canUseMinimalEnqueue(job: StoredJob): boolean {
+  return (
+    job.state === 'queued' &&
+    job.attempts === 0 &&
+    job.maxAttempts == null &&
+    job.idempotencyKey == null &&
+    job.delayUntil == null &&
+    job.scheduledCron == null &&
+    job.lastScheduledAt == null &&
+    job.progress == null &&
+    (job.priority == null || job.priority === 'normal')
+  );
+}
+
 export class MySqlStore implements QueueStorage {
   private pool: Pool;
   private table: string;
@@ -40,9 +77,9 @@ export class MySqlStore implements QueueStorage {
 
   constructor(config: MySqlStoreConfig) {
     this.pool = isPool(config.pool) ? config.pool : createPool(config.pool);
-    this.table = config.tableName ?? 'omni_queue_jobs';
-    this.dlTable = config.deadLetterTableName ?? 'omni_queue_dead_letter';
-    this.completedTable = config.completedTableName ?? 'omni_queue_completed';
+    this.table = ensureSqlIdentifier(config.tableName ?? 'vasto_jobs', 'tableName');
+    this.dlTable = ensureSqlIdentifier(config.deadLetterTableName ?? 'vasto_dead_letter', 'deadLetterTableName');
+    this.completedTable = ensureSqlIdentifier(config.completedTableName ?? 'vasto_completed', 'completedTableName');
     this.archiveRetentionMs =
       typeof config.archiveRetentionMs === 'number' && Number.isFinite(config.archiveRetentionMs) && config.archiveRetentionMs > 0
         ? Math.floor(config.archiveRetentionMs)
@@ -148,6 +185,75 @@ export class MySqlStore implements QueueStorage {
     );
   }
 
+  async enqueueBatch(jobs: StoredJob[]): Promise<void> {
+    if (jobs.length === 0) {
+      return;
+    }
+
+    if (jobs.every(canUseMinimalEnqueue)) {
+      const placeholders = jobs.map(() => '(?, ?, ?, ?, ?, ?)').join(',');
+      const values: Array<string | number | null> = [];
+
+      for (const job of jobs) {
+        values.push(
+          job.id,
+          job.name,
+          JSON.stringify(job.payload),
+          job.queue,
+          job.createdAt,
+          job.updatedAt,
+        );
+      }
+
+      await this.pool.query(
+        `
+        INSERT INTO ${this.table}
+          (id, name, payload, queue, created_at, updated_at)
+        VALUES ${placeholders}
+        ON DUPLICATE KEY UPDATE
+          id = IF(idempotency_key IS NOT NULL, id, VALUES(id))
+        `,
+        values,
+      );
+
+      return;
+    }
+
+    const placeholders = jobs.map(() => '(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)').join(',');
+    const values: Array<string | number | null> = [];
+
+    for (const job of jobs) {
+      values.push(
+        job.id,
+        job.name,
+        JSON.stringify(job.payload),
+        job.queue,
+        job.state,
+        job.attempts,
+        job.maxAttempts ?? null,
+        job.idempotencyKey ?? null,
+        job.delayUntil ?? null,
+        job.scheduledCron ?? null,
+        job.lastScheduledAt ?? null,
+        job.priority ?? 'normal',
+        job.progress ?? null,
+        job.createdAt,
+        job.updatedAt,
+      );
+    }
+
+    await this.pool.query(
+      `
+      INSERT INTO ${this.table}
+        (id, name, payload, queue, state, attempts, max_attempts, idempotency_key, delay_until, scheduled_cron, last_scheduled_at, priority, progress, created_at, updated_at)
+      VALUES ${placeholders}
+      ON DUPLICATE KEY UPDATE
+        id = IF(idempotency_key IS NOT NULL, id, VALUES(id))
+      `,
+      values,
+    );
+  }
+
   async dequeue(options: LeaseOptions): Promise<StoredJob[]> {
     const { queue, batchSize, leaseMs } = options;
     const conn = await this.pool.getConnection();
@@ -158,18 +264,22 @@ export class MySqlStore implements QueueStorage {
       await conn.beginTransaction();
 
       const queueCondition = queue ? 'AND queue = ?' : '';
-      const params: Array<string | number> = [now, now];
-      if (queue) params.push(queue);
-      params.push(batchSize);
+      const selectLimit = Math.max(batchSize * 2, batchSize);
 
-      const [rows] = await conn.query<DbRow[]>(
+      const queuedParams: Array<string | number> = [now];
+      if (queue) queuedParams.push(queue);
+      queuedParams.push(selectLimit);
+
+      const leasedParams: Array<string | number> = [now];
+      if (queue) leasedParams.push(queue);
+      leasedParams.push(selectLimit);
+
+      const [queuedRows] = await conn.query<DbRow[]>(
         `
         SELECT *
         FROM ${this.table}
-        WHERE (
-          (state = 'queued' AND (delay_until IS NULL OR delay_until <= ?))
-          OR (state = 'leased' AND lease_until IS NOT NULL AND lease_until < ?)
-        )
+        WHERE state = 'queued'
+          AND (delay_until IS NULL OR delay_until <= ?)
         ${queueCondition}
         ORDER BY
           CASE priority
@@ -183,15 +293,54 @@ export class MySqlStore implements QueueStorage {
         LIMIT ?
         FOR UPDATE SKIP LOCKED
         `,
-        params
+        queuedParams
       );
 
-      if (rows.length === 0) {
+      const [leasedRows] = await conn.query<DbRow[]>(
+        `
+        SELECT *
+        FROM ${this.table}
+        WHERE state = 'leased'
+          AND lease_until IS NOT NULL
+          AND lease_until < ?
+        ${queueCondition}
+        ORDER BY
+          CASE priority
+            WHEN 'critical' THEN 0
+            WHEN 'high' THEN 1
+            WHEN 'normal' THEN 2
+            WHEN 'low' THEN 3
+            ELSE 2
+          END ASC,
+          created_at ASC
+        LIMIT ?
+        FOR UPDATE SKIP LOCKED
+        `,
+        leasedParams
+      );
+
+      const byId = new Map<string, DbRow>();
+      for (const row of queuedRows) {
+        byId.set(String(row['id']), row);
+      }
+      for (const row of leasedRows) {
+        byId.set(String(row['id']), row);
+      }
+
+      const selectedRows = Array.from(byId.values())
+        .sort(
+          (left, right) =>
+            priorityRank(left['priority']) - priorityRank(right['priority']) ||
+            Number(left['created_at']) - Number(right['created_at'])
+        )
+        .slice(0, batchSize);
+
+      if (selectedRows.length === 0) {
         await conn.commit();
         return [];
       }
 
-      const ids = rows.map((row) => String(row['id']));
+      const ids = selectedRows.map((row) => String(row['id']));
       const placeholders = ids.map(() => '?').join(', ');
       await conn.query(
         `
@@ -205,7 +354,7 @@ export class MySqlStore implements QueueStorage {
       );
 
       await conn.commit();
-      return rows.map((row) => this.rowToJob(row));
+      return selectedRows.map((row) => this.rowToJob(row));
     } catch (error) {
       await conn.rollback();
       throw error;

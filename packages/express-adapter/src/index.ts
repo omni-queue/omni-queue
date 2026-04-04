@@ -1,16 +1,16 @@
 import {
-  bindOmniQueueWebSocket,
+  bindVastoWebSocket,
   createDashboardMiddleware,
   type DashboardApiOptions,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 
 export function createExpressAdapter(options: DashboardApiOptions) {
   return createDashboardMiddleware(options);
 }
 
 export function createExpressWebSocketBinding(
-  ...args: Parameters<typeof bindOmniQueueWebSocket>
+  ...args: Parameters<typeof bindVastoWebSocket>
 ) {
-  return bindOmniQueueWebSocket(...args);
+  return bindVastoWebSocket(...args);
 }
 

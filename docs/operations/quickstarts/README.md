@@ -15,7 +15,7 @@ Use this page as the single copy-paste cookbook for core runtime features and ad
 ## Runnable example projects
 
 - [`examples/api-server`](../../../examples/api-server): API producer + dedicated worker with file storage
-- [`examples/queue-system`](../../../examples/queue-system): multi-queue runtime with plugins and dashboard API
+- [`examples/queue-system`](../../../examples/queue-system): multi runtime with plugins and dashboard API
 - [`examples/redis-isolation`](../../../examples/redis-isolation): Redis producer/worker split with inline/thread/process isolation
 - [`examples/workflow-system`](../../../examples/workflow-system): workflow DAG + batch + schedule walkthrough
 - [`examples/reliability-lab`](../../../examples/reliability-lab): retries, DLQ, queue controls, and reliability snapshot
@@ -72,7 +72,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 class SendEmailJob extends Job<{ to: string; subject: string; body: string }> {
   static jobName = 'send-email';
@@ -143,7 +143,7 @@ await supervisor.jobManager.schedule(reportJob, {
 ## 4) Workflow / DAG execution
 
 ```ts
-import { Job } from '@omni-queue/core';
+import { Job } from '@vasto/core';
 
 class DownloadAssetJob extends Job<{ assetId: string }> {
   static jobName = 'download-asset';
@@ -181,7 +181,7 @@ const latestFlowState = supervisor.getFlow(flow.id);
 ## 5) Retries, backoff, and retry policy
 
 ```ts
-import { Job } from '@omni-queue/core';
+import { Job } from '@vasto/core';
 
 class PaymentCaptureJob extends Job<{ paymentId: string }> {
   static jobName = 'payment-capture';
@@ -362,10 +362,10 @@ For Basic Auth style credentials in examples, use `DASHBOARD_AUTH_USERNAME` and 
 ## 12) CLI starter commands
 
 ```bash
-queue generate job --name=send-email
-queue generate api-job --name=send-email
-queue generate workflow --name=asset-pipeline
-queue generate scheduled --name=daily-digest
+vasto generate job --name=send-email
+vasto generate api-job --name=send-email
+vasto generate workflow --name=asset-pipeline
+vasto generate scheduled --name=daily-digest
 ```
 
 ## 13) Observability and lifecycle stream

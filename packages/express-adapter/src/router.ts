@@ -1,5 +1,5 @@
 import express from 'express';
-import type { DashboardAuthOptions, QueueAdminJobStatus, Supervisor } from '@omni-queue/core';
+import type { DashboardAuthOptions, QueueAdminJobStatus, Supervisor } from '@vasto/core';
 import {
   asNonNegativeInt,
   asPositiveInt,
@@ -16,7 +16,7 @@ import {
   queryArchive,
   type DashboardJobFilterStatus,
   updateArchiveRetention,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 import { checkAuth, getAllowedQueues, hasDashboardPermission } from './auth';
 
 function asDashboardStatus(value: unknown): DashboardJobFilterStatus | undefined {
@@ -170,7 +170,7 @@ export function buildDashboardRouter(
   });
 
   router.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'omni-queue-dashboard' });
+    res.json({ status: 'ok', service: 'vasto-dashboard' });
   });
 
   router.get('/overview', async (_req, res) => {

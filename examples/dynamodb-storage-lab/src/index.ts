@@ -1,5 +1,5 @@
-import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
-import { DynamoDbStore } from '@omni-queue/dynamodb-store';
+import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
+import { DynamoDbStore } from '@vasto/dynamodb-store';
 
 class DynamoEmailJob extends Job<{ to: string; subject: string }> {
   static jobName = 'dynamodb-email';
@@ -21,9 +21,9 @@ async function main() {
   const store = new DynamoDbStore({
     region,
     ...(endpoint ? { clientConfig: { endpoint } } : {}),
-    tableName: process.env.DYNAMODB_TABLE ?? 'omni_queue_jobs',
-    deadLetterTableName: process.env.DYNAMODB_DLQ_TABLE ?? 'omni_queue_dead_letter',
-    completedTableName: process.env.DYNAMODB_COMPLETED_TABLE ?? 'omni_queue_completed',
+    tableName: process.env.DYNAMODB_TABLE ?? 'vasto_jobs',
+    deadLetterTableName: process.env.DYNAMODB_DLQ_TABLE ?? 'vasto_dead_letter',
+    completedTableName: process.env.DYNAMODB_COMPLETED_TABLE ?? 'vasto_completed',
   });
 
   await store.migrate();

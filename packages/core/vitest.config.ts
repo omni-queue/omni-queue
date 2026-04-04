@@ -25,7 +25,7 @@ export default defineConfig({
         'src/libs/thread-pool.ts',
         'src/libs/thread-worker.ts',
         'src/libs/worker.ts',
-        // runtime-resolver reads the filesystem for generated .omni artifacts
+        // runtime-resolver reads the filesystem for generated .vasto artifacts
         'src/libs/runtime-resolver.ts',
         // sandbox permanently mutates process globals (process.exit, child_process, fs, net)
         // — cannot be unit-tested without polluting the test process

@@ -1,14 +1,14 @@
 {
-  "name": "@omni-queue/otel-plugin",
+  "name": "@vasto/otel-plugin",
   "version": "0.1.0",
-  "description": "OpenTelemetry tracing plugin for Omni-Queue",
+  "description": "OpenTelemetry tracing plugin for Vasto",
   "keywords": [
     "queue",
     "otel",
     "opentelemetry",
     "tracing",
     "plugin",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -35,7 +35,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
+    "@vasto/core": "*",
     "@opentelemetry/api": "^1.9.0"
   },
   "publishConfig": {

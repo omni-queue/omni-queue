@@ -1,22 +1,22 @@
 import http from 'node:http';
 import {
-  bindOmniQueueWebSocket,
-  omniQueueAdapter,
+  bindVastoWebSocket,
+  vastoAdapter,
   type DashboardApiOptions,
   type DashboardWebSocketController,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 
-export function omniQueueHonoAdapter(options: DashboardApiOptions) {
-  const app = omniQueueAdapter(options);
+export function vastoHonoAdapter(options: DashboardApiOptions) {
+  const app = vastoAdapter(options);
 
   return (req: http.IncomingMessage, res: http.ServerResponse) => {
     app(req as never, res as never, (() => undefined) as never);
   };
 }
 
-export function bindOmniQueueHonoWebSocket(
+export function bindVastoHonoWebSocket(
   server: http.Server,
   options: DashboardApiOptions
 ): DashboardWebSocketController {
-  return bindOmniQueueWebSocket(server, options);
+  return bindVastoWebSocket(server, options);
 }

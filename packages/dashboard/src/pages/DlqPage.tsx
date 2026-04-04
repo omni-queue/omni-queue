@@ -74,7 +74,7 @@ export function DlqPage({ queues }: Props) {
         const payload = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(payload.error ?? `${res.status}`);
       }
-      setSuccess(`Job ${job.id} re-queued.`);
+      setSuccess(`Job ${job.id} red.`);
       setJobs((prev) =>
         prev.map((current) =>
           current.id === job.id

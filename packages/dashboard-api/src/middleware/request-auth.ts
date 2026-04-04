@@ -1,4 +1,4 @@
-import type { DashboardAuthContext, DashboardAuthOptions } from '@omni-queue/core';
+import type { DashboardAuthContext, DashboardAuthOptions } from '@vasto/core';
 import {
   authenticateDashboardRequest,
   hasDashboardPermissionForContext,

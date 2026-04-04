@@ -1,10 +1,10 @@
-# @omni-queue/dashboard
+# @vasto/dashboard
 
-Shadcn-style dashboard UI package for Omni Queue.
+Shadcn-style dashboard UI package for Vasto.
 
 ## Purpose
 
-This package hosts the dashboard frontend as a workspace package instead of an example-only app. It targets the Supervisor-owned dashboard APIs exposed from `@omni-queue/core`.
+This package hosts the dashboard frontend as a workspace package instead of an example-only app. It targets the Supervisor-owned dashboard APIs exposed from `@vasto/core`.
 
 ## Expected backend endpoints
 
@@ -85,7 +85,7 @@ For published/built dashboard assets, prefer runtime override (no rebuild needed
 
 ```html
 <script>
-  window.__OMNI_QUEUE_DASHBOARD_CONFIG__ = {
+  window.__VASTO_DASHBOARD_CONFIG__ = {
     transport: 'polling',
   };
 </script>

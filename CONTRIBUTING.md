@@ -1,6 +1,6 @@
-# Contributing to omni-queue
+# Contributing to vasto
 
-Thanks for your interest in contributing to omni-queue.
+Thanks for your interest in contributing to vasto.
 
 This repository is an npm workspaces + Turbo monorepo. Please read this guide before opening an issue or pull request.
 
@@ -54,10 +54,10 @@ npm run test:integration
 
 ```bash
 # Build core package only
-npm --workspace @omni-queue/core run build
+npm --workspace @vasto/core run build
 
 # Run focused core tests
-npm --workspace @omni-queue/core run test -- <pattern>
+npm --workspace @vasto/core run test -- <pattern>
 
 # Dashboard local dev
 cd packages/dashboard && npm run dev
@@ -118,7 +118,7 @@ Before opening a PR, verify:
 
 Update docs when changing:
 
-- Public APIs in `@omni-queue/core`.
+- Public APIs in `@vasto/core`.
 - Adapter behavior or setup.
 - CLI commands or command behavior.
 - Operational guidance in `docs/operations`.

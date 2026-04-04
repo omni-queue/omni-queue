@@ -11,8 +11,8 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
-import { bindOmniQueueHonoWebSocket, omniQueueHonoAdapter } from '@omni-queue/hono-adapter';
+} from '@vasto/core';
+import { bindVastoHonoWebSocket, vastoHonoAdapter } from '@vasto/hono-adapter';
 
 function normalizeBasePath(value: string): string {
   const trimmed = value.trim();
@@ -30,6 +30,16 @@ function matchesBasePath(requestUrl: string, basePath: string): boolean {
   return pathname === basePath || pathname.startsWith(`${basePath}/`);
 }
 
+function resolveProjectPath(input: string, label: string): string {
+  const cwd = process.cwd();
+  const resolved = path.resolve(cwd, input);
+  if (!resolved.startsWith(`${cwd}${path.sep}`) && resolved !== cwd) {
+    throw new Error(`${label} must resolve inside the project directory`);
+  }
+
+  return resolved;
+}
+
 class HonoEmailJob extends Job<{ to: string; subject: string; body: string }> {
   static jobName = 'hono-email';
   override jobName = HonoEmailJob.jobName;
@@ -42,8 +52,8 @@ class HonoEmailJob extends Job<{ to: string; subject: string; body: string }> {
 async function main() {
   const API_BASE = normalizeBasePath(process.env.DASHBOARD_API_BASE ?? '/api/dashboard-api');
   const UI_BASE = normalizeBasePath(process.env.DASHBOARD_UI_BASE ?? '/secured-dashboard');
-  const UI_DIR = path.resolve(process.cwd(), process.env.DASHBOARD_UI_DIR ?? 'public/omni-queue-dashboard');
-  const QUEUE_DATA_DIR = path.resolve(process.cwd(), process.env.QUEUE_DATA_DIR ?? 'queue-data');
+  const UI_DIR = resolveProjectPath(process.env.DASHBOARD_UI_DIR ?? 'public/vasto-dashboard', 'DASHBOARD_UI_DIR');
+  const QUEUE_DATA_DIR = resolveProjectPath(process.env.QUEUE_DATA_DIR ?? 'queue-data', 'QUEUE_DATA_DIR');
   const supervisorMode: SupervisorMode = resolveSupervisorMode(process.env.SUPERVISOR_MODE);
   const recoverRepeatables = process.env.RECOVER_REPEATABLES === 'true';
 
@@ -73,7 +83,7 @@ async function main() {
     protectUiWithAuth: false,
   };
 
-  const dashboardHandler = omniQueueHonoAdapter(dashboardOptions);
+  const dashboardHandler = vastoHonoAdapter(dashboardOptions);
 
   const app = new Hono();
 
@@ -112,7 +122,7 @@ async function main() {
     honoHandler(req, res);
   });
 
-  const dashboardWsController = bindOmniQueueHonoWebSocket(server, dashboardOptions);
+  const dashboardWsController = bindVastoHonoWebSocket(server, dashboardOptions);
   server.once('close', () => {
     dashboardWsController.close();
   });

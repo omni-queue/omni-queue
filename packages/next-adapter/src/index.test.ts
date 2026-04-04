@@ -1,10 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { bindOmniQueueNextWebSocket, createNextAdapter, omniQueueNextAdapter } from './index';
+import { bindVastoNextWebSocket, createNextAdapter, vastoNextAdapter } from './index';
 
-describe('@omni-queue/next-adapter exports', () => {
+describe('@vasto/next-adapter exports', () => {
   it('exports adapter functions', () => {
     expect(createNextAdapter).toBeTypeOf('function');
-    expect(omniQueueNextAdapter).toBeTypeOf('function');
-    expect(bindOmniQueueNextWebSocket).toBeTypeOf('function');
+    expect(vastoNextAdapter).toBeTypeOf('function');
+    expect(bindVastoNextWebSocket).toBeTypeOf('function');
   });
 });

@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { FileQueueStorage, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
+import { FileQueueStorage, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
 import { ElysiaEmailJob } from './jobs';
 
 async function main() {

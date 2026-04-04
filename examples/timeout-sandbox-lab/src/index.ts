@@ -5,7 +5,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 class SlowTimeoutJob extends Job<{ id: string }> {
   static jobName = 'slow-timeout';

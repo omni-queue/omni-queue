@@ -1,13 +1,13 @@
 {
-  "name": "@omni-queue/workflow",
+  "name": "@vasto/workflow",
   "version": "0.1.0",
-  "description": "Workflow engine utilities for Omni-Queue",
+  "description": "Workflow engine utilities for Vasto",
   "keywords": [
     "queue",
     "workflow",
     "dag",
     "orchestration",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/core": "*"
+    "@vasto/core": "*"
   },
   "publishConfig": {
     "access": "public"

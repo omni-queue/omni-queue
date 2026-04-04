@@ -4,7 +4,7 @@ Postgres-backed storage example.
 
 ## What this example demonstrates
 
-- Using `@omni-queue/postgres-store` as the queue backend
+- Using `@vasto/postgres-store` as the queue backend
 - Running `store.migrate()` on startup
 - Wiring Postgres storage into `Supervisor`
 - Dispatching and reading completed jobs from a database-backed queue
@@ -17,7 +17,7 @@ Postgres-backed storage example.
 Example:
 
 ```bash
-export DATABASE_URL=postgres://postgres:secret@127.0.0.1:5432/omni_queue
+export DATABASE_URL=postgres://postgres:secret@127.0.0.1:5432/vasto
 ```
 
 ## Run

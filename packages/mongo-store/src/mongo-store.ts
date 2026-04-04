@@ -12,7 +12,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@omni-queue/core';
+} from '@vasto/core';
 import { MongoClient, MongoClientOptions, Collection, Filter } from 'mongodb';
 
 export interface MongoStoreConfig {
@@ -92,9 +92,9 @@ export class MongoStore implements QueueStorage {
     }
 
     this.dbName = config.dbName;
-    this.jobsCollectionName = config.jobsCollectionName ?? 'omni_queue_jobs';
-    this.deadLetterCollectionName = config.deadLetterCollectionName ?? 'omni_queue_dead_letter';
-    this.completedCollectionName = config.completedCollectionName ?? 'omni_queue_completed';
+    this.jobsCollectionName = config.jobsCollectionName ?? 'vasto_jobs';
+    this.deadLetterCollectionName = config.deadLetterCollectionName ?? 'vasto_dead_letter';
+    this.completedCollectionName = config.completedCollectionName ?? 'vasto_completed';
     this.archiveRetentionMs =
       typeof config.archiveRetentionMs === 'number' && Number.isFinite(config.archiveRetentionMs) && config.archiveRetentionMs > 0
         ? Math.floor(config.archiveRetentionMs)
@@ -177,9 +177,24 @@ export class MongoStore implements QueueStorage {
       baseFilter.queue = queue;
     }
 
-    for (let index = 0; index < batchSize; index += 1) {
+    const candidateDocs = await this.jobs
+      .find(baseFilter, { projection: { id: 1 } })
+      .sort({ priorityRank: 1, createdAt: 1 })
+      .limit(Math.max(batchSize * 4, batchSize))
+      .toArray();
+
+    for (let index = 0; index < candidateDocs.length; index += 1) {
+      if (jobs.length >= batchSize) {
+        break;
+      }
+
+      const candidate = candidateDocs[index];
+      if (!candidate?.id) {
+        continue;
+      }
+
       const result = await this.jobs.findOneAndUpdate(
-        baseFilter,
+        { ...baseFilter, id: candidate.id },
         {
           $set: {
             state: 'leased',

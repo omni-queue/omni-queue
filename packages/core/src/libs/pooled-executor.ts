@@ -4,6 +4,7 @@ interface PrioritizedTask {
   task: () => Promise<any>;
   /** Lower value = higher urgency (matches PRIORITY_SCORES: critical=0 … low=3). */
   priority: number;
+  sequence: number;
 }
 
 /**
@@ -14,6 +15,7 @@ interface PrioritizedTask {
 export class PooledExecutor {
   private queue: PrioritizedTask[] = [];
   private active = 0;
+  private sequence = 0;
 
   constructor(private concurrency: number) {}
 
@@ -26,6 +28,7 @@ export class PooledExecutor {
     return new Promise((resolve, reject) => {
       const entry: PrioritizedTask = {
         priority,
+        sequence: this.sequence++,
         task: async () => {
           try {
             const result = await task();
@@ -36,18 +39,7 @@ export class PooledExecutor {
         },
       };
 
-      // Insert in sorted position (ascending priority = highest urgency first)
-      let lo = 0;
-      let hi = this.queue.length;
-      while (lo < hi) {
-        const mid = (lo + hi) >>> 1;
-        if (this.queue[mid]!.priority <= entry.priority) {
-          lo = mid + 1;
-        } else {
-          hi = mid;
-        }
-      }
-      this.queue.splice(lo, 0, entry);
+      this.heapPush(entry);
 
       this.runNext();
     });
@@ -55,7 +47,7 @@ export class PooledExecutor {
 
   private runNext() {
     if (this.active >= this.concurrency) return;
-    const entry = this.queue.shift();
+    const entry = this.heapPop();
     if (!entry) return;
 
     this.active++;
@@ -66,5 +58,66 @@ export class PooledExecutor {
         this.active--;
         this.runNext();
       });
+  }
+
+  private compare(left: PrioritizedTask, right: PrioritizedTask): number {
+    if (left.priority !== right.priority) {
+      return left.priority - right.priority;
+    }
+    return left.sequence - right.sequence;
+  }
+
+  private heapPush(entry: PrioritizedTask): void {
+    this.queue.push(entry);
+    let index = this.queue.length - 1;
+
+    while (index > 0) {
+      const parent = (index - 1) >>> 1;
+      if (this.compare(this.queue[parent]!, this.queue[index]!) <= 0) {
+        break;
+      }
+
+      [this.queue[parent], this.queue[index]] = [this.queue[index]!, this.queue[parent]!];
+      index = parent;
+    }
+  }
+
+  private heapPop(): PrioritizedTask | undefined {
+    if (this.queue.length === 0) {
+      return undefined;
+    }
+
+    if (this.queue.length === 1) {
+      return this.queue.pop();
+    }
+
+    const root = this.queue[0]!;
+    this.queue[0] = this.queue.pop()!;
+
+    let index = 0;
+    const lastIndex = this.queue.length - 1;
+
+    while (true) {
+      const left = (index << 1) + 1;
+      const right = left + 1;
+      let smallest = index;
+
+      if (left <= lastIndex && this.compare(this.queue[left]!, this.queue[smallest]!) < 0) {
+        smallest = left;
+      }
+
+      if (right <= lastIndex && this.compare(this.queue[right]!, this.queue[smallest]!) < 0) {
+        smallest = right;
+      }
+
+      if (smallest === index) {
+        break;
+      }
+
+      [this.queue[index], this.queue[smallest]] = [this.queue[smallest]!, this.queue[index]!];
+      index = smallest;
+    }
+
+    return root;
   }
 }

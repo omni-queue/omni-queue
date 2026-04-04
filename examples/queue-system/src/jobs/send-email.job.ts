@@ -1,4 +1,4 @@
-import { Job } from '@omni-queue/core';
+import { Job } from '@vasto/core';
 
 export interface SendEmailPayload {
   to: string;

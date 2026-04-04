@@ -13,9 +13,9 @@ export type IsolationDefinitionInput = {
  *
  * @example
  * // src/definitions/transcoder.ts
- * import { defineIsolation } from '@omni-queue/core';
+ * import { defineIsolation } from '@vasto/core';
  * import { TranscodeVideoJob } from '../jobs/transcode-video';
- * import { TracingPlugin } from '@omni-queue/otel-plugin';
+ * import { TracingPlugin } from '@vasto/otel-plugin';
  *
  * export const { getRegistry, getPlugins } = defineIsolation({
  *   jobs: [TranscodeVideoJob],

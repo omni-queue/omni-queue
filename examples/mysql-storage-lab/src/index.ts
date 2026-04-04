@@ -1,5 +1,5 @@
-import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
-import { MySqlStore } from '@omni-queue/mysql-store';
+import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
+import { MySqlStore } from '@vasto/mysql-store';
 
 class MySqlEmailJob extends Job<{ to: string; subject: string }> {
   static jobName = 'mysql-email';

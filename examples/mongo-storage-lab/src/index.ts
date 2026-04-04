@@ -1,5 +1,5 @@
-import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@omni-queue/core';
-import { MongoStore } from '@omni-queue/mongo-store';
+import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
+import { MongoStore } from '@vasto/mongo-store';
 
 class MongoEmailJob extends Job<{ to: string; subject: string }> {
   static jobName = 'mongo-email';
@@ -16,7 +16,7 @@ class MongoEmailJob extends Job<{ to: string; subject: string }> {
 
 async function main() {
   const uri = process.env.MONGODB_URL;
-  const dbName = process.env.MONGODB_DB ?? 'omni_queue';
+  const dbName = process.env.MONGODB_DB ?? 'vasto';
   if (!uri) throw new Error('Set MONGODB_URL before running mongo-storage-lab');
 
   const store = new MongoStore({ client: {}, uri, dbName });

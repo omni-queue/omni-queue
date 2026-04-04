@@ -1,6 +1,6 @@
 # redis-isolation
 
-Redis-backed Omni Queue example with a dedicated API producer and a separate worker consumer.
+Redis-backed Vasto example with a dedicated API producer and a separate worker consumer.
 
 Isolation modes by queue:
 
@@ -106,7 +106,7 @@ curl -X POST http://localhost:3100/dlq/retry \
 
 - `PORT` (default: `3100`)
 - `REDIS_URL` (default: `redis://127.0.0.1:6379`)
-- `REDIS_PREFIX` (default: `omniq:redis-isolation`)
+- `REDIS_PREFIX` (default: `vasto:redis-isolation`)
 - `REDIS_USERNAME` (optional, ACL username)
 - `REDIS_PASSWORD` (optional, required if your Redis instance enforces auth)
 - `DASHBOARD_ENABLED` (`true`/`false`, default: `false`)
@@ -123,7 +123,7 @@ Backward compatibility: `DASHBOARD_BASIC_USERNAME` / `DASHBOARD_BASIC_PASSWORD` 
 Example:
 
 ```bash
-PORT=4000 REDIS_URL=redis://127.0.0.1:6379 REDIS_PREFIX=omniq:demo npm run server
+PORT=4000 REDIS_URL=redis://127.0.0.1:6379 REDIS_PREFIX=vasto:demo npm run server
 
 # If your Redis requires authentication:
 REDIS_PASSWORD=your-secret npm run worker
@@ -155,7 +155,7 @@ When enabled, the worker starts the standalone dashboard server with the built-i
 
 ## What this demonstrates
 
-- Shared Redis storage via `@omni-queue/redis-store`
+- Shared Redis storage via `@vasto/redis-store`
 - API producer pattern for pushing jobs over HTTP
 - Delayed and scheduled email dispatch over HTTP
 - Dead-letter inspection and retry over HTTP

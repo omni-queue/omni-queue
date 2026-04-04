@@ -88,9 +88,9 @@ describe('getDagPlugins — global plugin with registerNode', () => {
     const registry = new JobRegistry();
     registry.register(DagParentJob);
 
-    const onJobSuccess = vi.fn();
+    const onProcessEnd = vi.fn(async () => undefined);
     // Regular plugin without registerNode
-    const regularPlugin: Plugin = { onJobSuccess };
+    const regularPlugin: Plugin = { onProcessEnd };
 
     const queues: Record<string, QueueConfig> = {
       default: { name: 'default', connection: 'memory', concurrency: 1, batchSize: 5 },

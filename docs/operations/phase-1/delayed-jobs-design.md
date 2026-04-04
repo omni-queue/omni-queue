@@ -6,7 +6,7 @@
 
 ## Overview
 
-Extend omni-queue to support:
+Extend vasto to support:
 1. **Delayed Jobs** - Execute after a specified delay (immediate feature)  
 2. **Scheduled Jobs** - Cron-like recurring execution
 
@@ -279,7 +279,7 @@ export class Supervisor {
 **How Redis stores delayed jobs**:
 
 ```typescript
-// In @omni-queue/redis-store
+// In @vasto/redis-store
 
 async enqueue(job: StoredJob): Promise<StoredJob> {
   const key = this.getQueueKey(job.queue);

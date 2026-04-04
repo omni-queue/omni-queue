@@ -4,11 +4,11 @@ import type {
     DashboardAuthSession,
     DashboardLoginRequest,
     DashboardSessionCredentials,
-} from '@omni-queue/core';
-import { Supervisor } from '@omni-queue/core';
+} from '@vasto/core';
+import { Supervisor } from '@vasto/core';
 import express from 'express';
 import path from 'node:path';
-import { createExpressAdapter, createExpressWebSocketBinding } from '@omni-queue/express-adapter';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto/express-adapter';
 import type http from 'node:http';
 import { createConsumerWorkers, createQueues, createRedisStoreFromEnv, createRegistry } from './runtime';
 import { registerGracefulShutdown } from './graceful-shutdown';
@@ -35,7 +35,7 @@ function buildAdminContext(): DashboardAuthContext {
 }
 
 function createSessionToken(subject: string): string {
-    return Buffer.from(`omni-queue-dashboard:${subject}`).toString('base64url');
+    return Buffer.from(`vasto-dashboard:${subject}`).toString('base64url');
 }
 
 function createPasswordAuthHandler(
@@ -141,7 +141,7 @@ function buildDashboardConfigFromEnv(): DashboardAdapterConfig | undefined {
 }
 
 async function main() {
-    const dashboardUiDir = path.resolve(process.cwd(), 'public/omni-queue-dashboard');
+    const dashboardUiDir = path.resolve(process.cwd(), 'public/vasto-dashboard');
     const store = createRedisStoreFromEnv();
     const queues = createQueues();
     const workers = createConsumerWorkers();

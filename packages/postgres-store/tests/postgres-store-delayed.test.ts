@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { StoredJob } from '@omni-queue/core';
+import type { StoredJob } from '@vasto/core';
 
 type JobRow = {
   id: string;

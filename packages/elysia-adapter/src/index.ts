@@ -7,12 +7,12 @@ import type {
 	DashboardAuthOptions,
 	DashboardRole,
 	Supervisor,
-} from '@omni-queue/core';
+} from '@vasto/core';
 import {
-	omniQueueAdapter,
+	vastoAdapter,
 	resolveDashboardConfig,
 	type DashboardApiOptions,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 
 export interface ElysiaDashboardController {
 	plugin: Elysia;
@@ -358,7 +358,7 @@ function addProxyRoute(
 export function createElysiaAdapter(options: DashboardApiOptions): ElysiaDashboardController {
 	const resolved = resolveDashboardConfig(options);
 	const dashboardApp = express();
-	dashboardApp.use(omniQueueAdapter(options));
+	dashboardApp.use(vastoAdapter(options));
 
 	const proxyServer = http.createServer(dashboardApp);
 
@@ -406,7 +406,7 @@ export function createElysiaAdapter(options: DashboardApiOptions): ElysiaDashboa
 		});
 	};
 
-	const plugin = new Elysia({ name: 'omni-queue-elysia-dashboard' });
+	const plugin = new Elysia({ name: 'vasto-elysia-dashboard' });
 	addProxyRoute(plugin, 'all', resolved.base, proxyRequest);
 	if (resolved.legacyBase) {
 		addProxyRoute(plugin, 'all', resolved.legacyBase, proxyRequest);
@@ -432,8 +432,8 @@ export function createElysiaAdapter(options: DashboardApiOptions): ElysiaDashboa
 				if (!authContext) {
 					const realm =
 						resolved.auth.type === 'none'
-							? 'omni-queue-dashboard'
-							: (resolved.auth.realm ?? 'omni-queue-dashboard');
+							? 'vasto-dashboard'
+							: (resolved.auth.realm ?? 'vasto-dashboard');
 					set.headers['www-authenticate'] = `Bearer realm="${realm}"`;
 					return status(401, { error: 'Unauthorized' });
 				}
@@ -547,7 +547,7 @@ export function createElysiaAdapter(options: DashboardApiOptions): ElysiaDashboa
 	};
 }
 
-export function omniQueueElysiaAdapter(options: DashboardApiOptions): ElysiaDashboardController {
+export function vastoElysiaAdapter(options: DashboardApiOptions): ElysiaDashboardController {
 	return createElysiaAdapter(options);
 }
 

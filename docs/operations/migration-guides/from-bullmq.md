@@ -1,8 +1,8 @@
-# Migrating from BullMQ to Omni Queue
+# Migrating from BullMQ to Vasto
 
-This guide maps common BullMQ concepts onto Omni Queue primitives so teams can migrate incrementally without redesigning their job model from scratch.
+This guide maps common BullMQ concepts onto Vasto primitives so teams can migrate incrementally without redesigning their job model from scratch.
 
-**Before you start**: Review the [BullMQ Parity Assessment](bullmq-parity-assessment.md) to understand feature coverage (~75–80% parity) and which use cases are the best fit.
+**Before you start**: Review the [BullMQ compatibility assessment](bullmq-parity-assessment.md) to understand current feature coverage and migration notes for your use cases.
 
 ## Who this guide is for
 
@@ -10,7 +10,7 @@ This guide is intended for teams that:
 
 - currently run BullMQ in production or staging
 - want typed jobs and pluggable storage backends
-- need a gradual, queue-by-queue migration path
+- need a gradual, queue-by migration path
 - want to preserve operational confidence during cutover
 
 ## Before you migrate
@@ -27,7 +27,7 @@ This baseline becomes the acceptance bar for your first migrated queue.
 
 ## Concept mapping
 
-| BullMQ | Omni Queue |
+| BullMQ | Vasto |
 | --- | --- |
 | `Queue` | `JobManager` + queue name returned by `Job.queue()` |
 | `Worker` | `Worker` / `ResilientWorker` managed by `Supervisor` |
@@ -40,7 +40,7 @@ This baseline becomes the acceptance bar for your first migrated queue.
 
 ## Parity guide
 
-| Concern | BullMQ pattern | Omni Queue pattern | Migration note |
+| Concern | BullMQ pattern | Vasto pattern | Migration note |
 | --- | --- | --- | --- |
 | Enqueue work | `queue.add()` | `jobManager.dispatch()` | Replace job-name strings with typed job classes |
 | Delayed jobs | `delay` option | `delayMs`, `delayUntil`, or `schedule({ runAt })` | Prefer explicit scheduling when timing is first-class |
@@ -48,16 +48,16 @@ This baseline becomes the acceptance bar for your first migrated queue.
 | Flows | `FlowProducer` | `supervisor.dispatchFlow()` | Dependencies are explicit through `dependsOn` |
 | Retries | `attempts`, `backoff` | retry policies + queue reliability config | Re-check terminal failure semantics during cutover |
 | Failure isolation | failed set inspection | DLQ + poison policy | Decide whether to quarantine, snooze, or dead-letter |
-| Queue pausing | operational pause/resume | backpressure and circuit breaker controls | Omni Queue makes load shedding policy-driven |
+| Queue pausing | operational pause/resume | backpressure and circuit breaker controls | Vasto makes load shedding policy-driven |
 
 ## Migration path
 
 ### 1. Convert processors into typed jobs
 
-In BullMQ, processors are often free functions attached to a queue. In Omni Queue, promote them into `Job` subclasses with a typed payload and explicit queue affinity.
+In BullMQ, processors are often free functions attached to a queue. In Vasto, promote them into `Job` subclasses with a typed payload and explicit queue affinity.
 
 ```ts
-import { Job } from '@omni-queue/core';
+import { Job } from '@vasto/core';
 
 export class SendEmailJob extends Job<{ userId: string }> {
   static jobName = 'send-email';
@@ -81,7 +81,7 @@ BullMQ:
 await queue.add('send-email', { userId: 'u_123' });
 ```
 
-Omni Queue:
+Vasto:
 
 ```ts
 await jobManager.dispatch(new SendEmailJob({ userId: 'u_123' }));
@@ -97,7 +97,7 @@ BullMQ:
 await queue.add('daily-digest', {}, { repeat: { pattern: '0 * * * *' } });
 ```
 
-Omni Queue:
+Vasto:
 
 ```ts
 await jobManager.schedule(new DailyDigestJob({ triggeredBy: 'scheduler' }), {
@@ -127,7 +127,7 @@ await supervisor.dispatchFlow([
 
 ### 5. Move queue-level operational behavior into configuration
 
-BullMQ setups often evolve retry, backoff, and pause behavior through distributed worker code and operational conventions. In Omni Queue, centralize that behavior in queue definitions where possible.
+BullMQ setups often evolve retry, backoff, and pause behavior through distributed worker code and operational conventions. In Vasto, centralize that behavior in queue definitions where possible.
 
 This makes it easier to reason about:
 
@@ -141,7 +141,7 @@ This makes it easier to reason about:
 
 ### Retries and poison handling
 
-BullMQ retry settings typically sit on `attempts` and `backoff`. In Omni Queue, keep retries close to the queue definition and pair them with poison handling:
+BullMQ retry settings typically sit on `attempts` and `backoff`. In Vasto, keep retries close to the queue definition and pair them with poison handling:
 
 - auto-quarantine terminal failures
 - dead-letter on repeated exhaustion
@@ -149,7 +149,7 @@ BullMQ retry settings typically sit on `attempts` and `backoff`. In Omni Queue, 
 
 ### Rate limiting and pausing
 
-BullMQ's queue pausing is usually an operational control. Omni Queue adds runtime-aware controls:
+BullMQ's queue pausing is usually an operational control. Vasto adds runtime-aware controls:
 
 - backpressure thresholds based on queue depth
 - circuit breakers driven by failure rate
@@ -198,7 +198,7 @@ This guide does not attempt to promise byte-for-byte behavioral equivalence for 
 
 Use the CLI to generate migration-friendly templates:
 
-- `queue generate job --name=send-email`
-- `queue generate api-job --name=send-email`
-- `queue generate workflow --name=asset-pipeline`
-- `queue generate scheduled --name=daily-digest`
+- `vasto generate job --name=send-email`
+- `vasto generate api-job --name=send-email`
+- `vasto generate workflow --name=asset-pipeline`
+- `vasto generate scheduled --name=daily-digest`

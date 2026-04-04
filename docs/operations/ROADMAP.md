@@ -1,11 +1,11 @@
-# Omni-Queue Evolution Roadmap
+# Vasto Evolution Roadmap
 
-**Goal**: Position omni-queue as a **superior alternative to BullMQ** with **Laravel Horizon's operational excellence**.
+**Goal**: Evolve vasto as a production-grade queue runtime inspired by BullMQ and Laravel Horizon's operational excellence.
 
 ## Phase 1: Core Job Lifecycle
 
 ### Objective
-Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
+Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and pluggable architecture.
 
 ### **Foundation (Pre-1.1)** **[DONE]**
 - [x] Core `Supervisor` & `JobManager` orchestration
@@ -29,21 +29,18 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [x] Add cron scheduling support (node-cron)
 - [x] Example: Redis isolation with delayed jobs
 - [x] Documentation & tests
-- **Estimated**: 3-4 weeks (assumes foundation ready)
 
 ### 1.2 Job Priorities & Priority Queues **[DONE]**
 - [x] Add priority field to StoredJob type
 - [x] Implement priority bucket dequeue strategy
 - [x] Update PooledExecutor for priority ordering
 - [x] Example: Email routing (critical, high, normal, low)
-- **Estimated**: 1.5-2 weeks
 
 ### 1.3 Job Progress Tracking **[DONE]**
 - [x] Add setProgress() API to JobManager
 - [x] Extend QueueStorage with progress storage
 - [x] Add onProgress plugin hook
 - [x] Real-time progress updates via plugins
-- **Estimated**: 1 week
 
 ### 1.4 Dead Letter Queue (DLQ) **[DONE]**
 - [x] Add maxAttempts to QueueConfig
@@ -51,16 +48,14 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [x] Add getDLQ() supervisor API
 - [x] Plugin hook: onFailedPermanently
 - [x] Example: Failed job inspection & retry
-- **Estimated**: 2 weeks
 
 ## Phase 2: Observability & Dashboard
 
 ### 2.1 Metrics Collection & Export **[DONE]**
-- [x] @omni-queue/metrics package
+- [x] @vasto/metrics package
 - [x] Prometheus client integration
 - [x] StatsD & DataDog exporters
 - [x] Auto-collected metrics (queue depth, duration, failures)
-- **Estimated**: 2-3 weeks
 
 ### 2.2 Web Dashboard (MVP) **[DONE]**
 - [x] React + Tailwind UI
@@ -69,13 +64,11 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [x] Failed job triage & retry UI
 - [x] Real-time updates (SSE/WebSocket)
 - [x] Worker scaling controls
-- **Estimated**: 4-5 weeks
 
 ### 2.3 Job Archive & Audit **[DONE]**
 - [x] SQL-based job archive
 - [x] Configurable retention policies
 - [x] Query builder for historical analysis
-- **Estimated**: 2 weeks
 
 ## Phase 3: Advanced Features
 
@@ -83,40 +76,37 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [x] JobFlow builder API
 - [x] Parent-child dependency tracking
 - [x] Atomic failure handling
-- **Estimated**: 3-4 weeks
 
 ### 3.2 Queue Pause/Resume with Drain **[DONE]**
 - [x] Graceful shutdown logic
 - [x] Drain: wait for in-flight jobs
 - [x] API: supervisor.pauseQueue(), resumeQueue()
-- **Estimated**: 1.5 weeks
 
 ### 3.3 Job Timeout & Cancellation **[DONE]**
 - [x] Per-job execution timer
 - [x] Signal handling for process workers
 - [x] Configurable timeout behavior (kill, retry)
-- **Estimated**: 2 weeks
 
 ## Phase 4: Ecosystem & Integration
 
 ### 4.1 Official Adapters **[DONE]**
-- [x] @omni-queue/mysql-store
-- [x] @omni-queue/postgres-store
-- [x] @omni-queue/mongo-store
-- [x] @omni-queue/dynamodb-store
+- [x] @vasto/mysql-store
+- [x] @vasto/postgres-store
+- [x] @vasto/mongo-store
+- [x] @vasto/dynamodb-store
 
 ### 4.2 Framework Integrations **[DONE]**
-- [x] @omni-queue/express-adapter (default via dashboard-api)
-- [x] @omni-queue/next-adapter
-- [x] @omni-queue/fastify-adapter
-- [x] @omni-queue/nest-adapter
-- [x] @omni-queue/hono-adapter
+- [x] @vasto/express-adapter (default via dashboard-api)
+- [x] @vasto/next-adapter
+- [x] @vasto/fastify-adapter
+- [x] @vasto/nest-adapter
+- [x] @vasto/hono-adapter
 
 ### 4.3 CLI Tooling **[DONE]**
-- [x] `omni-queue init`
-- [x] `omni-queue generate job`
-- [x] `omni-queue monitor`
-- [x] `omni-queue dlq:*` commands
+- [x] `vasto init`
+- [x] `vasto generate job`
+- [x] `vasto monitor`
+- [x] `vasto dlq:*` commands
 
 ### 4.4 BullMQ Parity Gap Sprint (Pre-Phase 5) **[DONE]**
 - [x] Durable repeatable jobs (persisted schedules + restart recovery)
@@ -193,27 +183,34 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 - [ ] Enterprise operations playbooks
 - [ ] Advanced patterns cookbook
 
-## Success Metrics
+## Phase 7: Durable Event Queue
 
-| Metric | Current | Near-term target | Long-term target |
-|--------|---------|------------------|------------------|
-| Feature Completeness vs BullMQ | ~30% | ~50% | ~80% |
-| GitHub Stars | - | 500+ | 1500+ |
-| npm Downloads/week | - | 5k+ | 20k+ |
-| Missing Core Features | 12+ | 6+ | 2+ |
-| Has Web Dashboard | ❌ | ❌ | ✅ |
-| Metrics Export | ❌ | ✅ | ✅ |
+**Goal**: Evolve the in-memory lifecycle event bus into a durable, distributed event queue pipeline with at-least-once delivery, replay, and external publishing.
 
-## Key Differentiators
+### 7.1 Contract + Plumbing
+- [ ] `QueueLifecycleEnvelope` type definition
+- [ ] `EventBridgePlugin` mapping hooks → envelopes → `system.events` queue
+- [ ] `eventQueue` config option in `SupervisorOptions`
+- [ ] Unit tests: envelope emission and allowlist filtering
 
-| Feature | BullMQ | Omni-Queue |
-|---------|--------|-----------|
-| **Worker Isolation** | Sandboxed only | **Flexible: inline/thread/process** |
-| **Storage** | Redis only | **Pluggable: Redis, SQL, In-memory** |
-| **Auto-scaling Supervisor** | ❌ | **✅ Built-in** |
-| **Dashboard** | Bull Board (3rd-party) | **First-party, Horizon-quality** |
-| **Job Flows** | ❌ | **✅ DAG-based** |
-| **Metrics** | Via plugins | **Built-in, multi-backend** |
+### 7.2 Durable Persistence + Replay
+- [ ] Event storage schema (`events`, `event_delivery` tables / collections)
+- [ ] `EventPersistJob` worker
+- [ ] Optional event log methods on `QueueStorage` interface
+- [ ] `supervisor.queryEvents()` cursor-based replay API
+- [ ] Persistence and replay tests
+
+### 7.3 External Publishing + DLQ Hardening
+- [ ] `EventSink` interface and `EventPublishJob` worker
+- [ ] Event-specific retry policy and DLQ route (`system.events.dlq`)
+- [ ] Event pipeline metrics (dispatch, lag, failure, DLQ depth)
+- [ ] Retry/DLQ tests
+
+### 7.4 Multi-Tenant Policy Controls (optional stretch)
+- [ ] Tenant-scoped event filtering
+- [ ] PII/data minimization redaction policies
+- [ ] Retention and archival policies
+- [ ] Policy enforcement tests
 
 ## Documentation Structure
 
@@ -236,6 +233,9 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 │   └── capacity-planning-toolkit.md   # Sizing formulas and examples
 ├── phase-6/
 │   └── phase-6-proposal.md
+├── phase-7/
+│   └── phase-7-proposal.md           # Durable event queue implementation plan
+├── event-queue-implementation-plan.md # Detailed blueprint for Phase 7
 ├── migration-guides/
 │   └── from-bullmq.md                 # BullMQ compatibility and migration path
 ├── quickstarts/
@@ -252,5 +252,6 @@ Make omni-queue feature-complete vs BullMQ basics. Achieve 80% feature parity.
 ## Current Status
 
 - **Active Phase**: Phase 6 planning (Phase 5.5 parity closure implemented)
-- **Last Updated**: March 29, 2026
-- **Tracking**: GitHub Projects (Omni-Queue Evolution)
+- **Phase 7**: Durable event queue — planned, blueprint complete (see `event-queue-implementation-plan.md`)
+- **Last Updated**: April 3, 2026
+- **Tracking**: GitHub Projects (Vasto Evolution)
