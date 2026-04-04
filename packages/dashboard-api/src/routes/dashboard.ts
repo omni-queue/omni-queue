@@ -1,13 +1,36 @@
-import express from 'express';
-import type { DashboardAuthOptions, QueueAdminJobStatus, Supervisor } from '@omni-queue/core';
+import { createRequire } from 'node:module';
+import type { Request, Response, Router } from 'express';
+import type {
+  DashboardAuthOptions,
+  DashboardLoginRequest,
+  QueueAdminJobStatus,
+  Supervisor,
+} from '@vasto/core';
+import { checkAuth, getAllowedQueues, hasDashboardPermission } from '../middleware/request-auth';
+import {
+  authenticateDashboardLogin,
+  authenticateDashboardSession,
+  extractDashboardBearerToken,
+  resolveDashboardLoginMode,
+} from '../middleware/auth';
 import { queryArchive, updateArchiveRetention } from '../services/archive';
-import { checkAuth, getAllowedQueues, hasDashboardPermission } from '../middleware/auth';
 import { getDashboardBatch, listDashboardBatches } from '../services/batches';
-import { getDashboardJobById, getDashboardJobs, getSilencedJobs, type DashboardJobFilterStatus } from '../services/jobs';
+import {
+  getDashboardJobById,
+  getDashboardJobs,
+  getSilencedJobs,
+  type DashboardJobFilterStatus,
+} from '../services/jobs';
 import { getMonitoringTag, listMonitoringTags } from '../services/monitoring';
 import { buildOverview } from '../services/overview';
 import { buildSloReport } from '../services/slo';
 import { asNonNegativeInt, asPositiveInt, asString } from '../utils/http';
+
+const require = createRequire(import.meta.url);
+
+function loadExpress(): typeof import('express') {
+  return require('express');
+}
 
 function asDashboardStatus(value: unknown): DashboardJobFilterStatus | undefined {
   const status = asString(value);
@@ -44,18 +67,19 @@ export function buildDashboardRouter(
   supervisor: Supervisor,
   auth: DashboardAuthOptions,
   streamIntervalMs: number
-): express.Router {
+): Router {
+  const express = loadExpress();
   const router = express.Router();
 
-  const hasQueueAccess = (req: express.Request, queueName: string): boolean => {
+  const hasQueueAccess = (req: Request, queueName: string): boolean => {
     const allowedQueues = getAllowedQueues(req);
     if (!allowedQueues) return true;
     return allowedQueues.has(queueName);
   };
 
   const enforceQueueAccess = (
-    req: express.Request,
-    res: express.Response,
+    req: Request,
+    res: Response,
     queueName: string | undefined,
     errorMessage = 'Queue access denied'
   ): queueName is string => {
@@ -71,7 +95,7 @@ export function buildDashboardRouter(
     return true;
   };
 
-  const filterOverviewForRequest = async (req: express.Request) => {
+  const filterOverviewForRequest = async (req: Request) => {
     const overview = await buildOverview(supervisor);
     const allowedQueues = getAllowedQueues(req);
     if (!allowedQueues) {
@@ -83,11 +107,12 @@ export function buildDashboardRouter(
       (acc, queue) => {
         acc.depth += queue.depth;
         acc.deferred += queue.deferredCount;
+        acc.schedules += queue.repeatableCount ?? 0;
         acc.dlq += queue.dlqCount;
         acc.completed += queue.completedCount ?? 0;
         return acc;
       },
-      { depth: 0, deferred: 0, dlq: 0, completed: 0 }
+      { depth: 0, deferred: 0, schedules: 0, dlq: 0, completed: 0 }
     );
 
     const reliabilityQueues = (overview.reliability?.queues ?? []).filter((queue) =>
@@ -126,8 +151,8 @@ export function buildDashboardRouter(
   };
 
   const requirePermission = (
-    req: express.Request,
-    res: express.Response,
+    req: Request,
+    res: Response,
     permission: 'read' | 'operate' | 'admin'
   ): boolean => {
     if (hasDashboardPermission(req, permission)) {
@@ -138,7 +163,7 @@ export function buildDashboardRouter(
     return false;
   };
 
-  const filterJobsForRequest = <T extends { queue: string }>(req: express.Request, jobs: T[]): T[] => {
+  const filterJobsForRequest = <T extends { queue: string }>(req: Request, jobs: T[]): T[] => {
     const allowedQueues = getAllowedQueues(req);
     if (!allowedQueues) {
       return jobs;
@@ -150,6 +175,138 @@ export function buildDashboardRouter(
   router.use(express.json());
   router.use(express.urlencoded({ extended: false }));
 
+  const loginMode = resolveDashboardLoginMode(auth);
+
+  const parseLoginRequest = (req: Request): { value?: DashboardLoginRequest; error?: string } => {
+    if (auth.type === 'none' || !loginMode) {
+      return { error: 'Authentication is disabled' };
+    }
+
+    if (loginMode === 'token') {
+      const token = asString(req.body?.token);
+      if (!token) {
+        return { error: 'Expected payload: { token }' };
+      }
+
+      return {
+        value: {
+          mode: 'token',
+          token,
+          request: req,
+        },
+      };
+    }
+
+    const username = asString(req.body?.username);
+    const password = asString(req.body?.password);
+    if (!username || !password) {
+      return { error: 'Expected payload: { username, password }' };
+    }
+
+    return {
+      value: {
+        mode: loginMode,
+        username,
+        password,
+        request: req,
+      },
+    };
+  };
+
+  const resolveLoginResponseContext = async (req: Request, token: string, providedContext?: unknown) => {
+    if (providedContext && typeof providedContext === 'object') {
+      return providedContext;
+    }
+
+    const authContext = await authenticateDashboardSession({ token, request: req }, auth);
+    return authContext ?? null;
+  };
+
+  router.get('/auth/config', (_req, res) => {
+    res.json({
+      requiresAuth: auth.type !== 'none',
+      authType: auth.type,
+      loginMode,
+    });
+  });
+
+  router.get('/auth/session', async (req, res) => {
+    try {
+      if (auth.type === 'none') {
+        res.json({
+          authenticated: true,
+          authType: auth.type,
+          loginMode,
+          authContext: { role: 'admin' },
+        });
+        return;
+      }
+
+      const token = extractDashboardBearerToken(req);
+      if (!token) {
+        res.status(401).json({ error: 'Authentication required' });
+        return;
+      }
+
+      const authContext = await authenticateDashboardSession({ token, request: req }, auth);
+      if (!authContext) {
+        res.status(401).json({ error: 'Invalid or expired session' });
+        return;
+      }
+
+      res.json({
+        authenticated: true,
+        authType: auth.type,
+        loginMode,
+        authContext,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.post('/auth/login', async (req, res) => {
+    try {
+      const parsed = parseLoginRequest(req);
+      if (!parsed.value) {
+        res.status(400).json({ error: parsed.error ?? 'Invalid login payload' });
+        return;
+      }
+
+      const session = await authenticateDashboardLogin(parsed.value, auth);
+      if (!session || !session.token?.trim()) {
+        res.status(401).json({ error: 'Invalid credentials' });
+        return;
+      }
+
+      const authContext = await resolveLoginResponseContext(req, session.token, session.authContext);
+      res.json({
+        token: session.token,
+        ...(session.expiresAt != null ? { expiresAt: session.expiresAt } : {}),
+        authType: auth.type,
+        loginMode,
+        authContext,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.post('/auth/logout', async (req, res) => {
+    try {
+      if (auth.type !== 'none') {
+        const token = extractDashboardBearerToken(req);
+        if (token && auth.logoutHandler) {
+          await auth.logoutHandler({ token, request: req });
+        }
+      }
+
+      res.status(204).end();
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
   router.use(async (req, res, next) => {
     if (req.method === 'OPTIONS') {
       next();
@@ -160,7 +317,7 @@ export function buildDashboardRouter(
   });
 
   router.get('/health', (_req, res) => {
-    res.json({ status: 'ok', service: 'omni-queue-dashboard' });
+    res.json({ status: 'ok', service: 'vasto-dashboard' });
   });
 
   router.get('/overview', async (_req, res) => {
@@ -597,6 +754,97 @@ export function buildDashboardRouter(
         total: filteredJobs.length,
         jobs: filteredJobs,
       });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.get('/schedules', async (req, res) => {
+    try {
+      if (!requirePermission(req, res, 'read')) return;
+      const queueName = asString(req.query.queue);
+      if (queueName && !enforceQueueAccess(req, res, queueName)) return;
+      const limit = Number(req.query.limit ?? '200');
+      const offset = Number(req.query.offset ?? '0');
+
+      const schedules = await supervisor.listRepeatableSchedules({
+        ...(queueName ? { queueName } : {}),
+        limit,
+        offset,
+      });
+
+      const filteredSchedules = queueName
+        ? schedules
+        : schedules.filter((schedule) => hasQueueAccess(req, schedule.queue));
+
+      res.json({
+        status: 'ok',
+        total: filteredSchedules.length,
+        schedules: filteredSchedules,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.post('/schedules/:scheduleId/remove', async (req, res) => {
+    try {
+      if (!requirePermission(req, res, 'operate')) return;
+      const scheduleId = asString(req.params.scheduleId);
+      if (!scheduleId) {
+        res.status(400).json({ error: 'Schedule id is required' });
+        return;
+      }
+
+      const schedules = await supervisor.listRepeatableSchedules();
+      const schedule = schedules.find((item) => item.id === scheduleId);
+      if (!schedule) {
+        res.status(404).json({ error: 'Schedule not found' });
+        return;
+      }
+
+      if (!hasQueueAccess(req, schedule.queue)) {
+        res.status(403).json({ error: 'Queue access denied' });
+        return;
+      }
+
+      const removed = await supervisor.removeRepeatableSchedule(scheduleId);
+      if (!removed) {
+        res.status(404).json({ error: 'Schedule not found' });
+        return;
+      }
+
+      res.status(202).json({ status: 'removed', scheduleId });
+    } catch (error) {
+      res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
+    }
+  });
+
+  router.post('/schedules/clear', async (req, res) => {
+    try {
+      if (!requirePermission(req, res, 'operate')) return;
+      const queueName = asString(req.body?.queue) ?? asString(req.query.queue);
+      if (queueName && !enforceQueueAccess(req, res, queueName)) return;
+
+      if (queueName) {
+        const removed = await supervisor.clearRepeatableSchedules({ queueName });
+        res.status(202).json({ status: 'cleared', queueName, removed });
+        return;
+      }
+
+      const allowedQueues = getAllowedQueues(req);
+      if (!allowedQueues) {
+        const removed = await supervisor.clearRepeatableSchedules();
+        res.status(202).json({ status: 'cleared', removed });
+        return;
+      }
+
+      let removed = 0;
+      for (const allowedQueue of allowedQueues) {
+        removed += await supervisor.clearRepeatableSchedules({ queueName: allowedQueue });
+      }
+
+      res.status(202).json({ status: 'cleared', removed });
     } catch (error) {
       res.status(500).json({ error: error instanceof Error ? error.message : 'Internal error' });
     }

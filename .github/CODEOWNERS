@@ -1,0 +1,16 @@
+# Repository-wide ownership
+* @binarygeotech
+
+# Core runtime
+/packages/core/ @binarygeotech
+
+# Dashboard packages
+/packages/dashboard/ @binarygeotech
+/packages/dashboard-api/ @binarygeotech
+
+# Adapter packages
+/packages/*-adapter/ @binarygeotech
+
+# Documentation and examples
+/docs/ @binarygeotech
+/examples/ @binarygeotech

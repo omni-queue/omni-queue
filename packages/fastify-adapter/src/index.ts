@@ -1,12 +1,24 @@
+import http from 'node:http';
 import {
-  createDashboardExpressMiddleware,
-  startDashboardServer,
+  bindVastoWebSocket,
+  vastoAdapter,
   type DashboardApiOptions,
-  type StandaloneDashboardServerOptions,
-} from '@omni-queue/dashboard-api';
+  type DashboardWebSocketController,
+} from '@vasto/dashboard-api';
 
 export interface FastifyLike {
   use?: (...args: unknown[]) => unknown;
+}
+
+export function vastoFastifyAdapter(options: DashboardApiOptions) {
+  return vastoAdapter(options);
+}
+
+export function bindVastoFastifyWebSocket(
+  server: http.Server,
+  options: DashboardApiOptions
+): DashboardWebSocketController {
+  return bindVastoWebSocket(server, options);
 }
 
 export function registerFastifyAdapter(app: FastifyLike, options: DashboardApiOptions): void {
@@ -16,9 +28,5 @@ export function registerFastifyAdapter(app: FastifyLike, options: DashboardApiOp
     );
   }
 
-  app.use(createDashboardExpressMiddleware(options));
-}
-
-export function startFastifyAdapter(options: StandaloneDashboardServerOptions) {
-  return startDashboardServer(options);
+  app.use(vastoFastifyAdapter(options));
 }

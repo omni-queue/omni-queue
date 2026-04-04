@@ -1,18 +1,26 @@
+import http from 'node:http';
 import {
-  createDashboardExpressMiddleware,
-  startDashboardServer,
+  bindVastoWebSocket,
+  vastoAdapter,
   type DashboardApiOptions,
-  type StandaloneDashboardServerOptions,
-} from '@omni-queue/dashboard-api';
+  type DashboardWebSocketController,
+} from '@vasto/dashboard-api';
 
 export interface NestLikeApplication {
   use: (...args: unknown[]) => unknown;
 }
 
-export function registerNestAdapter(app: NestLikeApplication, options: DashboardApiOptions): void {
-  app.use(createDashboardExpressMiddleware(options));
+export function vastoNestAdapter(options: DashboardApiOptions) {
+  return vastoAdapter(options);
 }
 
-export function startNestAdapter(options: StandaloneDashboardServerOptions) {
-  return startDashboardServer(options);
+export function bindVastoNestWebSocket(
+  server: http.Server,
+  options: DashboardApiOptions
+): DashboardWebSocketController {
+  return bindVastoWebSocket(server, options);
+}
+
+export function registerNestAdapter(app: NestLikeApplication, options: DashboardApiOptions): void {
+  app.use(vastoNestAdapter(options));
 }

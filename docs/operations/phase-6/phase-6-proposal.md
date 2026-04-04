@@ -1,6 +1,6 @@
-# Phase 6: Scaling & Enterprise Features (2027 Q3+)
+# Phase 6: Scaling & Enterprise Features
 
-**Goal**: Position Omni Queue for hyperscale deployments and enterprise multi-region/multi-tenant at scale.
+**Goal**: Position Vasto for hyperscale deployments and enterprise multi-region/multi-tenant at scale.
 
 ## Overview
 
@@ -83,13 +83,13 @@ Support complex production patterns: rate limiting, queue grouping, conditional 
 4. **Hierarchical rate governance (extends Phase 5.5 limits)**
    - Group-level throughput budgets with weighted sharing
    - Burst-credit allocation across queues in the same group
-   - Token bucket or sliding window strategy for cross-queue fairness
+   - Token bucket or sliding window strategy for cross fairness
 
 ### Files (new)
 
 - `packages/core/src/libs/queue-groups.ts` — grouping and weight management
 - `packages/core/src/libs/cost-optimizer.ts` — cost-aware scheduler
-- `packages/core/src/libs/rate-limiter.ts` — per-queue/consumer limiting
+- `packages/core/src/libs/rate-limiter.ts` — per/consumer limiting
 - `packages/core/tests/queue-patterns.test.ts`
 
 ### Acceptance Criteria
@@ -155,7 +155,7 @@ Deep integration with common enterprise observability and alerting platforms.
 1. **Datadog integration**
    - Auto-instrumented spans for job lifecycle via OpenTelemetry
    - Custom metrics (queue depth, latency, region distribution) sent to Datadog
-   - Dashboard template for Omni Queue in Datadog
+   - Dashboard template for Vasto in Datadog
 
 2. **New Relic integration**
    - Similar approach: OTel spans, custom events, pre-built dashboards

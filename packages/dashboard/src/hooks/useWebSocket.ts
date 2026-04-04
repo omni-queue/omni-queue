@@ -1,30 +1,37 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { resolveDashboardWsUrl } from '../auth';
 import type { OverviewResponse, WsMessage } from '../types';
-import { API_BASE } from '../types';
-
-function resolveWsUrl(): string {
-  const httpBase = API_BASE.startsWith('http') ? API_BASE : `${window.location.origin}${API_BASE}`;
-  return httpBase.replace(/^http/, 'ws') + '/ws';
-}
+import { DASHBOARD_TRANSPORT } from '../types';
 
 export type WsStatus = 'connecting' | 'connected' | 'disconnected';
 
 export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
-  const [status, setStatus] = useState<WsStatus>('connecting');
+  const [status, setStatus] = useState<WsStatus>(
+    DASHBOARD_TRANSPORT === 'polling' ? 'disconnected' : 'connecting'
+  );
   const wsRef = useRef<WebSocket | null>(null);
   const retryRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mountedRef = useRef(true);
+  const hasConnectedRef = useRef(false);
+  const fallbackToPollingRef = useRef(DASHBOARD_TRANSPORT === 'polling');
   const onOverviewRef = useRef(onOverview);
   onOverviewRef.current = onOverview;
 
   const connect = useCallback(() => {
     if (!mountedRef.current) return;
+    if (DASHBOARD_TRANSPORT === 'polling') {
+      setStatus('disconnected');
+      return;
+    }
+
     setStatus('connecting');
-    const ws = new WebSocket(resolveWsUrl());
+    const ws = new WebSocket(resolveDashboardWsUrl());
     wsRef.current = ws;
 
     ws.onopen = () => {
       if (!mountedRef.current) { ws.close(); return; }
+      hasConnectedRef.current = true;
+      fallbackToPollingRef.current = false;
       setStatus('connected');
     };
 
@@ -44,12 +51,28 @@ export function useWebSocket(onOverview: (data: OverviewResponse) => void) {
     ws.onclose = () => {
       if (!mountedRef.current) return;
       setStatus('disconnected');
-      retryRef.current = setTimeout(() => { connect(); }, 3000);
+
+      // If websocket never connects, treat it as unsupported and stick to polling fallback.
+      if (!hasConnectedRef.current) {
+        fallbackToPollingRef.current = true;
+        return;
+      }
+
+      if (!fallbackToPollingRef.current) {
+        retryRef.current = setTimeout(() => { connect(); }, 3000);
+      }
     };
   }, []);
 
   useEffect(() => {
     mountedRef.current = true;
+    if (DASHBOARD_TRANSPORT === 'polling') {
+      setStatus('disconnected');
+      return () => {
+        mountedRef.current = false;
+      };
+    }
+
     connect();
     return () => {
       mountedRef.current = false;

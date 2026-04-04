@@ -1,4 +1,4 @@
-import type { Plugin, StoredJob } from '@omni-queue/core';
+import type { Plugin, StoredJob } from '@vasto/core';
 
 export type JobExecutionStatus = 'completed' | 'failed';
 

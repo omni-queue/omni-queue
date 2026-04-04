@@ -7,10 +7,11 @@ import type {
   LeaseOptions,
   QueueAdminJobStatus,
   QueueCleanOptions,
+  RateLimitConsumeRequest,
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 /** Numeric sort weight (lower = dequeued first). */
 const PRIORITY_SCORES: Record<JobPriority, number> = {
@@ -40,7 +41,7 @@ export interface RedisStoreConfig {
   client: Redis | RedisOptions;
 
   /**
-   * Key namespace prefix. Defaults to `omni`.
+   * Key namespace prefix. Defaults to `vasto`.
    */
   prefix?: string;
 }
@@ -48,16 +49,89 @@ export interface RedisStoreConfig {
 /**
  * Redis key layout:
  *
- *  omni:job:{id}               → JSON string of StoredJob
- *  omni:queue:{name}:ready     → sorted set, score = createdAt  (pending jobs)
- *  omni:queue:{name}:deferred  → sorted set, score = delayUntil (delayed jobs)
- *  omni:queue:{name}:leased    → sorted set, score = leaseUntil (inflight jobs)
- *  omni:dead:{id}              → JSON string of dead-lettered StoredJob
- *  omni:queue:{name}:dead      → sorted set, score = failedAt   (dead letter index)
+ *  vasto:job:{id}               → JSON string of StoredJob
+ *  vasto:queue:{name}:ready     → sorted set, score = createdAt  (pending jobs)
+ *  vasto:queue:{name}:deferred  → sorted set, score = delayUntil (delayed jobs)
+ *  vasto:queue:{name}:leased    → sorted set, score = leaseUntil (inflight jobs)
+ *  vasto:dead:{id}              → JSON string of dead-lettered StoredJob
+ *  vasto:queue:{name}:dead      → sorted set, score = failedAt   (dead letter index)
  */
 export class RedisStore implements QueueStorage {
   private client: Redis;
   private prefix: string;
+  private static readonly RECLAIM_LIMIT_DEFAULT = 100;
+  private pendingAcks: Array<{
+    jobId: string;
+    queueName: string | undefined;
+    resolve: () => void;
+    reject: (error: unknown) => void;
+  }> = [];
+  private ackFlushScheduled = false;
+
+  private static readonly RATE_LIMIT_CONSUME_SCRIPT = `
+local queue_key = KEYS[1]
+local consumer_key = KEYS[2]
+
+local now = tonumber(ARGV[1])
+local queue_capacity = tonumber(ARGV[2])
+local queue_refill_rate = tonumber(ARGV[3])
+local has_consumer = tonumber(ARGV[4])
+local consumer_capacity = tonumber(ARGV[5])
+local consumer_refill_rate = tonumber(ARGV[6])
+
+local function read_state(key, capacity, refill_rate, timestamp)
+  local tokens = tonumber(redis.call('HGET', key, 'tokens'))
+  local last = tonumber(redis.call('HGET', key, 'last'))
+
+  if not tokens then
+    tokens = capacity
+  end
+
+  if not last then
+    last = timestamp
+  end
+
+  local elapsed = timestamp - last
+  if elapsed > 0 and refill_rate > 0 then
+    tokens = math.min(capacity, tokens + ((elapsed / 1000) * refill_rate))
+  end
+
+  return tokens
+end
+
+local function ttl_ms(capacity, refill_rate)
+  if refill_rate <= 0 then
+    return 86400000
+  end
+
+  return math.max(1000, math.ceil(((capacity / refill_rate) * 1000) * 2))
+end
+
+local queue_tokens = read_state(queue_key, queue_capacity, queue_refill_rate, now)
+if queue_tokens < 1 then
+  return 0
+end
+
+local consumer_tokens = nil
+if has_consumer == 1 then
+  consumer_tokens = read_state(consumer_key, consumer_capacity, consumer_refill_rate, now)
+  if consumer_tokens < 1 then
+    return 0
+  end
+end
+
+queue_tokens = queue_tokens - 1
+redis.call('HMSET', queue_key, 'tokens', queue_tokens, 'last', now)
+redis.call('PEXPIRE', queue_key, ttl_ms(queue_capacity, queue_refill_rate))
+
+if has_consumer == 1 then
+  consumer_tokens = consumer_tokens - 1
+  redis.call('HMSET', consumer_key, 'tokens', consumer_tokens, 'last', now)
+  redis.call('PEXPIRE', consumer_key, ttl_ms(consumer_capacity, consumer_refill_rate))
+end
+
+return 1
+`;
 
   // Atomic dequeue + lease Lua script
   private static readonly DEQUEUE_SCRIPT = `
@@ -67,20 +141,23 @@ local job_prefix = ARGV[1]
 local now        = tonumber(ARGV[2])
 local lease_until = tonumber(ARGV[3])
 local batch_size  = tonumber(ARGV[4])
+local reclaim_limit = tonumber(ARGV[5])
 
 local priority_weights = {critical=0, high=1, normal=2, low=3}
 
--- 1. Reclaim expired leases back into ready (preserve priority order)
-local expired = redis.call('ZRANGEBYSCORE', leased_key, 0, now)
-for _, id in ipairs(expired) do
-  local raw = redis.call('GET', job_prefix .. id)
-  if raw then
-    local ok, job = pcall(cjson.decode, raw)
-    if ok and job then
-      redis.call('ZREM', leased_key, id)
-      local pw = priority_weights[job['priority'] or 'normal'] or 2
-      local score = pw * 10000000000000 + (job['createdAt'] or 0)
-      redis.call('ZADD', ready_key, score, id)
+-- 1. Reclaim a bounded number of expired leases back into ready (preserve priority order)
+local expired = redis.call('ZRANGEBYSCORE', leased_key, 0, now, 'LIMIT', 0, reclaim_limit)
+if #expired > 0 then
+  redis.call('ZREM', leased_key, unpack(expired))
+  for _, id in ipairs(expired) do
+    local raw = redis.call('GET', job_prefix .. id)
+    if raw then
+      local ok, job = pcall(cjson.decode, raw)
+      if ok and job then
+        local pw = priority_weights[job['priority'] or 'normal'] or 2
+        local score = pw * 10000000000000 + (job['createdAt'] or 0)
+        redis.call('ZADD', ready_key, score, id)
+      end
     end
   end
 end
@@ -89,27 +166,96 @@ end
 local ids = redis.call('ZRANGE', ready_key, 0, batch_size - 1)
 if #ids == 0 then return {} end
 
--- 3. Atomically move each to leased and update state in job data
+-- 3. Atomically move each to leased
+redis.call('ZREM', ready_key, unpack(ids))
+local jobs = {}
 for _, id in ipairs(ids) do
-  redis.call('ZREM', ready_key, id)
   redis.call('ZADD', leased_key, lease_until, id)
   local raw = redis.call('GET', job_prefix .. id)
   if raw then
-    local ok, job = pcall(cjson.decode, raw)
-    if ok and job then
-      job['state'] = 'leased'
-      job['updatedAt'] = now
-      redis.call('SET', job_prefix .. id, cjson.encode(job))
-    end
+    table.insert(jobs, raw)
   end
 end
 
-return ids
+return jobs
+`;
+
+  private static readonly ACK_SCRIPT = `
+local job_key = KEYS[1]
+local job_id = ARGV[1]
+local queue_prefix = ARGV[2]
+local queue_name = ARGV[3]
+
+if queue_name and queue_name ~= '' then
+  redis.call('DEL', job_key)
+  redis.call('ZREM', queue_prefix .. queue_name .. ':leased', job_id)
+  return 1
+end
+
+local raw = redis.call('GET', job_key)
+if not raw then
+  return 0
+end
+
+redis.call('DEL', job_key)
+
+local ok, job = pcall(cjson.decode, raw)
+if ok and job and job['queue'] then
+  redis.call('ZREM', queue_prefix .. job['queue'] .. ':leased', job_id)
+end
+
+return 1
+`;
+
+  private static readonly EXTEND_LEASE_SCRIPT = `
+local job_key = KEYS[1]
+local job_id = ARGV[1]
+local queue_prefix = ARGV[2]
+local lease_until = tonumber(ARGV[3])
+local queue_name = ARGV[4]
+
+if queue_name and queue_name ~= '' then
+  redis.call('ZADD', queue_prefix .. queue_name .. ':leased', lease_until, job_id)
+  return 1
+end
+
+local raw = redis.call('GET', job_key)
+if not raw then
+  return 0
+end
+
+local ok, job = pcall(cjson.decode, raw)
+if ok and job and job['queue'] then
+  redis.call('ZADD', queue_prefix .. job['queue'] .. ':leased', lease_until, job_id)
+  return 1
+end
+
+return 0
 `;
 
   constructor(config: RedisStoreConfig) {
     this.client = config.client instanceof Redis ? config.client : new Redis(config.client);
-    this.prefix = config.prefix ?? 'omni';
+    this.prefix = config.prefix ?? 'vasto';
+
+    this.client.defineCommand('vastoDequeue', {
+      numberOfKeys: 2,
+      lua: RedisStore.DEQUEUE_SCRIPT,
+    });
+
+    this.client.defineCommand('vastoConsumeRateLimit', {
+      numberOfKeys: 2,
+      lua: RedisStore.RATE_LIMIT_CONSUME_SCRIPT,
+    });
+
+    this.client.defineCommand('vastoAck', {
+      numberOfKeys: 1,
+      lua: RedisStore.ACK_SCRIPT,
+    });
+
+    this.client.defineCommand('vastoExtendLease', {
+      numberOfKeys: 1,
+      lua: RedisStore.EXTEND_LEASE_SCRIPT,
+    });
   }
 
   // ---------------------------------------------------------------------------
@@ -144,6 +290,14 @@ return ids
     return `${this.prefix}:queue:${queue}:completed`;
   }
 
+  private queueRateLimitKey(queue: string) {
+    return `${this.prefix}:ratelimit:queue:${queue}`;
+  }
+
+  private consumerRateLimitKey(queue: string, consumerId: string) {
+    return `${this.prefix}:ratelimit:consumer:${queue}:${consumerId}`;
+  }
+
   // ---------------------------------------------------------------------------
   // QueueStorage interface
   // ---------------------------------------------------------------------------
@@ -161,6 +315,26 @@ return ids
     await pipeline.exec();
   }
 
+  async enqueueBatch(jobs: StoredJob[]): Promise<void> {
+    if (jobs.length === 0) {
+      return;
+    }
+
+    const pipeline = this.client.pipeline();
+
+    for (const job of jobs) {
+      pipeline.set(this.jobKey(job.id), JSON.stringify(job));
+
+      if (job.delayUntil != null) {
+        pipeline.zadd(this.deferredKey(job.queue), job.delayUntil, job.id);
+      } else {
+        pipeline.zadd(this.readyKey(job.queue), readyScore(job), job.id);
+      }
+    }
+
+    await pipeline.exec();
+  }
+
   async dequeue(options: LeaseOptions): Promise<StoredJob[]> {
     const { queue, batchSize, leaseMs } = options;
 
@@ -171,49 +345,84 @@ return ids
     const now = Date.now();
     const leaseUntil = now + leaseMs;
 
-    const ids = (await this.client.eval(
-      RedisStore.DEQUEUE_SCRIPT,
-      2,
+    const rawJobs = (await (this.client as unknown as {
+      vastoDequeue: (...args: Array<string | number>) => Promise<string[]>;
+    }).vastoDequeue(
       this.readyKey(queue),
       this.leasedKey(queue),
       `${this.prefix}:job:`,
       now,
       leaseUntil,
-      batchSize
+      batchSize,
+      Math.max(batchSize, RedisStore.RECLAIM_LIMIT_DEFAULT)
     )) as string[];
 
-    if (!ids || ids.length === 0) return [];
+    if (!rawJobs || rawJobs.length === 0) return [];
 
-    const pipeline = this.client.pipeline();
-    for (const id of ids) {
-      pipeline.get(this.jobKey(id));
+    return rawJobs.map((raw) => JSON.parse(raw) as StoredJob);
+  }
+
+  async ack(jobId: string, queueName?: string): Promise<void> {
+    return new Promise<void>((resolve, reject) => {
+      this.pendingAcks.push({ jobId, queueName, resolve, reject });
+      this.scheduleAckFlush();
+    });
+  }
+
+  private scheduleAckFlush(): void {
+    if (this.ackFlushScheduled) {
+      return;
     }
 
-    const results = await pipeline.exec();
-    const jobs: StoredJob[] = [];
+    this.ackFlushScheduled = true;
+    queueMicrotask(() => {
+      void this.flushAcks();
+    });
+  }
 
-    for (const result of results ?? []) {
-      const [err, raw] = result as [Error | null, string | null];
-      if (!err && raw) {
-        jobs.push(JSON.parse(raw) as StoredJob);
+  private async flushAcks(): Promise<void> {
+    this.ackFlushScheduled = false;
+
+    const batch = this.pendingAcks;
+    this.pendingAcks = [];
+
+    if (batch.length === 0) {
+      return;
+    }
+
+    const pipeline = this.client.pipeline();
+    const queuePrefix = `${this.prefix}:queue:`;
+
+    for (const entry of batch) {
+      (pipeline as unknown as {
+        vastoAck: (...args: Array<string | number>) => unknown;
+      }).vastoAck(this.jobKey(entry.jobId), entry.jobId, queuePrefix, entry.queueName ?? '');
+    }
+
+    try {
+      const responses = await pipeline.exec();
+      if (!responses) {
+        throw new Error('Redis ack pipeline execution returned no result');
+      }
+
+      for (let i = 0; i < batch.length; i += 1) {
+        const entry = batch[i]!;
+        const [error] = responses[i] ?? [];
+        if (error) {
+          entry.reject(error);
+        } else {
+          entry.resolve();
+        }
+      }
+    } catch (error) {
+      for (const entry of batch) {
+        entry.reject(error);
       }
     }
 
-    return jobs;
-  }
-
-  async ack(jobId: string): Promise<void> {
-    // We need the queue name to remove from the leased set.
-    // Read job first, then clean up.
-    const raw = await this.client.get(this.jobKey(jobId));
-    if (!raw) return;
-
-    const job = JSON.parse(raw) as StoredJob;
-
-    const pipeline = this.client.pipeline();
-    pipeline.del(this.jobKey(jobId));
-    pipeline.zrem(this.leasedKey(job.queue), jobId);
-    await pipeline.exec();
+    if (this.pendingAcks.length > 0) {
+      this.scheduleAckFlush();
+    }
   }
 
   async fail(jobId: string, err: Error): Promise<void> {
@@ -253,14 +462,12 @@ return ids
     return ready + deferred + leased;
   }
 
-  async extendLease(jobId: string, leaseMs: number): Promise<void> {
-    const raw = await this.client.get(this.jobKey(jobId));
-    if (!raw) return;
-
-    const job = JSON.parse(raw) as StoredJob;
+  async extendLease(jobId: string, leaseMs: number, queueName?: string): Promise<void> {
     const newLeaseUntil = Date.now() + leaseMs;
 
-    await this.client.zadd(this.leasedKey(job.queue), newLeaseUntil, jobId);
+    await (this.client as unknown as {
+      vastoExtendLease: (...args: Array<string | number>) => Promise<number>;
+    }).vastoExtendLease(this.jobKey(jobId), jobId, `${this.prefix}:queue:`, newLeaseUntil, queueName ?? '');
   }
 
   async updateAttempts(id: string, attempts: number): Promise<void> {
@@ -271,6 +478,26 @@ return ids
     const updated: StoredJob = { ...job, attempts, updatedAt: Date.now() };
 
     await this.client.set(this.jobKey(id), JSON.stringify(updated));
+  }
+
+  async consumeRateLimitToken(request: RateLimitConsumeRequest): Promise<boolean> {
+    const hasConsumer =
+      request.consumerCapacity !== undefined && request.consumerRefillRate !== undefined ? 1 : 0;
+
+    const result = await (this.client as unknown as {
+      vastoConsumeRateLimit: (...args: Array<string | number>) => Promise<number>;
+    }).vastoConsumeRateLimit(
+      this.queueRateLimitKey(request.queueName),
+      this.consumerRateLimitKey(request.queueName, request.consumerId),
+      Date.now(),
+      Math.max(1, request.queueCapacity),
+      Math.max(0, request.queueRefillRate),
+      hasConsumer,
+      Math.max(1, request.consumerCapacity ?? 1),
+      Math.max(0, request.consumerRefillRate ?? 0)
+    );
+
+    return Number(result) === 1;
   }
 
   // Delayed/Scheduled job support (Phase 1.1)
@@ -447,21 +674,39 @@ return ids
 
     const deadJob = JSON.parse(raw) as StoredJob;
     if (deadJob.queue !== queueName) return false;
+    if (deadJob.retriedAt != null) return false;
+
+    const now = Date.now();
+    const retriedJobId = crypto.randomUUID();
 
     const retried: StoredJob = {
       ...deadJob,
+      id: retriedJobId,
       state: 'queued',
       attempts: 0,
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     delete (retried as StoredJob & { delayUntil?: number }).delayUntil;
+    delete (retried as StoredJob & { errorDetails?: StoredJob['errorDetails'] }).errorDetails;
+    delete (retried as StoredJob & { idempotencyKey?: string }).idempotencyKey;
+    delete (retried as StoredJob & { retriedAt?: number }).retriedAt;
+    delete (retried as StoredJob & { retriedJobId?: string }).retriedJobId;
 
     const pipeline = this.client.pipeline();
-    pipeline.zrem(this.deadKey(queueName), jobId);
-    pipeline.del(this.deadJobKey(jobId));
-    pipeline.set(this.jobKey(jobId), JSON.stringify(retried));
-    pipeline.zadd(this.readyKey(queueName), readyScore(retried), jobId);
+    pipeline.set(
+      this.deadJobKey(jobId),
+      JSON.stringify({
+        ...deadJob,
+        retriedAt: now,
+        retriedJobId,
+        updatedAt: now,
+      })
+    );
+    pipeline.zadd(this.deadKey(queueName), now, jobId);
+    pipeline.set(this.jobKey(retriedJobId), JSON.stringify(retried));
+    pipeline.zadd(this.readyKey(queueName), readyScore(retried), retriedJobId);
     await pipeline.exec();
 
     return true;
@@ -647,7 +892,7 @@ return ids
     const jobs = await this.getJobsByIds(ids);
     const filtered = jobs.filter((job) => {
       if (query.queueName && job.queue !== query.queueName) return false;
-      return job.state === 'queued' && job.delayUntil == null;
+      return job.delayUntil == null;
     });
 
     filtered.sort((a, b) => readyScore(a) - readyScore(b));
@@ -664,7 +909,7 @@ return ids
     const jobs = await this.getJobsByIds(ids);
     const filtered = jobs.filter((job) => {
       if (query.queueName && job.queue !== query.queueName) return false;
-      return job.state === 'leased';
+      return true;
     });
 
     filtered.sort((a, b) => (a.updatedAt ?? a.createdAt) - (b.updatedAt ?? b.createdAt));

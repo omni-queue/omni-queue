@@ -23,47 +23,37 @@ import { Plugin } from '../interfaces/plugin';
 import { BatchManager } from './batch-manager';
 import { JobNode } from './job-node';
 import { LifecycleEventBus } from './lifecycle-events';
-
-type FlowRuntimeNode = {
-  id: string;
-  job: any;
-  dependsOn: Set<string>;
-  children: Set<string>;
-  status: 'pending' | 'queued' | 'completed' | 'failed' | 'blocked';
-  jobId?: string;
-  error?: string;
-};
-
-type FlowRuntime = {
-  id: string;
-  atomicFailure: boolean;
-  nodes: Map<string, FlowRuntimeNode>;
-  dagNodes: Map<string, JobNode>;
-};
-
-type DagPluginLike = {
-  registerNode: (node: JobNode) => void;
-};
-
-type PersistedRepeatableSchedulePayload = {
-  type: 'repeatable-schedule';
-  definition: RepeatableScheduleDefinition;
-};
-
-type ManagedScheduleTask = {
-  handle: ScheduledJobHandle;
-  durable: boolean;
-  storage?: QueueStorage;
-};
-
-const INTERNAL_REPEATABLE_QUEUE = '__omni_internal_repeatables';
-const INTERNAL_REPEATABLE_JOB = '__omni_repeatable_schedule__';
-const INTERNAL_REPEATABLE_PAYLOAD_TYPE = 'repeatable-schedule';
-const REPEATABLE_PAGE_LIMIT = 200;
-const DEDUPE_QUERY_LIMIT = 1000;
+import {
+  DEDUPE_QUERY_LIMIT,
+  type DagPluginLike,
+  type FlowRuntime,
+  type FlowRuntimeNode,
+  type ManagedScheduleTask,
+} from './worker-runtime/internal-types';
+import {
+  isTimeoutError,
+  resolveConfiguredMaxAttempts,
+  resolveExecutionTimeoutMs,
+  resolveRetryBackoff,
+  resolveRetryDecision,
+  toErrorDetails,
+  toExecutionError,
+} from './worker-runtime/retry-helpers';
+import {
+  findFailedIdempotencyMatch,
+  listPersistedRepeatableSchedules,
+  persistRepeatableSchedule,
+  removePersistedRepeatableSchedule,
+} from './worker-runtime/repeatable-storage';
 
 export class JobManager {
+  private static readonly BATCH_DISPATCH_CHUNK_SIZE = 64;
+  private static readonly DEFAULT_BULK_DISPATCH_CHUNK_SIZE = 256;
+
+  private bulkDispatchChunkSize: number;
+
   private executors: Map<string, PooledExecutor> = new Map();
+  private workerConfigsByQueue: Map<string, WorkerConfig> = new Map();
   private scheduledTasks: Map<string, ManagedScheduleTask> = new Map();
   private batchManager?: BatchManager;
   private flows = new Map<string, FlowRuntime>();
@@ -71,14 +61,28 @@ export class JobManager {
 
   constructor(
     private queues: Record<string, QueueConfig>,
-    private workers: Record<string, WorkerConfig>,
+    workers: Record<string, WorkerConfig>,
     private registry: JobRegistry,
     private storageAdapters: Record<string, QueueStorage>,
     private globalPlugins: Plugin[] = [],
-    private lifecycleEvents?: LifecycleEventBus
+    private lifecycleEvents?: LifecycleEventBus,
+    runtimeOptions?: { bulkDispatchChunkSize?: number }
   ) {
+    this.bulkDispatchChunkSize =
+      typeof runtimeOptions?.bulkDispatchChunkSize === 'number' && Number.isFinite(runtimeOptions.bulkDispatchChunkSize)
+        ? Math.max(1, Math.floor(runtimeOptions.bulkDispatchChunkSize))
+        : JobManager.DEFAULT_BULK_DISPATCH_CHUNK_SIZE;
+
     for (const [queueName, cfg] of Object.entries(queues)) {
       this.executors.set(queueName, new PooledExecutor(cfg.concurrency || 5));
+    }
+
+    for (const workerConfig of Object.values(workers)) {
+      for (const queueName of workerConfig.queues) {
+        if (!this.workerConfigsByQueue.has(queueName)) {
+          this.workerConfigsByQueue.set(queueName, workerConfig);
+        }
+      }
     }
   }
 
@@ -89,7 +93,7 @@ export class JobManager {
   }
 
   resolveWorkerConfig(queueName: string): WorkerConfig | undefined {
-    return Object.values(this.workers).find((w: any) => w.queues.includes(queueName));
+    return this.workerConfigsByQueue.get(queueName);
   }
 
   getStorage(queueConfig: any): QueueStorage {
@@ -103,6 +107,140 @@ export class JobManager {
     return this.dispatchInternal(job, options);
   }
 
+  async dispatchMany(jobs: any[]): Promise<string[]> {
+    if (!jobs?.length) return [];
+
+    const ids: string[] = [];
+    const chunkSize = this.bulkDispatchChunkSize;
+    const continueOnError = true;
+
+    const queueContexts = new Map<string, {
+      storage: QueueStorage;
+      enqueueHooks: Array<{ onEnqueue: (job: any) => Promise<void> }>;
+    }>();
+    const queueNames: string[] = new Array(jobs.length);
+
+    for (let i = 0; i < jobs.length; i++) {
+      const job = jobs[i];
+      const queueName = job.queue();
+      queueNames[i] = queueName;
+      if (queueContexts.has(queueName)) continue;
+
+      const queueConfig = this.resolveQueueConfig(queueName);
+      const storage = this.getStorage(queueConfig);
+
+      const queuePlugins = queueConfig.plugins || [];
+      const allPlugins = queuePlugins.length === 0
+        ? this.globalPlugins
+        : this.globalPlugins.length === 0
+          ? queuePlugins
+          : [...queuePlugins, ...this.globalPlugins];
+
+      const enqueueHooks = allPlugins.filter(
+        (plugin): plugin is { onEnqueue: (job: any) => Promise<void> } =>
+          typeof plugin.onEnqueue === 'function'
+      );
+
+      queueContexts.set(queueName, { storage, enqueueHooks });
+    }
+
+    const effectiveChunkSize = Math.min(jobs.length, chunkSize);
+    const numChunks = Math.ceil(jobs.length / effectiveChunkSize);
+
+    for (let chunkIndex = 0; chunkIndex < numChunks; chunkIndex++) {
+      const start = chunkIndex * effectiveChunkSize;
+      const end = Math.min(start + effectiveChunkSize, jobs.length);
+
+      const jobsByStorage = new Map<QueueStorage, StoredJob[]>();
+      const hookPromises: Promise<void>[] = [];
+      const now = Date.now();
+      const shouldEmitLifecycle = this.lifecycleEvents != null;
+
+      for (let i = start; i < end; i++) {
+        const job = jobs[i];
+        const queueName = queueNames[i]!;
+        const context = queueContexts.get(queueName)!;
+
+        if (context.enqueueHooks.length > 0) {
+          for (const plugin of context.enqueueHooks) {
+            hookPromises.push(plugin.onEnqueue(job));
+          }
+        }
+
+        const storedJob: StoredJob = {
+          id: crypto.randomUUID(),
+          name: job.jobName,
+          payload: job.payload,
+          queue: queueName,
+          attempts: 0,
+          state: 'queued',
+          createdAt: now,
+          updatedAt: now,
+        };
+
+        const queueTag = `queue:${queueName}`;
+        const jobTag = `job:${job.jobName}`;
+        const extraTags = typeof job.tags === 'function' ? job.tags() : undefined;
+        if (extraTags != null && extraTags.length > 0) {
+          storedJob.tags = Array.from(new Set([queueTag, jobTag, ...extraTags]));
+        } else {
+          storedJob.tags = [queueTag, jobTag];
+        }
+
+        // Group by storage
+        let bucket = jobsByStorage.get(context.storage);
+        if (!bucket) {
+          bucket = [];
+          jobsByStorage.set(context.storage, bucket);
+        }
+
+        bucket.push(storedJob);
+      }
+
+      // Run all onEnqueue hooks in parallel
+      if (hookPromises.length > 0) {
+        try {
+          await Promise.all(hookPromises);
+        } catch (err) {
+          if (!continueOnError) throw err;
+          console.error('Some onEnqueue hooks failed:', err);
+        }
+      }
+
+      // Enqueue per storage
+      for (const [storage, storedJobs] of jobsByStorage) {
+        if (storedJobs.length === 0) continue;
+
+        try {
+          if (typeof storage.enqueueBatch === 'function') {
+            await storage.enqueueBatch(storedJobs);
+          } else {
+            // Simple fallback — all concurrent (no limiter)
+            await Promise.all(storedJobs.map((sj) => storage.enqueue(sj)));
+          }
+        } catch (err) {
+          if (!continueOnError) throw err;
+          console.error(`Failed to enqueue to storage:`, err);
+        }
+
+        // Record IDs and emit events
+        for (const storedJob of storedJobs) {
+          ids.push(storedJob.id);
+          if (shouldEmitLifecycle) {
+            this.lifecycleEvents?.emit({
+              type: 'job.enqueued',
+              queueName: storedJob.queue,
+              jobId: storedJob.id,
+              jobName: storedJob.name,
+            });
+          }
+        }
+      }
+    }
+
+    return ids;
+  }
+
   setBatchManager(batchManager: BatchManager): void {
     this.batchManager = batchManager;
   }
@@ -112,25 +250,59 @@ export class JobManager {
       throw new Error('Batch manager is not configured');
     }
 
+    if (!jobs?.length) {
+      const batchId = crypto.randomUUID();
+      this.batchManager.registerBatch(batchId, name, []);
+      return batchId;
+    }
+
     const batchId = crypto.randomUUID();
-    const plannedJobs = jobs.map((job, index) => ({
-      id: crypto.randomUUID(),
-      name: job.jobName,
-      queue: job.queue(),
-      payload: job.payload,
-      batchIndex: index,
-    }));
+    const chunkSize = JobManager.BATCH_DISPATCH_CHUNK_SIZE;
+    const continueOnError = true;
 
-    this.batchManager.registerBatch(batchId, name, plannedJobs);
+    for (let start = 0; start < jobs.length; start += chunkSize) {
+      const end = Math.min(start + chunkSize, jobs.length);
+      const dispatchPromises: Promise<string>[] = [];
+      const chunkPlannedJobs: Array<{
+        id: string;
+        name: string;
+        queue: string;
+        payload: unknown;
+      }> = [];
 
-    for (const plannedJob of plannedJobs) {
-      const job = jobs[plannedJob.batchIndex];
-      await this.dispatchInternal(job, {
-        jobId: plannedJob.id,
-        batchId,
-        batchName: name,
-        batchIndex: plannedJob.batchIndex,
-      });
+      for (let i = start; i < end; i++) {
+        const job = jobs[i];
+
+        const jobId = crypto.randomUUID();
+
+        // Prepare minimal metadata for this single job
+        const plannedJob = {
+          id: jobId,
+          name: job.jobName,
+          queue: job.queue(),
+          payload: job.payload,
+        };
+
+        chunkPlannedJobs.push(plannedJob);
+
+        // Dispatch immediately
+        dispatchPromises.push(
+          this.dispatchInternal(job, {
+            jobId,
+            batchId,
+            batchName: name,
+            batchIndex: i,
+          }).catch((err) => {
+            if (!continueOnError) throw err;
+            console.error(`Failed to dispatch job ${i} in batch ${batchId}:`, err);
+            return '';
+          })
+        );
+      }
+
+      await Promise.all(dispatchPromises);
+
+      this.batchManager.registerBatch(batchId, name, chunkPlannedJobs);
     }
 
     return batchId;
@@ -179,9 +351,7 @@ export class JobManager {
     this.flows.set(flowId, runtime);
 
     const roots = [...runtimeNodes.values()].filter((node) => node.dependsOn.size === 0);
-    for (const root of roots) {
-      await this.dispatchFlowNode(runtime, root);
-    }
+    await Promise.all(roots.map((root) => this.dispatchFlowNode(runtime, root)));
 
     return this.getFlow(flowId) as FlowState;
   }
@@ -247,6 +417,7 @@ export class JobManager {
         jobName: job.jobName,
         scheduleId,
         schedulePattern: `at:${options.runAt}`,
+        scheduleAt: options.runAt,
       });
       await this.dispatchInternal(
         job,
@@ -285,7 +456,7 @@ export class JobManager {
         schedulePattern: `every:${options.intervalMs}ms`,
       });
       if (durable) {
-        await this.persistRepeatableSchedule(storage, definition);
+        await persistRepeatableSchedule(storage, definition);
       }
       return this.startIntervalSchedule(definition, storage, durable);
     }
@@ -304,19 +475,24 @@ export class JobManager {
       schedulePattern: cronPattern,
     });
     if (durable) {
-      await this.persistRepeatableSchedule(storage, definition);
+      await persistRepeatableSchedule(storage, definition);
     }
     return this.startCronSchedule(definition, storage, durable);
   }
 
   async recoverRepeatableSchedules(): Promise<number> {
     const recoveredDefinitions = new Map<string, { definition: RepeatableScheduleDefinition; storage: QueueStorage }>();
+    const prunedDefinitions = new Set<string>();
 
     for (const queueConfig of Object.values(this.queues)) {
       const storage = this.getStorage(queueConfig);
-      const definitions = await this.listPersistedRepeatableSchedules(storage);
+      const definitions = await listPersistedRepeatableSchedules(storage);
       for (const definition of definitions) {
-        if (!this.queues[definition.queue]) {
+        if (!this.queues[definition.queue] || !this.registry.has(definition.jobName)) {
+          if (!prunedDefinitions.has(definition.id)) {
+            prunedDefinitions.add(definition.id);
+            await removePersistedRepeatableSchedule(storage, definition.id);
+          }
           continue;
         }
 
@@ -342,6 +518,77 @@ export class JobManager {
     }
 
     return recoveredDefinitions.size;
+  }
+
+  async listRepeatableSchedules(): Promise<RepeatableScheduleDefinition[]> {
+    const definitions = new Map<string, RepeatableScheduleDefinition>();
+
+    for (const task of this.scheduledTasks.values()) {
+      definitions.set(task.definition.id, task.definition);
+    }
+
+    const inspectedStorage = new Set<QueueStorage>();
+    for (const queueConfig of Object.values(this.queues)) {
+      const storage = this.getStorage(queueConfig);
+      if (inspectedStorage.has(storage)) {
+        continue;
+      }
+
+      inspectedStorage.add(storage);
+      const persisted = await listPersistedRepeatableSchedules(storage);
+      for (const definition of persisted) {
+        definitions.set(definition.id, definition);
+      }
+    }
+
+    return [...definitions.values()].sort((left, right) => {
+      if (left.updatedAt === right.updatedAt) {
+        return left.id.localeCompare(right.id);
+      }
+
+      return right.updatedAt - left.updatedAt;
+    });
+  }
+
+  async removeRepeatableSchedule(scheduleId: string): Promise<boolean> {
+    let removed = false;
+    const task = this.scheduledTasks.get(scheduleId);
+
+    if (task) {
+      task.handle.stop();
+      removed = true;
+    }
+
+    const inspectedStorage = new Set<QueueStorage>();
+    for (const queueConfig of Object.values(this.queues)) {
+      const storage = this.getStorage(queueConfig);
+      if (inspectedStorage.has(storage)) {
+        continue;
+      }
+
+      inspectedStorage.add(storage);
+      const persisted = await listPersistedRepeatableSchedules(storage);
+      if (persisted.some((definition) => definition.id === scheduleId)) {
+        await removePersistedRepeatableSchedule(storage, scheduleId);
+        removed = true;
+      }
+    }
+
+    return removed;
+  }
+
+  async clearRepeatableSchedules(): Promise<number> {
+    const definitions = await this.listRepeatableSchedules();
+    let removed = 0;
+
+    for (const definition of definitions) {
+      const didRemove = await this.removeRepeatableSchedule(definition.id);
+      if (didRemove) {
+        removed += 1;
+      }
+    }
+
+    return removed;
   }
 
   stopSchedules(): void {
@@ -379,6 +626,17 @@ export class JobManager {
     const queueName = job.queue();
     const queueConfig = this.resolveQueueConfig(queueName);
     const storage = this.getStorage(queueConfig);
+    const queuePlugins = queueConfig.plugins || [];
+    const allPlugins =
+      queuePlugins.length === 0
+        ? this.globalPlugins
+        : this.globalPlugins.length === 0
+          ? queuePlugins
+          : [...queuePlugins, ...this.globalPlugins];
+    const enqueueHooks = allPlugins.filter((plugin) => typeof plugin.onEnqueue === 'function');
+    const delayedHooks = allPlugins.filter((plugin) => typeof plugin.onJobDelayed === 'function');
+    const prioritizedHooks = allPlugins.filter((plugin) => typeof plugin.onJobPrioritized === 'function');
+    const now = Date.now();
 
     const idempotencyKey = options?.idempotencyKey?.trim();
     const dedupeWindowMs = queueConfig.idempotency?.dedupeWindowMs;
@@ -400,26 +658,26 @@ export class JobManager {
     if (options?.delayUntil !== undefined) {
       delayUntil = options.delayUntil;
     } else if (options?.delayMs !== undefined) {
-      delayUntil = Date.now() + options.delayMs;
+      delayUntil = now + options.delayMs;
     }
 
     // execute queue-level + runtime-level onEnqueue plugins
-    const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
-    for (const plugin of allPlugins) {
-      if (plugin.onEnqueue) await plugin.onEnqueue(job);
+    for (const plugin of enqueueHooks) {
+      await plugin.onEnqueue!(job);
     }
 
     // Emit onJobDelayed hook if job is delayed
     if (delayUntil !== undefined) {
-      const delayMs = delayUntil - Date.now();
-      for (const plugin of allPlugins) {
-        if (plugin.onJobDelayed) await plugin.onJobDelayed(job, Math.max(0, delayMs));
+      const delayMs = Math.max(0, delayUntil - now);
+      for (const plugin of delayedHooks) {
+        await plugin.onJobDelayed!(job, delayMs);
       }
       this.lifecycleEvents?.emit({
         type: 'schedule.created',
         queueName,
         jobName: job.jobName,
-        schedulePattern: `delay:${Math.max(0, delayMs)}ms`,
+        schedulePattern: `delay:${delayMs}ms`,
+        scheduleAt: delayUntil,
       });
     }
 
@@ -430,8 +688,8 @@ export class JobManager {
       queue: queueName,
       attempts: 0,
       state: 'queued',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
     };
 
     const jobTags = Array.from(new Set([`queue:${queueName}`, `job:${job.jobName}`, ...(typeof job.tags === 'function' ? job.tags() : [])]));
@@ -479,8 +737,8 @@ export class JobManager {
 
     // Emit onJobPrioritized plugin hook
     if (storedJob.priority !== undefined) {
-      for (const plugin of allPlugins) {
-        if (plugin.onJobPrioritized) await plugin.onJobPrioritized(storedJob);
+      for (const plugin of prioritizedHooks) {
+        await plugin.onJobPrioritized!(storedJob);
       }
     }
 
@@ -501,7 +759,7 @@ export class JobManager {
     storage: QueueStorage,
     durable: boolean
   ): ScheduledJobHandle {
-    const intervalMs = definition.intervalMs;
+    const { intervalMs } = definition;
     if (intervalMs == null || intervalMs <= 0) {
       throw new Error(`Invalid intervalMs for repeatable schedule '${definition.id}'`);
     }
@@ -526,12 +784,17 @@ export class JobManager {
         clearInterval(timer);
         this.scheduledTasks.delete(definition.id);
         if (durable) {
-          void this.removePersistedRepeatableSchedule(storage, definition.id);
+          void removePersistedRepeatableSchedule(storage, definition.id);
         }
       },
     };
 
-    this.scheduledTasks.set(definition.id, { handle, durable, ...(durable ? { storage } : {}) });
+    this.scheduledTasks.set(definition.id, {
+      handle,
+      definition,
+      durable,
+      ...(durable ? { storage } : {}),
+    });
     return handle;
   }
 
@@ -540,7 +803,7 @@ export class JobManager {
     storage: QueueStorage,
     durable: boolean
   ): ScheduledJobHandle {
-    const pattern = definition.pattern;
+    const { pattern } = definition;
     if (!pattern) {
       throw new Error(`Missing cron pattern for repeatable schedule '${definition.id}'`);
     }
@@ -572,12 +835,17 @@ export class JobManager {
         }
         this.scheduledTasks.delete(definition.id);
         if (durable) {
-          void this.removePersistedRepeatableSchedule(storage, definition.id);
+          void removePersistedRepeatableSchedule(storage, definition.id);
         }
       },
     };
 
-    this.scheduledTasks.set(definition.id, { handle, durable, ...(durable ? { storage } : {}) });
+    this.scheduledTasks.set(definition.id, {
+      handle,
+      definition,
+      durable,
+      ...(durable ? { storage } : {}),
+    });
     return handle;
   }
 
@@ -595,90 +863,6 @@ export class JobManager {
 
     const instance = new ScheduledJobClass(definition.payload);
     await this.dispatchInternal(instance, undefined, scheduleMetadata);
-  }
-
-  private async persistRepeatableSchedule(
-    storage: QueueStorage,
-    definition: RepeatableScheduleDefinition
-  ): Promise<void> {
-    const now = Date.now();
-    await storage.enqueue({
-      id: this.repeatableStorageJobId(definition.id),
-      name: INTERNAL_REPEATABLE_JOB,
-      payload: {
-        type: INTERNAL_REPEATABLE_PAYLOAD_TYPE,
-        definition: {
-          ...definition,
-          updatedAt: now,
-        },
-      } as PersistedRepeatableSchedulePayload,
-      queue: INTERNAL_REPEATABLE_QUEUE,
-      attempts: 0,
-      state: 'queued',
-      createdAt: definition.createdAt,
-      updatedAt: now,
-      idempotencyKey: `repeatable:${definition.id}`,
-    });
-  }
-
-  private async removePersistedRepeatableSchedule(storage: QueueStorage, scheduleId: string): Promise<void> {
-    await storage.moveToDeadLetter({
-      id: this.repeatableStorageJobId(scheduleId),
-      name: INTERNAL_REPEATABLE_JOB,
-      payload: { type: INTERNAL_REPEATABLE_PAYLOAD_TYPE },
-      queue: INTERNAL_REPEATABLE_QUEUE,
-      attempts: 0,
-      state: 'failed',
-      createdAt: Date.now(),
-      updatedAt: Date.now(),
-    });
-  }
-
-  private async listPersistedRepeatableSchedules(storage: QueueStorage): Promise<RepeatableScheduleDefinition[]> {
-    const definitions: RepeatableScheduleDefinition[] = [];
-    let offset = 0;
-
-    while (true) {
-      const records = await storage.getReadyJobs({
-        queueName: INTERNAL_REPEATABLE_QUEUE,
-        limit: REPEATABLE_PAGE_LIMIT,
-        offset,
-      });
-
-      if (records.length === 0) {
-        break;
-      }
-
-      for (const record of records) {
-        if (record.name !== INTERNAL_REPEATABLE_JOB) {
-          continue;
-        }
-
-        const payload = record.payload as Partial<PersistedRepeatableSchedulePayload> | undefined;
-        if (payload?.type !== INTERNAL_REPEATABLE_PAYLOAD_TYPE || !payload.definition) {
-          continue;
-        }
-
-        const definition = payload.definition;
-        if (!definition.id || !definition.queue || !definition.jobName) {
-          continue;
-        }
-
-        definitions.push(definition);
-      }
-
-      if (records.length < REPEATABLE_PAGE_LIMIT) {
-        break;
-      }
-
-      offset += REPEATABLE_PAGE_LIMIT;
-    }
-
-    return definitions;
-  }
-
-  private repeatableStorageJobId(scheduleId: string): string {
-    return `repeatable:${scheduleId}`;
   }
 
   private async findDuplicateByIdempotencyKey(
@@ -717,14 +901,7 @@ export class JobManager {
       return completedMatch.id;
     }
 
-    const failedMatch = failedJobs.find(
-      (item) => item.idempotencyKey === idempotencyKey && (item.updatedAt ?? item.createdAt) >= cutoff
-    );
-    if (failedMatch) {
-      return failedMatch.id;
-    }
-
-    return null;
+    return findFailedIdempotencyMatch(failedJobs, idempotencyKey, cutoff);
   }
 
   // execute a stored job
@@ -752,25 +929,94 @@ export class JobManager {
     storage: QueueStorage
   ) {
     const executor = this.executors.get(ctx.job.queue);
-    const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
+    const queuePlugins = queueConfig.plugins || [];
+    const allPlugins =
+      queuePlugins.length === 0
+        ? this.globalPlugins
+        : this.globalPlugins.length === 0
+          ? queuePlugins
+          : [...queuePlugins, ...this.globalPlugins];
+    const processStartHooks = allPlugins.filter((plugin) => typeof plugin.onProcessStart === 'function');
+    const processEndHooks = allPlugins.filter((plugin) => typeof plugin.onProcessEnd === 'function');
+    const failHooks = allPlugins.filter((plugin) => typeof plugin.onFail === 'function');
+    const progressHooks = allPlugins.filter((plugin) => typeof plugin.onProgress === 'function');
+    const { lifecycleEvents } = this;
+    const leaseMs = queueConfig.visibilityTimeout || 30000;
+    const executionTimeoutMs = resolveExecutionTimeoutMs(queueConfig, workerConfig);
+    const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
+    const isolationType = this.resolveIsolationType(ctx.instance, workerConfig);
+    const sandbox = this.resolveSandboxConfig(queueConfig, workerConfig);
+    const addCompletedJob =
+      typeof (storage as QueueStorage & { addCompletedJob?: unknown }).addCompletedJob === 'function'
+        ? storage.addCompletedJob.bind(storage)
+        : undefined;
     let attempt = ctx.job.attempts || 0;
-    const maxAttempts =
-      queueConfig.maxAttempts ?? ctx.instance.retries?.() ?? queueConfig.retry?.attempts ?? 3;
+    let previousBackoff = 0;
+    const configuredMaxAttempts = resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
 
     if (!executor) throw new Error(`Executor not defined: ${ctx.job.queue}`);
 
-    return executor.submit(async () => {
-      while (attempt < maxAttempts) {
-        const leaseMs = queueConfig.visibilityTimeout || 30000;
-        const executionTimeoutMs = this.resolveExecutionTimeoutMs(queueConfig, workerConfig);
-        const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
+    if (isolationType !== 'inline' && !workerConfig.workerModule) {
+      throw new Error(
+        `workerModule is required for '${isolationType}' isolation on worker handling queue '${ctx.job.queue}'`
+      );
+    }
 
-        const heartbeat = setInterval(() => {
-          storage.extendLease(ctx.job.id, leaseMs);
-        }, leaseMs / 2);
+    if (sandbox && isolationType === 'inline') {
+      throw new Error(
+        `Sandbox policy requires non-inline isolation for queue '${ctx.job.queue}'. Use 'thread' or 'process'.`
+      );
+    }
+
+    if (isolationType === 'inline') {
+      ctx.instance.reportProgress = async (pct: number) => {
+        await storage.setJobProgress(ctx.job.id, pct);
+        for (const plugin of progressHooks) {
+          await plugin.onProgress!(ctx.job.id, ctx.job.queue, pct);
+        }
+        lifecycleEvents?.emit({
+          type: 'job.progress',
+          queueName: ctx.job.queue,
+          jobId: ctx.job.id,
+          jobName: ctx.job.name,
+          progress: pct,
+        });
+      };
+    }
+
+    const isolationOptions =
+      isolationType === 'inline'
+        ? undefined
+        : {
+          type: isolationType,
+          workerModule: workerConfig.workerModule ?? '',
+          timeoutMs: executionTimeoutMs,
+          ...(sandbox ? { sandbox } : {}),
+          ...(queueConfig.timeoutSignal ? { timeoutSignal: queueConfig.timeoutSignal } : {}),
+          ...(workerConfig.poolSize != null ? { poolSize: workerConfig.poolSize } : {}),
+          ...(workerConfig.registryModule ? { registryModule: workerConfig.registryModule } : {}),
+          ...(workerConfig.pluginsModule ? { pluginsModule: workerConfig.pluginsModule } : {}),
+        };
+
+    const runJob =
+      isolationType === 'inline'
+        ? () => this.withTimeout(ctx.instance.handle(ctx.job.payload), executionTimeoutMs)
+        : () => runWithIsolation(
+          isolationOptions!,
+          {
+            jobName: ctx.job.name,
+            payload: ctx.job.payload,
+            job: ctx.job,
+          },
+          this.registry
+        );
+
+    return executor.submit(async () => {
+      while (true) {
+        const stopHeartbeat = this.createLeaseHeartbeat(storage, ctx.job.id, leaseMs, ctx.job.queue);
 
         try {
-          this.lifecycleEvents?.emit({
+          lifecycleEvents?.emit({
             type: 'job.started',
             queueName: ctx.job.queue,
             jobId: ctx.job.id,
@@ -779,87 +1025,21 @@ export class JobManager {
           });
 
           // run onProcessStart hooks
-          for (const plugin of allPlugins) {
-            if (plugin.onProcessStart) await plugin.onProcessStart(ctx.job);
+          for (const plugin of processStartHooks) {
+            await plugin.onProcessStart!(ctx.job);
           }
+          const result = await runJob();
 
-          const isolationType = this.resolveIsolationType(ctx.instance, workerConfig);
+          stopHeartbeat();
 
-          if (isolationType !== 'inline' && !workerConfig.workerModule) {
-            throw new Error(
-              `workerModule is required for '${isolationType}' isolation on worker handling queue '${ctx.job.queue}'`
-            );
-          }
-
-          const isolationOptions: {
-            type: 'thread' | 'process' | 'inline';
-            workerModule: string;
-            timeoutMs: number;
-            timeoutSignal?: NodeJS.Signals;
-            poolSize?: number;
-            registryModule?: string;
-            pluginsModule?: string;
-          } = {
-            type: isolationType,
-            workerModule: workerConfig.workerModule ?? '',
-            timeoutMs: executionTimeoutMs,
-          };
-
-          if (queueConfig.timeoutSignal) {
-            isolationOptions.timeoutSignal = queueConfig.timeoutSignal;
-          }
-
-          if (workerConfig.poolSize != null) {
-            isolationOptions.poolSize = workerConfig.poolSize;
-          }
-
-          if (workerConfig.registryModule) {
-            isolationOptions.registryModule = workerConfig.registryModule;
-          }
-
-          if (workerConfig.pluginsModule) {
-            isolationOptions.pluginsModule = workerConfig.pluginsModule;
-          }
-
-          let result: unknown;
-          if (isolationType === 'inline') {
-            ctx.instance.reportProgress = async (pct: number) => {
-              await storage.setJobProgress(ctx.job.id, pct);
-              for (const plugin of allPlugins) {
-                if (plugin.onProgress) await plugin.onProgress(ctx.job.id, ctx.job.queue, pct);
-              }
-              this.lifecycleEvents?.emit({
-                type: 'job.progress',
-                queueName: ctx.job.queue,
-                jobId: ctx.job.id,
-                jobName: ctx.job.name,
-                progress: pct,
-              });
-            };
-
-            result = await this.withTimeout(ctx.instance.handle(ctx.job.payload), executionTimeoutMs);
-          } else {
-            result = await runWithIsolation(
-              isolationOptions,
-              {
-                jobName: ctx.job.name,
-                payload: ctx.job.payload,
-                job: ctx.job,
-              },
-              this.registry
-            );
-          }
-
-          clearInterval(heartbeat);
-
-          if (typeof (storage as QueueStorage & { addCompletedJob?: unknown }).addCompletedJob === 'function') {
-            await storage.addCompletedJob(ctx.job, result);
+          if (addCompletedJob) {
+            await addCompletedJob(ctx.job, result);
           }
           this.batchManager?.markJobCompleted(ctx.job, result);
           await this.onJobSucceeded(ctx.job);
-          await storage.ack(ctx.job.id);
+          await storage.ack(ctx.job.id, ctx.job.queue);
 
-          this.lifecycleEvents?.emit({
+          lifecycleEvents?.emit({
             type: 'job.completed',
             queueName: ctx.job.queue,
             jobId: ctx.job.id,
@@ -869,24 +1049,24 @@ export class JobManager {
           });
 
           // run onProcessEnd hooks
-          for (const plugin of allPlugins) {
-            if (plugin.onProcessEnd) await plugin.onProcessEnd(ctx.job, result);
+          for (const plugin of processEndHooks) {
+            await plugin.onProcessEnd!(ctx.job, result);
           }
 
           return result;
         } catch (err) {
-          clearInterval(heartbeat);
+          stopHeartbeat();
 
           attempt++;
 
           await storage.updateAttempts(ctx.job.id, attempt);
 
           // run onFail hooks
-          for (const plugin of allPlugins) {
-            if (plugin.onFail) await plugin.onFail(ctx.job, err as Error);
+          for (const plugin of failHooks) {
+            await plugin.onFail!(ctx.job, err as Error);
           }
 
-          this.lifecycleEvents?.emit({
+          lifecycleEvents?.emit({
             type: 'job.failed',
             queueName: ctx.job.queue,
             jobId: ctx.job.id,
@@ -896,70 +1076,45 @@ export class JobManager {
             error: err instanceof Error ? err.message : String(err),
           });
 
-          if (timeoutStrategy === 'fail' && this.isTimeoutError(err)) {
-            this.batchManager?.markJobFailed(ctx.job, err as Error);
-            for (const plugin of allPlugins) {
-              if (plugin.onFailedPermanently) {
-                await plugin.onFailedPermanently(ctx.job, err as Error);
-              }
-            }
-            const permanentFailureMode = await this.applyPoisonFailurePolicy(
-              ctx.job,
-              queueConfig,
-              storage,
-              attempt
-            );
-            if (permanentFailureMode === 'deadlettered') {
-              this.lifecycleEvents?.emit({
-                type: 'job.deadlettered',
-                queueName: ctx.job.queue,
-                jobId: ctx.job.id,
-                jobName: ctx.job.name,
-                attempt,
-                permanentFailure: true,
-                error: err instanceof Error ? err.message : String(err),
-              });
-            }
-            await this.onJobFailed(ctx.job, err as Error);
+          if (timeoutStrategy === 'fail' && isTimeoutError(err)) {
+            await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
             throw err;
           }
 
-          if (attempt >= maxAttempts) {
-            this.batchManager?.markJobFailed(ctx.job, err as Error);
-            for (const plugin of allPlugins) {
-              if (plugin.onFailedPermanently) {
-                await plugin.onFailedPermanently(ctx.job, err as Error);
-              }
-            }
-            const permanentFailureMode = await this.applyPoisonFailurePolicy(
-              ctx.job,
-              queueConfig,
-              storage,
-              attempt
-            );
-            if (permanentFailureMode === 'deadlettered') {
-              this.lifecycleEvents?.emit({
-                type: 'job.deadlettered',
-                queueName: ctx.job.queue,
-                jobId: ctx.job.id,
-                jobName: ctx.job.name,
-                attempt,
-                permanentFailure: true,
-                error: err instanceof Error ? err.message : String(err),
-              });
-            }
-            await this.onJobFailed(ctx.job, err as Error);
+          const retryDecision = resolveRetryDecision(
+            ctx,
+            queueConfig,
+            err,
+            attempt,
+            configuredMaxAttempts
+          );
+
+          if (retryDecision.action === 'deadletter') {
+            await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err, {
+              forceDeadLetter: true,
+            });
             throw err;
           }
 
-          const backoff =
-            ctx.instance.backoff?.(attempt) ?? this.resolveBackoff(queueConfig, attempt);
+          if (retryDecision.action === 'fail' || attempt >= retryDecision.maxAttempts) {
+            await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
+            throw err;
+          }
+
+          const backoff = resolveRetryBackoff(
+            ctx,
+            queueConfig,
+            attempt,
+            retryDecision,
+            previousBackoff,
+            this.resolveBackoff.bind(this)
+          );
+          previousBackoff = backoff;
 
           await sleep(backoff);
         }
       }
 
-      throw new Error('Execution exited unexpectedly without result');
     }, priorityScore(ctx.job.priority));
   }
 
@@ -970,140 +1125,173 @@ export class JobManager {
     storage: QueueStorage
   ) {
     let attempt = ctx.job.attempts || 0;
-    const allPlugins = [...(queueConfig.plugins || []), ...this.globalPlugins];
+    let previousBackoff = 0;
+    const queuePlugins = queueConfig.plugins || [];
+    const allPlugins =
+      queuePlugins.length === 0
+        ? this.globalPlugins
+        : this.globalPlugins.length === 0
+          ? queuePlugins
+          : [...queuePlugins, ...this.globalPlugins];
+    const leaseMs = queueConfig.visibilityTimeout || 30000;
+    const executionTimeoutMs = resolveExecutionTimeoutMs(queueConfig, workerConfig);
+    const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
+    const isolationType = this.resolveIsolationType(ctx.instance, workerConfig);
+    const sandbox = this.resolveSandboxConfig(queueConfig, workerConfig);
+    const addCompletedJob =
+      typeof (storage as QueueStorage & { addCompletedJob?: unknown }).addCompletedJob === 'function'
+        ? storage.addCompletedJob.bind(storage)
+        : undefined;
 
-    const maxAttempts =
-      queueConfig.maxAttempts ?? ctx.instance.retries?.() ?? queueConfig.retry?.attempts ?? 3;
+    const configuredMaxAttempts = resolveConfiguredMaxAttempts(queueConfig, ctx.instance);
 
-    while (attempt < maxAttempts) {
-      const leaseMs = queueConfig.visibilityTimeout || 30000;
-      const executionTimeoutMs = this.resolveExecutionTimeoutMs(queueConfig, workerConfig);
-      const timeoutStrategy = queueConfig.timeoutStrategy ?? 'retry';
+    if (isolationType !== 'inline' && !workerConfig.workerModule) {
+      throw new Error(
+        `workerModule is required for '${isolationType}' isolation on worker handling queue '${ctx.job.queue}'`
+      );
+    }
 
-      const heartbeat = setInterval(() => {
-        storage.extendLease(ctx.job.id, leaseMs);
-      }, leaseMs / 2);
+    if (sandbox && isolationType === 'inline') {
+      throw new Error(
+        `Sandbox policy requires non-inline isolation for queue '${ctx.job.queue}'. Use 'thread' or 'process'.`
+      );
+    }
 
-      try {
-        const isolationType = this.resolveIsolationType(ctx.instance, workerConfig);
+    if (isolationType === 'inline') {
+      ctx.instance.reportProgress = async (pct: number) => {
+        await storage.setJobProgress(ctx.job.id, pct);
+      };
+    }
 
-        if (isolationType !== 'inline' && !workerConfig.workerModule) {
-          throw new Error(
-            `workerModule is required for '${isolationType}' isolation on worker handling queue '${ctx.job.queue}'`
-          );
-        }
-
-        const isolationOptions: {
-          type: 'thread' | 'process' | 'inline';
-          workerModule: string;
-          timeoutMs: number;
-          timeoutSignal?: NodeJS.Signals;
-          poolSize?: number;
-          registryModule?: string;
-          pluginsModule?: string;
-        } = {
+    const isolationOptions =
+      isolationType === 'inline'
+        ? undefined
+        : {
           type: isolationType,
           workerModule: workerConfig.workerModule ?? '',
           timeoutMs: executionTimeoutMs,
+          ...(sandbox ? { sandbox } : {}),
+          ...(queueConfig.timeoutSignal ? { timeoutSignal: queueConfig.timeoutSignal } : {}),
+          ...(workerConfig.poolSize != null ? { poolSize: workerConfig.poolSize } : {}),
+          ...(workerConfig.registryModule ? { registryModule: workerConfig.registryModule } : {}),
+          ...(workerConfig.pluginsModule ? { pluginsModule: workerConfig.pluginsModule } : {}),
         };
 
-        if (queueConfig.timeoutSignal) {
-          isolationOptions.timeoutSignal = queueConfig.timeoutSignal;
-        }
+    const runJob =
+      isolationType === 'inline'
+        ? () => this.withTimeout(ctx.instance.handle(ctx.job.payload), executionTimeoutMs)
+        : () => runWithIsolation(
+          isolationOptions!,
+          {
+            jobName: ctx.job.name,
+            payload: ctx.job.payload,
+            job: ctx.job,
+          },
+          this.registry
+        );
 
-        if (workerConfig.poolSize != null) {
-          isolationOptions.poolSize = workerConfig.poolSize;
-        }
+    while (true) {
+      const stopHeartbeat = this.createLeaseHeartbeat(storage, ctx.job.id, leaseMs, ctx.job.queue);
 
-        if (workerConfig.registryModule) {
-          isolationOptions.registryModule = workerConfig.registryModule;
-        }
+      try {
+        const result = await runJob();
 
-        if (workerConfig.pluginsModule) {
-          isolationOptions.pluginsModule = workerConfig.pluginsModule;
-        }
+        stopHeartbeat();
 
-        let result: unknown;
-        if (isolationType === 'inline') {
-          ctx.instance.reportProgress = async (pct: number) => {
-            await storage.setJobProgress(ctx.job.id, pct);
-          };
-          result = await this.withTimeout(ctx.instance.handle(ctx.job.payload), executionTimeoutMs);
-        } else {
-          result = await runWithIsolation(
-            isolationOptions,
-            {
-              jobName: ctx.job.name,
-              payload: ctx.job.payload,
-              job: ctx.job,
-            },
-            this.registry
-          );
-        }
-
-        clearInterval(heartbeat);
-
-        if (typeof (storage as QueueStorage & { addCompletedJob?: unknown }).addCompletedJob === 'function') {
-          await storage.addCompletedJob(ctx.job, result);
+        if (addCompletedJob) {
+          await addCompletedJob(ctx.job, result);
         }
         this.batchManager?.markJobCompleted(ctx.job, result);
         await this.onJobSucceeded(ctx.job);
-        await storage.ack(ctx.job.id);
+        await storage.ack(ctx.job.id, ctx.job.queue);
 
         return result;
       } catch (err) {
-        clearInterval(heartbeat);
+        stopHeartbeat();
 
         attempt++;
 
         await storage.updateAttempts(ctx.job.id, attempt);
 
-        if (timeoutStrategy === 'fail' && this.isTimeoutError(err)) {
-          this.batchManager?.markJobFailed(ctx.job, err as Error);
-          for (const plugin of allPlugins) {
-            if (plugin.onFailedPermanently) {
-              await plugin.onFailedPermanently(ctx.job, err as Error);
-            }
-          }
-          await this.applyPoisonFailurePolicy(ctx.job, queueConfig, storage, attempt);
-          await this.onJobFailed(ctx.job, err as Error);
+        if (timeoutStrategy === 'fail' && isTimeoutError(err)) {
+          await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
           throw err;
         }
 
-        if (attempt >= maxAttempts) {
-          this.batchManager?.markJobFailed(ctx.job, err as Error);
-          for (const plugin of allPlugins) {
-            if (plugin.onFailedPermanently) {
-              await plugin.onFailedPermanently(ctx.job, err as Error);
-            }
-          }
-          await this.applyPoisonFailurePolicy(ctx.job, queueConfig, storage, attempt);
-          await this.onJobFailed(ctx.job, err as Error);
+        const retryDecision = resolveRetryDecision(
+          ctx,
+          queueConfig,
+          err,
+          attempt,
+          configuredMaxAttempts
+        );
+
+        if (retryDecision.action === 'deadletter') {
+          await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err, {
+            forceDeadLetter: true,
+          });
           throw err;
         }
 
-        const backoff =
-          ctx.instance.backoff?.(attempt) ?? this.resolveBackoff(queueConfig, attempt);
+        if (retryDecision.action === 'fail' || attempt >= retryDecision.maxAttempts) {
+          await this.handlePermanentFailure(ctx.job, queueConfig, storage, allPlugins, attempt, err);
+          throw err;
+        }
+
+        const backoff = resolveRetryBackoff(
+          ctx,
+          queueConfig,
+          attempt,
+          retryDecision,
+          previousBackoff,
+          this.resolveBackoff.bind(this)
+        );
+        previousBackoff = backoff;
 
         await sleep(backoff);
       }
     }
-
-    throw new Error('Execution exited unexpectedly without result');
   }
 
-  resolveBackoff(queueConfig: any, attempt: number) {
-    const strategy = queueConfig.retry?.backoff;
+  resolveBackoff(queueConfig: QueueConfig, attempt: number, previousBackoff = 0): number {
+    const { retry } = queueConfig;
+    const strategyName = retry?.strategyName ?? retry?.backoff ?? 'fixed';
+    const baseDelay = Math.max(0, retry?.delay ?? 1000);
+    const maxDelay = Math.max(baseDelay, retry?.maxDelay ?? 30000);
 
-    if (strategy === 'exponential') {
-      return Math.pow(2, attempt) * 1000;
+    let backoff: number;
+    switch (strategyName) {
+      case 'exponential':
+        backoff = baseDelay * Math.pow(2, attempt);
+        break;
+      case 'full-jitter': {
+        const exponential = baseDelay * Math.pow(2, attempt);
+        backoff = Math.random() * exponential;
+        break;
+      }
+      case 'equal-jitter': {
+        const exponential = baseDelay * Math.pow(2, attempt);
+        backoff = exponential / 2 + Math.random() * (exponential / 2);
+        break;
+      }
+      case 'decorrelated-jitter': {
+        const prior = previousBackoff > 0 ? previousBackoff : baseDelay;
+        backoff = Math.min(maxDelay, baseDelay + Math.random() * Math.max(baseDelay, prior * 3 - baseDelay));
+        break;
+      }
+      case 'fixed':
+      default:
+        backoff = baseDelay;
+        break;
     }
 
-    if (typeof strategy === 'number') {
-      return strategy;
+    const jitter = Math.min(1, Math.max(0, retry?.jitter ?? 0));
+    if (jitter > 0 && strategyName !== 'full-jitter' && strategyName !== 'equal-jitter') {
+      const randomOffset = backoff * jitter * Math.random();
+      backoff -= randomOffset;
     }
 
-    return 1000;
+    return Math.max(0, Math.floor(backoff));
   }
 
   resolveIsolationType(
@@ -1130,34 +1318,72 @@ export class JobManager {
     return 'inline';
   }
 
-  private resolveExecutionTimeoutMs(queueConfig: QueueConfig, workerConfig: WorkerConfig): number {
-    if (queueConfig.executionTimeoutMs && queueConfig.executionTimeoutMs > 0) {
-      return queueConfig.executionTimeoutMs;
+  private resolveSandboxConfig(
+    queueConfig: QueueConfig,
+    workerConfig: WorkerConfig
+  ): NonNullable<QueueConfig['sandbox']> | undefined {
+    const policy = workerConfig.sandbox ?? queueConfig.sandbox;
+    if (!policy?.enabled) {
+      return undefined;
     }
 
-    if (workerConfig.timeout && workerConfig.timeout > 0) {
-      return workerConfig.timeout;
-    }
-
-    return 30000;
+    return policy;
   }
 
-  private isTimeoutError(error: unknown): boolean {
-    if (!(error instanceof Error)) {
-      return false;
+  private async handlePermanentFailure(
+    job: StoredJob,
+    queueConfig: QueueConfig,
+    storage: QueueStorage,
+    allPlugins: Plugin[],
+    attempt: number,
+    error: unknown,
+    options?: { forceDeadLetter?: boolean }
+  ): Promise<'deadlettered' | 'snoozed'> {
+    const normalizedError = toExecutionError(error);
+    const errorDetails = toErrorDetails(normalizedError);
+
+    this.batchManager?.markJobFailed(job, normalizedError);
+    for (const plugin of allPlugins) {
+      if (plugin.onFailedPermanently) {
+        await plugin.onFailedPermanently(job, normalizedError);
+      }
     }
 
-    return (
-      error.name === 'JobTimeoutError' ||
-      /timeout/i.test(error.message)
-    );
+    let permanentFailureMode: 'deadlettered' | 'snoozed';
+    if (options?.forceDeadLetter) {
+      await storage.moveToDeadLetter({
+        ...job,
+        state: 'failed',
+        errorDetails,
+        updatedAt: Date.now(),
+      });
+      permanentFailureMode = 'deadlettered';
+    } else {
+      permanentFailureMode = await this.applyPoisonFailurePolicy(job, queueConfig, storage, attempt, errorDetails);
+    }
+
+    if (permanentFailureMode === 'deadlettered') {
+      this.lifecycleEvents?.emit({
+        type: 'job.deadlettered',
+        queueName: job.queue,
+        jobId: job.id,
+        jobName: job.name,
+        attempt,
+        permanentFailure: true,
+        error: normalizedError.message,
+      });
+    }
+
+    await this.onJobFailed(job, normalizedError);
+    return permanentFailureMode;
   }
 
   private async applyPoisonFailurePolicy(
     job: StoredJob,
     queueConfig: QueueConfig,
     storage: QueueStorage,
-    failureCount: number
+    failureCount: number,
+    errorDetails: NonNullable<StoredJob['errorDetails']>
   ): Promise<'deadlettered' | 'snoozed'> {
     const policy = queueConfig.reliability?.poisonPolicy;
     const now = Date.now();
@@ -1166,6 +1392,7 @@ export class JobManager {
       await storage.moveToDeadLetter({
         ...job,
         state: 'failed',
+        errorDetails,
         updatedAt: now,
       });
       return 'deadlettered';
@@ -1173,7 +1400,7 @@ export class JobManager {
 
     if (policy.template === 'auto-snooze') {
       const snoozeMs = Math.max(1_000, policy.snoozeMs ?? 60_000);
-      await storage.ack(job.id);
+      await storage.ack(job.id, job.queue);
       await storage.enqueue({
         ...job,
         id: crypto.randomUUID(),
@@ -1196,6 +1423,7 @@ export class JobManager {
       ...job,
       state: 'failed',
       updatedAt: now,
+      errorDetails,
       tags: Array.from(new Set(tags)),
     });
 
@@ -1220,6 +1448,33 @@ export class JobManager {
           reject(error);
         });
     });
+  }
+
+  private createLeaseHeartbeat(
+    storage: QueueStorage,
+    jobId: string,
+    leaseMs: number,
+    queueName?: string,
+  ): () => void {
+    const firstDelay = Math.max(1, Math.floor(leaseMs / 2));
+    let initialTimer: ReturnType<typeof setTimeout> | undefined;
+    let repeatingTimer: ReturnType<typeof setInterval> | undefined;
+
+    initialTimer = setTimeout(() => {
+      void storage.extendLease(jobId, leaseMs, queueName);
+      repeatingTimer = setInterval(() => {
+        void storage.extendLease(jobId, leaseMs, queueName);
+      }, firstDelay);
+    }, firstDelay);
+
+    return () => {
+      if (initialTimer) {
+        clearTimeout(initialTimer);
+      }
+      if (repeatingTimer) {
+        clearInterval(repeatingTimer);
+      }
+    };
   }
 
   private async dispatchFlowNode(flow: FlowRuntime, node: FlowRuntimeNode): Promise<void> {
@@ -1283,6 +1538,8 @@ export class JobManager {
       dagNode.completed = true;
     }
 
+    const readyChildren: FlowRuntimeNode[] = [];
+
     for (const childId of node.children) {
       const childNode = flow.nodes.get(childId);
       if (!childNode || childNode.status !== 'pending') {
@@ -1295,8 +1552,12 @@ export class JobManager {
       });
 
       if (allDependenciesDone) {
-        await this.dispatchFlowNode(flow, childNode);
+        readyChildren.push(childNode);
       }
+    }
+
+    if (readyChildren.length > 0) {
+      await Promise.all(readyChildren.map((childNode) => this.dispatchFlowNode(flow, childNode)));
     }
   }
 

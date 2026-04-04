@@ -1,6 +1,6 @@
-# `@omni-queue/workflow`
+# `@vasto/workflow`
 
-Workflow and DAG orchestration helpers for Omni-Queue.
+Workflow and DAG orchestration helpers for Vasto.
 
 ## Included exports
 
@@ -11,7 +11,7 @@ Workflow and DAG orchestration helpers for Omni-Queue.
 ## Usage
 
 ```ts
-import { WorkflowEngine } from '@omni-queue/workflow';
+import { WorkflowEngine } from '@vasto/workflow';
 
 const engine = new WorkflowEngine(storage);
 await engine.run(nodes);

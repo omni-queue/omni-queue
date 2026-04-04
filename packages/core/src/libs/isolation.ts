@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import { IsolationOptions, IsolationPayload } from '../interfaces';
 import { ProcessPool } from './process-pool';
+import { sandboxPolicySignature } from './sandbox';
 import { ThreadPool } from './thread-pool';
 
 const threadPools = new Map<string, ThreadPool>();
@@ -24,10 +25,11 @@ export async function runWithIsolation(
   }
 
   if (options.type === 'thread') {
-    let pool = threadPools.get(options.workerModule);
+    const threadPoolKey = `${options.workerModule}::${sandboxPolicySignature(options.sandbox)}`;
+    let pool = threadPools.get(threadPoolKey);
     if (!pool) {
-      pool = new ThreadPool(options.workerModule, options.poolSize || 4);
-      threadPools.set(options.workerModule, pool);
+      pool = new ThreadPool(options.workerModule, options.poolSize || 4, options.sandbox);
+      threadPools.set(threadPoolKey, pool);
     }
 
     return withTimeout(
@@ -41,10 +43,11 @@ export async function runWithIsolation(
   }
 
   if (options.type === 'process') {
-    let pool = processPools.get(options.workerModule);
+    const processPoolKey = `${options.workerModule}::${sandboxPolicySignature(options.sandbox)}`;
+    let pool = processPools.get(processPoolKey);
     if (!pool) {
-      pool = new ProcessPool(options.workerModule, options.poolSize || 2);
-      processPools.set(options.workerModule, pool);
+      pool = new ProcessPool(options.workerModule, options.poolSize || 2, options.sandbox);
+      processPools.set(processPoolKey, pool);
     }
 
     return withTimeout(

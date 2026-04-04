@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Link, useParams, useSearchParams } from 'react-router-dom';
 import { ArrowLeft, Clock3, Database, Hash, Layers, ShieldAlert } from 'lucide-react';
+import { dashboardFetch } from '../auth';
 import { API_BASE, type JobRow } from '../types';
 
 type JobDetailResponse = {
@@ -17,7 +18,12 @@ type JobDetailResponse = {
   };
 };
 
-export function JobDetailPage() {
+type JobDetailPageProps = {
+  backTo?: string;
+  backLabel?: string;
+};
+
+export function JobDetailPage({ backTo = '/jobs', backLabel = 'Back to jobs' }: JobDetailPageProps = {}) {
   const { jobId = '' } = useParams();
   const [searchParams] = useSearchParams();
   const [data, setData] = useState<JobDetailResponse | null>(null);
@@ -33,7 +39,7 @@ export function JobDetailPage() {
     const queue = searchParams.get('queue');
     if (queue) params.set('queue', queue);
 
-    fetch(`${API_BASE}/jobs/${encodeURIComponent(jobId)}?${params.toString()}`)
+    dashboardFetch(`${API_BASE}/jobs/${encodeURIComponent(jobId)}?${params.toString()}`)
       .then(async (response) => {
         if (!response.ok) {
           const payload = (await response.json().catch(() => ({}))) as { error?: string };
@@ -55,8 +61,8 @@ export function JobDetailPage() {
   return (
     <div className="flex flex-col gap-6">
       <div>
-        <Link to="/jobs" className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-500 mb-3">
-          <ArrowLeft className="h-4 w-4" /> Back to jobs
+        <Link to={backTo} className="inline-flex items-center gap-1 text-sm text-indigo-600 hover:text-indigo-500 mb-3">
+          <ArrowLeft className="h-4 w-4" /> {backLabel}
         </Link>
         <h2 className="text-2xl font-bold text-slate-900">Job Detail</h2>
         <p className="text-slate-400 text-sm mt-1 font-mono break-all">{jobId}</p>
@@ -75,12 +81,12 @@ export function JobDetailPage() {
           </div>
 
           <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
-            <section className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+            <section className="flex flex-col bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
               <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
                 <Database className="h-4 w-4 text-slate-400" />
                 <h3 className="text-sm font-semibold text-slate-900">Payload</h3>
               </div>
-              <pre className="p-5 text-xs overflow-auto bg-slate-950 text-slate-100 min-h-[240px]">{JSON.stringify(data.job.payload ?? null, null, 2)}</pre>
+              <pre className="flex-1 p-5 text-xs overflow-auto bg-slate-950 text-slate-100 min-h-[240px]">{JSON.stringify(data.job.payload ?? null, null, 2)}</pre>
             </section>
 
             <section className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
@@ -98,9 +104,28 @@ export function JobDetailPage() {
                 <MetaRow label="Batch" value={data.job.batchName ?? data.job.batchId ?? '—'} mono={Boolean(data.job.batchId)} />
                 <MetaRow label="Idempotency Key" value={data.job.idempotencyKey ?? '—'} mono />
                 <MetaRow label="Scheduled Cron" value={data.job.scheduledCron ?? '—'} mono />
+                <MetaRow label="Retried At" value={data.job.retriedAt ? new Date(data.job.retriedAt).toLocaleString() : '—'} />
+                <MetaRow label="Retried Job ID" value={data.job.retriedJobId ?? '—'} mono />
               </dl>
             </section>
           </div>
+
+          {data.job.errorDetails && (
+            <section className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center gap-2">
+                <ShieldAlert className="h-4 w-4 text-red-500" />
+                <h3 className="text-sm font-semibold text-slate-900">Error Details</h3>
+              </div>
+              <dl className="divide-y divide-slate-50 text-sm">
+                <MetaRow label="Message" value={data.job.errorDetails.error} />
+                <MetaRow label="Name" value={data.job.errorDetails.errorName ?? '—'} />
+                <MetaRow label="Code" value={data.job.errorDetails.errorCode ?? '—'} mono />
+              </dl>
+              {data.job.errorDetails.errorStack && (
+                <pre className="p-5 text-xs overflow-auto bg-slate-950 text-slate-100">{data.job.errorDetails.errorStack}</pre>
+              )}
+            </section>
+          )}
 
           {data.job.result !== undefined && (
             <section className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">

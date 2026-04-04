@@ -1,8 +1,17 @@
-import type { DashboardOptions } from '@omni-queue/core';
-import { Supervisor } from '@omni-queue/core';
-import { startDashboardServer } from '@omni-queue/dashboard-api';
+import type {
+    DashboardAuthContext,
+    DashboardAuthOptions,
+    DashboardAuthSession,
+    DashboardLoginRequest,
+    DashboardSessionCredentials,
+} from '@vasto/core';
+import { Supervisor } from '@vasto/core';
+import express from 'express';
+import path from 'node:path';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto/express-adapter';
 import type http from 'node:http';
 import { createConsumerWorkers, createQueues, createRedisStoreFromEnv, createRegistry } from './runtime';
+import { registerGracefulShutdown } from './graceful-shutdown';
 
 import 'dotenv/config';
 
@@ -10,46 +19,129 @@ function parseBoolean(value: string | undefined): boolean {
     return value === '1' || value?.toLowerCase() === 'true';
 }
 
-function buildDashboardOptionsFromEnv(): DashboardOptions | undefined {
+function resolveDashboardCredentialsFromEnv(): { username?: string; password?: string } {
+    const username = process.env.DASHBOARD_AUTH_USERNAME ?? process.env.DASHBOARD_BASIC_USERNAME;
+    const password = process.env.DASHBOARD_AUTH_PASSWORD ?? process.env.DASHBOARD_BASIC_PASSWORD;
+    return { username, password };
+}
+
+type DashboardAdapterConfig = {
+    apiBase: string;
+    auth: DashboardAuthOptions;
+};
+
+function buildAdminContext(): DashboardAuthContext {
+    return { role: 'admin' };
+}
+
+function createSessionToken(subject: string): string {
+    return Buffer.from(`vasto-dashboard:${subject}`).toString('base64url');
+}
+
+function createPasswordAuthHandler(
+    username: string,
+    password: string,
+    issuedToken: string
+): (request: DashboardLoginRequest) => DashboardAuthSession | null {
+    return (request) => {
+        if (request.mode === 'token') {
+            return null;
+        }
+
+        if (request.username !== username || request.password !== password) {
+            return null;
+        }
+
+        return {
+            token: issuedToken,
+            authContext: buildAdminContext(),
+        };
+    };
+}
+
+function createStaticSessionValidator(
+    expectedToken: string
+): (credentials: DashboardSessionCredentials) => DashboardAuthContext | false {
+    return (credentials) => {
+        if (credentials.token !== expectedToken) {
+            return false;
+        }
+
+        return buildAdminContext();
+    };
+}
+
+function buildDashboardConfigFromEnv(): DashboardAdapterConfig | undefined {
     const enabled = parseBoolean(process.env.DASHBOARD_ENABLED);
     if (!enabled) {
         return undefined;
     }
 
+    const apiBase = process.env.DASHBOARD_ROUTE_PREFIX || '/dashboard';
     const authType = process.env.DASHBOARD_AUTH_TYPE;
-    const base: DashboardOptions = {
-        enabled: true,
-        endpoint: process.env.DASHBOARD_ROUTE_PREFIX || '/dashboard',
-    };
 
     if (authType === 'basic') {
-        const username = process.env.DASHBOARD_BASIC_USERNAME;
-        const password = process.env.DASHBOARD_BASIC_PASSWORD;
+        const { username, password } = resolveDashboardCredentialsFromEnv();
         if (username && password) {
-            base.auth = {
-                type: 'basic',
-                validator: (credentials) => credentials.username === username && credentials.password === password,
+            const issuedToken = createSessionToken(`basic:${username}`);
+            return {
+                apiBase,
+                auth: {
+                    type: 'basic',
+                    authHandler: createPasswordAuthHandler(username, password, issuedToken),
+                    sessionValidator: createStaticSessionValidator(issuedToken),
+                },
             };
         }
-        return base;
     }
 
     if (authType === 'bearer') {
+        const loginMode = process.env.DASHBOARD_AUTH_LOGIN_MODE === 'custom' ? 'custom' : 'token';
+
+        if (loginMode === 'custom') {
+            const { username, password } = resolveDashboardCredentialsFromEnv();
+            if (username && password) {
+                const issuedToken = createSessionToken(`bearer-custom:${username}`);
+                return {
+                    apiBase,
+                    auth: {
+                        type: 'bearer',
+                        loginMode: 'custom',
+                        authHandler: createPasswordAuthHandler(username, password, issuedToken),
+                        sessionValidator: createStaticSessionValidator(issuedToken),
+                    },
+                };
+            }
+        }
+
         const token = process.env.DASHBOARD_BEARER_TOKEN;
         if (token) {
-            base.auth = {
-                type: 'bearer',
-                validator: (credentials) => credentials.token === token,
+            return {
+                apiBase,
+                auth: {
+                    type: 'bearer',
+                    loginMode: 'token',
+                    authHandler: (request) => {
+                        if (request.mode !== 'token' || request.token !== token) {
+                            return null;
+                        }
+
+                        return {
+                            token,
+                            authContext: buildAdminContext(),
+                        };
+                    },
+                    sessionValidator: createStaticSessionValidator(token),
+                },
             };
         }
-        return base;
     }
 
-    base.auth = { type: 'none' };
-    return base;
+    return { apiBase, auth: { type: 'none' } };
 }
 
 async function main() {
+    const dashboardUiDir = path.resolve(process.cwd(), 'public/vasto-dashboard');
     const store = createRedisStoreFromEnv();
     const queues = createQueues();
     const workers = createConsumerWorkers();
@@ -59,24 +151,44 @@ async function main() {
         redis: store,
     };
 
-    const dashboard = buildDashboardOptionsFromEnv();
+    const dashboardConfig = buildDashboardConfigFromEnv();
     let dashboardServer: http.Server | undefined;
+    let dashboardSocket: { close: () => void } | undefined;
 
     const supervisor = new Supervisor({
         queues,
         workers,
         registry,
         storageAdapters,
-        ...(dashboard ? { dashboard } : {}),
     });
 
     await supervisor.start();
 
-    if (dashboard?.enabled) {
-        dashboardServer = startDashboardServer({
+    if (dashboardConfig) {
+        const dashboardApp = express();
+        dashboardApp.use(
+            createExpressAdapter({
+                supervisor,
+                apiBase: dashboardConfig.apiBase,
+                auth: dashboardConfig.auth,
+                uiDir: dashboardUiDir,
+                uiBase: '/',
+                protectUiWithAuth: false,
+            })
+        );
+
+        dashboardServer = await new Promise<http.Server>((resolve) => {
+            const started = dashboardApp.listen(
+                Number(process.env.DASHBOARD_PORT || '3210'),
+                process.env.DASHBOARD_HOST || '127.0.0.1',
+                () => resolve(started)
+            );
+        });
+
+        dashboardSocket = createExpressWebSocketBinding(dashboardServer, {
             supervisor,
-            host: process.env.DASHBOARD_HOST || '127.0.0.1',
-            port: Number(process.env.DASHBOARD_PORT || '3210'),
+            apiBase: dashboardConfig.apiBase,
+            auth: dashboardConfig.auth,
         });
     }
 
@@ -87,19 +199,23 @@ async function main() {
     }
     console.log('[worker] waiting for jobs from Redis\n');
 
-    const shutdown = async () => {
-        console.log('\n[worker] shutting down ...');
-        dashboardServer?.close();
-        supervisor.stop();
-        await store.close();
-        process.exit(0);
-    };
+    registerGracefulShutdown({
+        label: 'worker',
+        onShutdown: async () => {
+            dashboardSocket?.close();
+            dashboardServer?.closeIdleConnections?.();
+            dashboardServer?.closeAllConnections?.();
+            await new Promise<void>((resolve) => {
+                if (!dashboardServer) {
+                    resolve();
+                    return;
+                }
 
-    process.on('SIGINT', () => {
-        void shutdown();
-    });
-    process.on('SIGTERM', () => {
-        void shutdown();
+                dashboardServer.close(() => resolve());
+            });
+            supervisor.stop();
+            await store.close();
+        },
     });
 }
 

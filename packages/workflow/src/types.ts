@@ -1,4 +1,4 @@
-import type { StoredJob } from '@omni-queue/core';
+import type { StoredJob } from '@vasto/core';
 
 export type WorkflowNodeStatus = 'pending' | 'queued' | 'done' | 'failed';
 

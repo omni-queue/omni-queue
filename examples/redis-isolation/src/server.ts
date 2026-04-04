@@ -1,7 +1,9 @@
 import express from 'express';
+import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import { JobManager, Supervisor } from '@omni-queue/core';
-import { APIAdapter } from '@omni-queue/dashboard-api';
+import type { DashboardAuthContext } from '@vasto/core';
+import { JobManager, Supervisor } from '@vasto/core';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto/express-adapter';
 import 'dotenv/config';
 import {
   GenerateThumbnailJob,
@@ -15,11 +17,12 @@ import {
   createRedisStoreFromEnv,
   createRegistry,
 } from './runtime';
+import { registerGracefulShutdown } from './graceful-shutdown';
 
 function asString(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
-  return trimmed ? trimmed : undefined;
+  return trimmed || undefined;
 }
 
 function asPositiveNumber(value: unknown): number | undefined {
@@ -39,9 +42,24 @@ function asJobPriority(value: unknown): 'critical' | 'high' | 'normal' | 'low' |
   return undefined;
 }
 
+function buildAdminContext(): DashboardAuthContext {
+  return { role: 'admin' };
+}
+
+function createDashboardSessionToken(username: string): string {
+  return Buffer.from(`vasto-dashboard:server:${username}`).toString('base64url');
+}
+
+function resolveDashboardCredentialsFromEnv(): { username?: string; password?: string } {
+  const username = process.env.DASHBOARD_AUTH_USERNAME ?? process.env.DASHBOARD_BASIC_USERNAME;
+  const password = process.env.DASHBOARD_AUTH_PASSWORD ?? process.env.DASHBOARD_BASIC_PASSWORD;
+  return { username, password };
+}
+
 
 async function main() {
   const port = Number(process.env.PORT ?? '3100');
+  const dashboardUiDir = path.resolve(process.cwd(), 'public/vasto-dashboard');
   const store = createRedisStoreFromEnv();
   const queues = createQueues();
   const workers = createProducerWorkers();
@@ -62,16 +80,7 @@ async function main() {
     storageAdapters,
   });
 
-  const adapter = new APIAdapter({
-    supervisor,
-    port,
-    host: '127.0.0.1',
-    apiBase: '/api/dashboard',
-    streamIntervalMs: 2000,
-    signals: false,
-  });
-
-  const app = adapter.express;
+  const app = express();
   app.use(express.json());
 
   // Job API endpoints
@@ -81,7 +90,7 @@ async function main() {
       const subject = asString(req.body.subject);
       const content = asString(req.body.body);
 
-      if (!to || !subject || !content) {
+      if (to == null || subject == null || content == null) {
         res.status(400).json({ error: 'Expected payload: { to, subject, body }' });
         return;
       }
@@ -294,16 +303,71 @@ async function main() {
     }
   });
 
-  app.get('/health', (req, res) => {
+  app.get('/health', (_req, res) => {
     res.json({ status: 'ok', service: 'redis-isolation-api' });
   });
 
+  const dashboardAuth = {
+    type: 'basic' as const,
+    authHandler: (request: { mode: 'password' | 'custom' | 'token'; username?: string; password?: string }) => {
+      if (request.mode === 'token') {
+        return null;
+      }
+
+      const { username, password } = resolveDashboardCredentialsFromEnv();
+      if (
+        username === undefined ||
+        password === undefined ||
+        request.username !== username ||
+        request.password !== password
+      ) {
+        return null;
+      }
+
+      return {
+        token: createDashboardSessionToken(username),
+        authContext: buildAdminContext(),
+      };
+    },
+    sessionValidator: (credentials: { token: string }) => {
+      const { username } = resolveDashboardCredentialsFromEnv();
+      if (!username) {
+        return false;
+      }
+
+      return credentials.token === createDashboardSessionToken(username)
+        ? buildAdminContext()
+        : false;
+    },
+  };
+
+  app.use(
+    createExpressAdapter({
+      supervisor,
+      apiBase: '/api/dashboard',
+      streamIntervalMs: 2000,
+      uiDir: dashboardUiDir,
+      uiBase: '/',
+      protectUiWithAuth: false,
+      auth: dashboardAuth,
+    })
+  );
+
   // 404 handler
-  app.use((req, res) => {
+  app.use((_req, res) => {
     res.status(404).json({ error: 'Not found' });
   });
 
-  await adapter.start();
+  const server = await new Promise<import('node:http').Server>((resolve) => {
+    const started = app.listen(port, '127.0.0.1', () => resolve(started));
+  });
+  const dashboardSocket = createExpressWebSocketBinding(server, {
+    supervisor,
+    apiBase: '/api/dashboard',
+    streamIntervalMs: 2000,
+    auth: dashboardAuth,
+  });
+
   console.log('[api] GET  /health');
   console.log('[api] POST /jobs/email');
   console.log('[api] POST /jobs/email/schedule');
@@ -311,20 +375,26 @@ async function main() {
   console.log('[api] POST /jobs/transcode');
   console.log('[api] POST /jobs/progress');
   console.log('[api] POST /dlq/retry');
-  console.log('[api] Dashboard UI: http://localhost:4173 (dev) or http://localhost:3100 (production)');
+  console.log('[api] Dashboard UI: http://localhost:4173 (dev) or http://localhost:3100/ (production)');
 
-  const shutdown = async () => {
-    jobManager.stopSchedules();
-    await adapter.stopAsync();
-    await store.close();
-    process.exit(0);
-  };
-
-  process.on('SIGINT', () => {
-    void shutdown();
-  });
-  process.on('SIGTERM', () => {
-    void shutdown();
+  registerGracefulShutdown({
+    label: 'api',
+    onShutdown: async () => {
+      jobManager.stopSchedules();
+      dashboardSocket.close();
+      server.closeIdleConnections?.();
+      server.closeAllConnections?.();
+      await new Promise<void>((resolve, reject) => {
+        server.close((error) => {
+          if (error) {
+            reject(error);
+            return;
+          }
+          resolve();
+        });
+      });
+      await store.close();
+    },
   });
 }
 

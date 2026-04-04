@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { dashboardFetch } from '../auth';
 import type { MonitoringTagRow, SloReport } from '../types';
 import { API_BASE } from '../types';
 
@@ -21,8 +22,8 @@ export function MonitoringPage() {
     setError(null);
     try {
       const [monitoringRes, sloRes] = await Promise.all([
-        fetch(`${API_BASE}/monitoring`),
-        fetch(`${API_BASE}/slo?windowMs=${60 * 60_000}`),
+        dashboardFetch(`${API_BASE}/monitoring`),
+        dashboardFetch(`${API_BASE}/slo?windowMs=${60 * 60_000}`),
       ]);
       if (!monitoringRes.ok) throw new Error(`${monitoringRes.status} ${monitoringRes.statusText}`);
       if (!sloRes.ok) throw new Error(`${sloRes.status} ${sloRes.statusText}`);

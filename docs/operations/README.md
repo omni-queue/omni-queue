@@ -1,24 +1,29 @@
 # Operations Documentation
 
-This section is the operator and adopter entry point for Omni Queue.
+This section is the operator and adopter entry point for Vasto.
 
 It is organized to help three common audiences:
 
 1. **Teams evaluating a migration from BullMQ**
-2. **Developers integrating Omni Queue into an application framework**
+2. **Developers integrating Vasto into an application framework**
 3. **Operators preparing a production rollout**
 
 ## Start here
 
 ### Foundation and getting started
 
+- [Implemented feature catalog](feature-catalog.md)
 - [Phase 0: Core foundation](phase-1/phase-0-foundation.md)
+- [Phase 2: Observability and dashboard](phase-2/phase-2-observability-dashboard.md)
+- [Phase 3: Advanced features](phase-3/phase-3-advanced-features.md)
+- [Phase 4: Ecosystem and integration](phase-4/phase-4-ecosystem-integration.md)
 - [Quick start guide](../../README.md)
 
 ### Migration and adoption
 
 - [BullMQ migration guide](migration-guides/from-bullmq.md)
 - [Adapter quickstarts](quickstarts/README.md)
+- [Dashboard integration guide](quickstarts/dashboard-integration.md)
 
 ### Production readiness
 
@@ -29,31 +34,35 @@ It is organized to help three common audiences:
 
 ### Architecture and APIs
 
-- [Architecture docs](architecture/)
-- [API reference docs](api-reference/)
+- [Phase 0 architecture foundation](phase-1/phase-0-foundation.md)
+- [Feature catalog](feature-catalog.md)
+- [Adapter quickstarts](quickstarts/README.md)
 
 ## Recommended reading paths
 
 ### If you are migrating from BullMQ
 
-1. Read the [BullMQ migration guide](migration-guides/from-bullmq.md)
-2. Pick the closest [adapter quickstart](quickstarts/README.md)
-3. Generate starter code with the CLI:
-   - `queue generate:api-job --name=send-email`
-   - `queue generate:workflow --name=asset-pipeline`
-   - `queue generate:scheduled --name=daily-digest`
+1. Read the [implemented feature catalog](feature-catalog.md)
+2. Read the [BullMQ migration guide](migration-guides/from-bullmq.md)
+3. Pick the closest [adapter quickstart](quickstarts/README.md)
+4. Generate starter code with the CLI:
+   - `vasto generate api-job --name=send-email`
+   - `vasto generate workflow --name=asset-pipeline`
+   - `vasto generate scheduled --name=daily-digest`
 
 ### If you are starting a greenfield project
 
 1. Read the root [README](../../README.md)
-2. Choose an adapter in [quickstarts](quickstarts/README.md)
-3. Review [capacity planning](phase-5/capacity-planning-toolkit.md) before production rollout
+2. Review the [implemented feature catalog](feature-catalog.md)
+3. Choose an adapter in [quickstarts](quickstarts/README.md)
+4. Review [capacity planning](phase-5/capacity-planning-toolkit.md) before production rollout
 
-### If you are operating Omni Queue in production
+### If you are operating Vasto in production
 
-1. Review the [phase 5 proposal](phase-5/phase-5-proposal.md)
-2. Adopt the [incident playbooks](phase-5/incident-playbooks.md)
-3. Use the [capacity planning toolkit](phase-5/capacity-planning-toolkit.md) for worker sizing
+1. Review the [implemented feature catalog](feature-catalog.md)
+2. Review the [phase 5 proposal](phase-5/phase-5-proposal.md)
+3. Adopt the [incident playbooks](phase-5/incident-playbooks.md)
+4. Use the [capacity planning toolkit](phase-5/capacity-planning-toolkit.md) for worker sizing
 
 ## Documentation goals
 

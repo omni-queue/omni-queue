@@ -1,4 +1,4 @@
-import type { BatchRecord, Supervisor } from '@omni-queue/core';
+import type { BatchRecord, Supervisor } from '@vasto/core';
 
 function paginate<T>(items: T[], limit?: number, offset?: number): T[] {
   const start = Number.isFinite(offset) ? (offset as number) : 0;

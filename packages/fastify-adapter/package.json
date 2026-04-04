@@ -1,14 +1,13 @@
 {
-  "name": "@omni-queue/fastify-adapter",
+  "name": "@vasto/fastify-adapter",
   "version": "0.1.0",
-  "private": true,
-  "description": "Fastify adapter for Omni-Queue dashboard-api",
+  "description": "Fastify adapter for Vasto dashboard-api",
   "keywords": [
     "queue",
     "dashboard",
     "fastify",
     "adapter",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -35,6 +34,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/dashboard-api": "*"
+    "@vasto/dashboard-api": "*"
+  },
+  "peerDependencies": {
+    "express": "^4.21.2",
+    "ws": "^8.18.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

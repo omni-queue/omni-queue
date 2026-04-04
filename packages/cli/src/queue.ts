@@ -1,7 +1,51 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
+import { createRequire } from 'node:module';
 import { runGenerateIsolation } from './gen';
+
+// Template written to <outDir>/dashboard-config.example.js by `dashboard:publish`.
+const DASHBOARD_CONFIG_EXAMPLE = `// dashboard-config.example.js
+//
+// Inject this <script> block into the HTML page that hosts the Vasto
+// dashboard (e.g. app.html, _document.tsx, layout.ejs) BEFORE the dashboard
+// JS bundle tag.  All keys are optional — omit any you do not need to override.
+//
+// window.__VASTO_DASHBOARD_CONFIG__ = {
+//
+//   // transport
+//   // ─────────────────────────────────────────────────────────────────────
+//   // Controls the real-time data transport used by the dashboard.
+//   //   'auto'    — try WebSocket first, fall back to long-polling (default)
+//   //   'polling' — force long-polling only
+//   //                (use this when WebSocket upgrades are blocked by a
+//   //                 proxy, CDN, serverless platform, or load balancer)
+//   //
+//   // Can also be set per-page-load via URL query param:  ?transport=polling
+//   // Build-time env var (local dev only):  VITE_DASHBOARD_TRANSPORT=polling
+//   //
+//   transport: 'auto',
+//
+//   // endpoint
+//   // ─────────────────────────────────────────────────────────────────────
+//   // The API base URL the dashboard uses to reach the Vasto API.
+//   // Must match the \`apiBase\` option you passed to your framework adapter.
+//   //
+//   // Build-time env var (local dev only):  VITE_DASHBOARD_ENDPOINT=/api/vasto
+//   //
+//   // Default: '/api/dashboard'
+//   //
+//   endpoint: '/api/dashboard',
+//
+//   // uiBase
+//   // ─────────────────────────────────────────────────────────────────────
+//   // The URL base where the dashboard UI is mounted.
+//   //   '/' (default) for root mounts, or '/vasto-dashboard' for sub-path mounts.
+//   //
+//   uiBase: '/vasto-dashboard',
+//
+// };
+`;
 
 type WorkerManifest = {
 	workers?: Array<{
@@ -22,6 +66,24 @@ export async function runQueue(queueArgs: string[]) {
 		case 'init':
 			await runQueueInit(flagArgs);
 			return;
+		case 'generate':
+			if (subcommand === 'isolation') {
+				await runGenerateIsolation(queueArgs.slice(2));
+				return;
+			} else if (subcommand === 'job') {
+				await runGenerateJob(queueArgs.slice(2));
+				return;
+			} else if (subcommand === 'api-job') {
+				await runGenerateApiJob(queueArgs.slice(2));
+				return;
+			} else if (subcommand === 'workflow') {
+				await runGenerateWorkflow(queueArgs.slice(2));
+				return;
+			} else if (subcommand === 'scheduled') {
+				await runGenerateScheduledJob(queueArgs.slice(2));
+				return;
+			}
+			break;
 		case 'generate:job':
 			await runGenerateJob(flagArgs);
 			return;
@@ -37,12 +99,15 @@ export async function runQueue(queueArgs: string[]) {
 		case 'monitor':
 			await runMonitor(flagArgs);
 			return;
+		case 'failed:list':
 		case 'dlq:list':
 			await runDlqList(flagArgs);
 			return;
+		case 'failed:retry':
 		case 'dlq:retry':
 			await runDlqRetry(flagArgs);
 			return;
+		case 'failed:retry-all':
 		case 'dlq:retry-all':
 			await runDlqRetryAll(flagArgs);
 			return;
@@ -53,7 +118,14 @@ export async function runQueue(queueArgs: string[]) {
 			await runQueueStart();
 			return;
 		case 'dashboard':
+			if (subcommand === 'publish') {
+				await runQueueDashboardPublish(queueArgs.slice(2));
+				return;
+			}
 			await runQueueDashboard();
+			return;
+		case 'dashboard:publish':
+			await runQueueDashboardPublish(flagArgs);
 			return;
 		case 'workers:list':
 			await runWorkersList();
@@ -85,27 +157,25 @@ export async function runQueue(queueArgs: string[]) {
 }
 
 function printQueueUsage() {
-	console.log('Omni-Queue CLI');
+	console.log('Vasto CLI');
 	console.log('');
 	console.log('Usage:');
-	console.log('  queue init [--yes] [--dir=.]');
-	console.log('  queue generate:job --name=send-email [--dir=./src/jobs] [--queue=default]');
-	console.log('  queue generate:api-job --name=send-email [--dir=./src/jobs] [--queue=api-jobs]');
-	console.log('  queue generate:workflow --name=asset-pipeline [--dir=./src/workflows] [--queue=default]');
-	console.log('  queue generate:scheduled --name=daily-digest [--dir=./src/jobs] [--queue=default]');
-	console.log('  queue monitor [--baseUrl=http://localhost:3110] [--queue=name]');
-	console.log('  queue dlq:list [--baseUrl=http://localhost:3110] [--queue=name] [--limit=20] [--offset=0]');
-	console.log('  queue dlq:retry --queue=name --jobId=id [--baseUrl=http://localhost:3110]');
-	console.log('  queue dlq:retry-all --queue=name [--baseUrl=http://localhost:3110] [--limit=100]');
-	console.log('  queue dev');
-	console.log('  queue start');
-	console.log('  queue dashboard');
-	console.log('  queue workers:list');
-	console.log('  queue gen isolation [--dir=./src/definitions]');
-	console.log('  queue gen job [--dir=./src/jobs]');
-	console.log('  queue gen api-job [--dir=./src/jobs]');
-	console.log('  queue gen workflow [--dir=./src/workflows]');
-	console.log('  queue gen scheduled [--dir=./src/jobs]');
+	console.log('  vasto init [--yes] [--dir=.]');
+	console.log('  vasto generate isolation [--dir=./src/definitions]');
+	console.log('  vasto generate job --name=send-email [--dir=./src/jobs] [-=default]');
+	console.log('  vasto generate api-job --name=send-email [--dir=./src/jobs] [-=api-jobs]');
+	console.log('  vasto generate workflow --name=asset-pipeline [--dir=./src/workflows] [-=default]');
+	console.log('  vasto generate scheduled --name=daily-digest [--dir=./src/jobs] [-=default]');
+	console.log('  vasto monitor [--baseUrl=http://localhost:3110] [-=name]');
+	console.log('  vasto failed:list [--baseUrl=http://localhost:3110] [-=name] [--limit=20] [--offset=0]');
+	console.log('  vasto failed:retry -=name --jobId=id [--baseUrl=http://localhost:3110]');
+	console.log('  vasto failed:retry-all -=name [--baseUrl=http://localhost:3110] [--limit=100]');
+	console.log('  vasto dev');
+	console.log('  vasto start');
+	console.log('  vasto dashboard');
+	console.log('  vasto dashboard publish [--out=./public/vasto-dashboard] [--base=<inferred from --out>] [--api-base=/api/dashboard]');
+	console.log('  vasto dashboard:publish [--out=./public/vasto-dashboard] [--base=<inferred from --out>] [--api-base=/api/dashboard]');
+	console.log('  vasto workers:list');
 }
 
 function parseFlags(flagArgs: string[]): Record<string, string> {
@@ -153,6 +223,159 @@ function ensureFile(filePath: string, content: string) {
 	fs.writeFileSync(filePath, content, 'utf8');
 }
 
+function emptyDirectory(dirPath: string) {
+	if (!fs.existsSync(dirPath)) {
+		fs.mkdirSync(dirPath, { recursive: true });
+		return;
+	}
+
+	for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+		const entryPath = path.join(dirPath, entry.name);
+		fs.rmSync(entryPath, { recursive: true, force: true });
+	}
+}
+
+function copyDirectory(sourceDir: string, targetDir: string) {
+	ensureDirectory(targetDir);
+	for (const entry of fs.readdirSync(sourceDir, { withFileTypes: true })) {
+		const sourcePath = path.join(sourceDir, entry.name);
+		const targetPath = path.join(targetDir, entry.name);
+		if (entry.isDirectory()) {
+			copyDirectory(sourcePath, targetPath);
+			continue;
+		}
+
+		fs.copyFileSync(sourcePath, targetPath);
+	}
+}
+
+function normalizePublishBase(baseValue: string): string {
+	const trimmed = baseValue.trim();
+	if (!trimmed) return './';
+	if (trimmed === './' || trimmed === '../' || trimmed === '/') return trimmed;
+
+	if (trimmed.startsWith('./') || trimmed.startsWith('../')) {
+		return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+	}
+
+	if (trimmed.startsWith('/')) {
+		return trimmed.endsWith('/') ? trimmed : `${trimmed}/`;
+	}
+
+	const normalized = `/${trimmed.replace(/^\/+/, '')}`;
+	return normalized.endsWith('/') ? normalized : `${normalized}/`;
+}
+
+function rewritePublishedDashboardAssetBase(outDir: string, basePrefix: string) {
+	const normalizedBase = normalizePublishBase(basePrefix);
+	const filesToRewrite: string[] = [];
+
+	const walk = (dirPath: string) => {
+		for (const entry of fs.readdirSync(dirPath, { withFileTypes: true })) {
+			const entryPath = path.join(dirPath, entry.name);
+			if (entry.isDirectory()) {
+				walk(entryPath);
+				continue;
+			}
+
+			if (entry.name.endsWith('.html') || entry.name.endsWith('.js') || entry.name.endsWith('.css')) {
+				filesToRewrite.push(entryPath);
+			}
+		}
+	};
+
+	walk(outDir);
+
+	for (const filePath of filesToRewrite) {
+		const raw = fs.readFileSync(filePath, 'utf8');
+		const rewritten = raw
+			.replace(/(["'`])\/assets\//g, `$1${normalizedBase}assets/`)
+			.replace(/(["'`])\.\/assets\//g, `$1${normalizedBase}assets/`)
+			.replace(/(["'`])assets\//g, `$1${normalizedBase}assets/`);
+
+		if (rewritten !== raw) {
+			fs.writeFileSync(filePath, rewritten, 'utf8');
+		}
+	}
+}
+
+function normalizeUiBasePath(value: string): string {
+	const trimmed = value.trim();
+	if (!trimmed || trimmed === '/') return '/';
+	const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+	return withLeadingSlash.replace(/\/+$/, '');
+}
+
+function rewritePublishedDashboardRuntimeConfig(outDir: string, apiBase: string, uiBase: string) {
+	const indexHtmlPath = path.join(outDir, 'index.html');
+	if (!fs.existsSync(indexHtmlPath)) {
+		return;
+	}
+
+	const source = fs.readFileSync(indexHtmlPath, 'utf8');
+	const runtimeScriptTag = [
+		'<script id="vasto-dashboard-config">',
+		'window.__VASTO_DASHBOARD_CONFIG__ = {',
+		"  transport: 'auto',",
+		`  endpoint: '${apiBase}',`,
+		`  uiBase: '${uiBase}',`,
+		'};',
+		'</script>',
+	].join('\n');
+
+	const replacedExistingTag = source.replace(
+		/<script id="vasto-dashboard-config">[\s\S]*?<\/script>/,
+		runtimeScriptTag
+	);
+
+	const rewritten = replacedExistingTag.includes('<script id="vasto-dashboard-config">')
+		? replacedExistingTag
+		: replacedExistingTag.replace(/\s*<script type="module"/, `\n    ${runtimeScriptTag}\n    <script type="module"`);
+
+	if (rewritten !== source) {
+		fs.writeFileSync(indexHtmlPath, rewritten, 'utf8');
+	}
+}
+
+function deriveDefaultPublishBase(cwd: string, outDir: string): string {
+	const relativeOutDir = path.relative(cwd, outDir).replace(/\\/g, '/');
+	if (!relativeOutDir || relativeOutDir.startsWith('..')) {
+		return './';
+	}
+
+	const segments = relativeOutDir.split('/').filter(Boolean);
+	const publicIndex = segments.indexOf('public');
+	if (publicIndex === -1) {
+		return './';
+	}
+
+	const publicSubPath = segments.slice(publicIndex + 1).join('/');
+	if (!publicSubPath) {
+		return '/';
+	}
+
+	return `/${publicSubPath}`;
+}
+
+function resolveDashboardDistDir(cwd: string): string {
+	const require = createRequire(import.meta.url);
+	try {
+		const dashboardPackageJson = require.resolve('@vasto/dashboard/package.json', {
+			paths: [cwd],
+		});
+		const distDir = path.join(path.dirname(dashboardPackageJson), 'dist');
+		if (fs.existsSync(distDir) && fs.statSync(distDir).isDirectory()) {
+			return distDir;
+		}
+	} catch {
+		// handled below with a user-facing error
+	}
+
+	throw new Error(
+		'Unable to locate dashboard dist assets from @vasto/dashboard. Install the package in this project before publishing assets.'
+	);
+}
+
 function mergePackageScripts(pkgPath: string, scripts: Record<string, string>) {
 	const parsed = fs.existsSync(pkgPath)
 		? (JSON.parse(fs.readFileSync(pkgPath, 'utf8')) as { scripts?: Record<string, string> })
@@ -170,7 +393,7 @@ async function runQueueInit(flagArgs: string[]) {
 	const cwd = process.cwd();
 	const flags = parseFlags(flagArgs);
 	const projectDir = path.resolve(cwd, flags.dir ?? '.');
-	const runtimeDir = path.join(projectDir, '.omni', 'runtime');
+	const runtimeDir = path.join(projectDir, '.vasto', 'runtime');
 	const srcJobsDir = path.join(projectDir, 'src', 'jobs');
 	const srcDefinitionsDir = path.join(projectDir, 'src', 'definitions');
 	const packageJsonPath = path.join(projectDir, 'package.json');
@@ -183,7 +406,7 @@ async function runQueueInit(flagArgs: string[]) {
 	ensureFile(
 		sampleJobPath,
 		[
-			"import type { Job } from '@omni-queue/core';",
+			"import type { Job } from '@vasto/core';",
 			'',
 			'type SampleJobPayload = {',
 			"\tmessage: string;",
@@ -204,7 +427,7 @@ async function runQueueInit(flagArgs: string[]) {
 	ensureFile(
 		sampleDefinitionPath,
 		[
-			"import { defineIsolation } from '@omni-queue/core';",
+			"import { defineIsolation } from '@vasto/core';",
 			"import { SampleJob } from '../jobs/sample-job';",
 			'',
 			'export const { getRegistry, getPlugins } = defineIsolation({',
@@ -217,27 +440,28 @@ async function runQueueInit(flagArgs: string[]) {
 
 	if (fs.existsSync(packageJsonPath)) {
 		mergePackageScripts(packageJsonPath, {
-			'queue:dev': 'queue dev',
-			'queue:start': 'queue start',
-			'queue:monitor': 'queue monitor',
-			'queue:gen:isolation': 'queue gen isolation',
-			'queue:generate:job': 'queue generate:job --name=sample-job',
-			'queue:dlq:list': 'queue dlq:list',
+			'vasto:dev': 'vasto dev',
+			'vasto:start': 'vasto start',
+			'vasto:monitor': 'vasto monitor',
+			'vasto:dashboard:publish': 'vasto dashboard:publish --out=./public/vasto-dashboard',
+			'vasto:generate:isolation': 'vasto generate isolation',
+			'vasto:generate:job': 'vasto generate job --name=sample-job',
+			'vasto:failed:list': 'vasto failed:list',
 		});
 	}
 
-	console.log('Omni-Queue project initialized.');
-	console.log(`- Runtime directory: ${path.relative(cwd, runtimeDir) || '.omni/runtime'}`);
+	console.log('Vasto project initialized.');
+	console.log(`- Runtime directory: ${path.relative(cwd, runtimeDir) || '.vasto/runtime'}`);
 	console.log(`- Sample job: ${path.relative(cwd, sampleJobPath)}`);
 	console.log(`- Sample definition: ${path.relative(cwd, sampleDefinitionPath)}`);
 	if (fs.existsSync(packageJsonPath)) {
-		console.log('- Added queue:* scripts to package.json (without overwriting existing scripts).');
+		console.log('- Added vasto:* scripts to package.json (without overwriting existing scripts).');
 	}
 	console.log('Next steps:');
-	console.log('  1) queue gen isolation');
-	console.log('  1) queue gen job --name=send-email');
-	console.log('  2) queue generate:job --name=send-email');
-	console.log('  3) queue monitor');
+	console.log('  1) vasto generate isolation');
+	console.log('  2) vasto generate job --name=send-email');
+	console.log('  3) vasto dashboard:publish --out=./public/vasto-dashboard');
+	console.log('  4) vasto monitor');
 }
 
 async function runGenerateJob(flagArgs: string[]) {
@@ -246,7 +470,7 @@ async function runGenerateJob(flagArgs: string[]) {
 	const rawName = flags.name;
 
 	if (!rawName) {
-		throw new Error('Missing --name. Example: queue generate:job --name=send-email');
+		throw new Error('Missing --name. Example: vasto generate job --name=send-email');
 	}
 
 	const jobName = toKebabCase(rawName);
@@ -267,7 +491,7 @@ async function runGenerateJob(flagArgs: string[]) {
 	fs.writeFileSync(
 		filePath,
 		[
-			"import type { Job } from '@omni-queue/core';",
+			"import type { Job } from '@vasto/core';",
 			'',
 			`export type ${className}Payload = {`,
 			"\tinput: string;",
@@ -303,7 +527,7 @@ async function runGenerateApiJob(flagArgs: string[]) {
 	const rawName = flags.name;
 
 	if (!rawName) {
-		throw new Error('Missing --name. Example: queue generate:api-job --name=send-email');
+		throw new Error('Missing --name. Example: vasto generate api-job --name=send-email');
 	}
 
 	const jobName = toKebabCase(rawName);
@@ -320,7 +544,7 @@ async function runGenerateApiJob(flagArgs: string[]) {
 	fs.writeFileSync(
 		filePath,
 		[
-			"import { Job } from '@omni-queue/core';",
+			"import { Job } from '@vasto/core';",
 			'',
 			`export type ${className}Payload = {`,
 			"\trequestId: string;",
@@ -362,7 +586,7 @@ async function runGenerateWorkflow(flagArgs: string[]) {
 	const rawName = flags.name;
 
 	if (!rawName) {
-		throw new Error('Missing --name. Example: queue generate:workflow --name=asset-pipeline');
+		throw new Error('Missing --name. Example: vasto generate workflow --name=asset-pipeline');
 	}
 
 	const workflowName = toKebabCase(rawName);
@@ -379,7 +603,7 @@ async function runGenerateWorkflow(flagArgs: string[]) {
 	fs.writeFileSync(
 		filePath,
 		[
-			"import { Job, type FlowNodeInput, type Supervisor } from '@omni-queue/core';",
+			"import { Job, type FlowNodeInput, type Supervisor } from '@vasto/core';",
 			'',
 			`export class ${classBase}PrepareJob extends Job<{ workflowId: string }> {`,
 			`	static jobName = '${workflowName}-prepare';`,
@@ -425,7 +649,7 @@ async function runGenerateScheduledJob(flagArgs: string[]) {
 	const rawName = flags.name;
 
 	if (!rawName) {
-		throw new Error('Missing --name. Example: queue generate:scheduled --name=daily-digest');
+		throw new Error('Missing --name. Example: vasto generate scheduled --name=daily-digest');
 	}
 
 	const jobName = toKebabCase(rawName);
@@ -442,7 +666,7 @@ async function runGenerateScheduledJob(flagArgs: string[]) {
 	fs.writeFileSync(
 		filePath,
 		[
-			"import { Job, type JobManager } from '@omni-queue/core';",
+			"import { Job, type JobManager } from '@vasto/core';",
 			'',
 			`export class ${className} extends Job<{ triggeredBy: string }> {`,
 			`	static jobName = '${jobName}';`,
@@ -471,7 +695,7 @@ async function runGenerateScheduledJob(flagArgs: string[]) {
 }
 
 function resolveBaseUrl(flags: Record<string, string>): string {
-	const raw = flags.baseUrl ?? process.env.OMNI_QUEUE_API_URL ?? 'http://localhost:3110';
+	const raw = flags.baseUrl ?? process.env.VASTO_API_URL ?? 'http://localhost:3110';
 	return raw.replace(/\/+$/, '');
 }
 
@@ -586,11 +810,10 @@ async function runDlqList(flagArgs: string[]) {
 
 async function runDlqRetry(flagArgs: string[]) {
 	const flags = parseFlags(flagArgs);
-	const queueName = flags.queue;
-	const jobId = flags.jobId;
+	const { queue: queueName, jobId } = flags;
 
 	if (!queueName || !jobId) {
-		throw new Error('Missing --queue or --jobId. Example: queue dlq:retry --queue=emails --jobId=abc123');
+		throw new Error('Missing - or --jobId. Example: vasto failed:retry -=emails --jobId=abc123');
 	}
 
 	const baseUrl = resolveBaseUrl(flags);
@@ -607,7 +830,7 @@ async function runDlqRetryAll(flagArgs: string[]) {
 	const queueName = flags.queue;
 
 	if (!queueName) {
-		throw new Error('Missing --queue. Example: queue dlq:retry-all --queue=emails');
+		throw new Error('Missing -. Example: vasto failed:retry-all -=emails');
 	}
 
 	const baseUrl = resolveBaseUrl(flags);
@@ -728,7 +951,7 @@ async function runQueueDashboard() {
 	console.log(`Project: ${cwd}`);
 
 	if (!runtimeDir) {
-		console.log('Runtime directory not found. Expected .omni/runtime/');
+		console.log('Runtime directory not found. Expected .vasto/runtime/');
 		return;
 	}
 
@@ -746,6 +969,40 @@ async function runQueueDashboard() {
 			console.log(`  - ${path.basename(file, '.js')}`);
 		}
 	}
+}
+
+async function runQueueDashboardPublish(flagArgs: string[]) {
+	const cwd = process.cwd();
+	const flags = parseFlags(flagArgs);
+	const outDir = path.resolve(cwd, flags.out ?? flags.dir ?? './public/vasto-dashboard');
+	const defaultAssetBase = deriveDefaultPublishBase(cwd, outDir);
+	const assetBase = normalizePublishBase(flags.base ?? defaultAssetBase);
+	const apiBase = normalizeUiBasePath(flags['api-base'] ?? '/api/dashboard');
+	const uiBase = normalizeUiBasePath(assetBase === './' ? '/' : assetBase);
+	const sourceDir = resolveDashboardDistDir(cwd);
+
+	if (!fs.existsSync(path.join(sourceDir, 'index.html'))) {
+		throw new Error(`Dashboard dist is incomplete: ${sourceDir}`);
+	}
+
+	emptyDirectory(outDir);
+	copyDirectory(sourceDir, outDir);
+	rewritePublishedDashboardAssetBase(outDir, assetBase);
+	rewritePublishedDashboardRuntimeConfig(outDir, apiBase, uiBase);
+
+	const exampleConfigPath = path.join(outDir, 'dashboard-config.example.js');
+	fs.writeFileSync(exampleConfigPath, DASHBOARD_CONFIG_EXAMPLE, 'utf8');
+
+	console.log('Published dashboard assets');
+	console.log(`- source: ${path.relative(cwd, sourceDir) || sourceDir}`);
+	console.log(`- output: ${path.relative(cwd, outDir) || outDir}`);
+	console.log(`- asset base: ${assetBase}`);
+	console.log(`- dashboard api base: ${apiBase}`);
+	console.log(`- dashboard ui base: ${uiBase}`);
+	console.log('Use this path in adapters:');
+	console.log(`  uiDir: path.resolve(process.cwd(), '${path.relative(cwd, outDir).replace(/\\/g, '/')}')`);
+	console.log('Runtime config template:');
+	console.log(`  ${path.relative(cwd, exampleConfigPath)}`);
 }
 
 async function runWorkersList() {
@@ -778,7 +1035,7 @@ async function runWorkersList() {
 
 function resolveRuntimeDir(cwd: string): string | null {
 	const candidates = [
-		path.join(cwd, '.omni', 'runtime'),
+		path.join(cwd, '.vasto', 'runtime'),
 		path.join(cwd, 'runtime'),
 		path.join(cwd, 'src', 'runtime'),
 	];

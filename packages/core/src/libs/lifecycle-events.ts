@@ -34,6 +34,7 @@ export interface QueueLifecycleEvent {
   removed?: number;
   scheduleId?: string;
   schedulePattern?: string;
+  scheduleAt?: number;
   result?: unknown;
   error?: string;
   circuitState?: 'closed' | 'open' | 'half-open';
@@ -86,6 +87,7 @@ export class LifecycleEventBus {
       ...(input.removed !== undefined ? { removed: input.removed } : {}),
       ...(input.scheduleId !== undefined ? { scheduleId: input.scheduleId } : {}),
       ...(input.schedulePattern !== undefined ? { schedulePattern: input.schedulePattern } : {}),
+      ...(input.scheduleAt !== undefined ? { scheduleAt: input.scheduleAt } : {}),
       ...(input.result !== undefined ? { result: input.result } : {}),
       ...(input.error !== undefined ? { error: input.error } : {}),
       ...(input.circuitState !== undefined ? { circuitState: input.circuitState } : {}),

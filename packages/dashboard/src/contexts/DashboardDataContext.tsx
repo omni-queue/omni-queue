@@ -1,6 +1,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { API_BASE, type OverviewResponse } from '../types';
+import { dashboardFetch } from '../auth';
+import { API_BASE, DASHBOARD_TRANSPORT, type DashboardTransport, type OverviewResponse } from '../types';
 import { useWebSocket, type WsStatus } from '../hooks/useWebSocket';
 import { overviewToSample } from '../pages/MetricsPage';
 
@@ -18,6 +19,7 @@ type DashboardDataContextValue = {
   queues: OverviewResponse['queues'];
   samples: MetricSample[];
   wsStatus: WsStatus;
+  transportMode: DashboardTransport;
   refreshOverview: () => Promise<void>;
 };
 
@@ -26,7 +28,7 @@ const DashboardDataContext = createContext<DashboardDataContextValue | undefined
 function buildOverviewSignature(data: OverviewResponse): string {
   const queueSignature = [...data.queues]
     .sort((a, b) => a.queue.localeCompare(b.queue))
-    .map((queue) => `${queue.queue}:${queue.depth}:${queue.deferredCount}:${queue.dlqCount}`)
+    .map((queue) => `${queue.queue}:${queue.depth}:${queue.deferredCount}:${queue.repeatableCount ?? 0}:${queue.dlqCount}`)
     .join('|');
 
   const reliabilitySignature = (data.reliability?.queues ?? [])
@@ -42,7 +44,7 @@ function buildOverviewSignature(data: OverviewResponse): string {
     .map(([name, concurrency]) => `${name}:${concurrency}`)
     .join('|');
 
-  return `${data.totals.depth}:${data.totals.deferred}:${data.totals.dlq}:${data.totals.completed}::${queueSignature}::${scalingSignature}::${reliabilitySignature}`;
+  return `${data.totals.depth}:${data.totals.deferred}:${data.totals.schedules ?? 0}:${data.totals.dlq}:${data.totals.completed}::${queueSignature}::${scalingSignature}::${reliabilitySignature}`;
 }
 
 export function DashboardDataProvider({ children }: { children: ReactNode }) {
@@ -71,7 +73,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
 
   const refreshOverview = useCallback(async () => {
     try {
-      const response = await fetch(`${API_BASE}/overview`);
+      const response = await dashboardFetch(`${API_BASE}/overview`);
       if (!response.ok) return;
       const data = (await response.json()) as OverviewResponse;
       handleOverview(data);
@@ -105,6 +107,7 @@ export function DashboardDataProvider({ children }: { children: ReactNode }) {
       queues: overview?.queues ?? [],
       samples,
       wsStatus,
+      transportMode: DASHBOARD_TRANSPORT,
       refreshOverview,
     }),
     [overview, refreshOverview, samples, wsStatus]

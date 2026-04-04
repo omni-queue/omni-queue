@@ -1,4 +1,5 @@
 export type DashboardAuthType = 'none' | 'basic' | 'bearer';
+export type DashboardLoginMode = 'password' | 'token' | 'custom';
 
 export type DashboardRole = 'viewer' | 'operator' | 'admin';
 export type DashboardScope = 'dashboard:read' | 'dashboard:operate' | 'dashboard:admin';
@@ -35,6 +36,44 @@ export interface DashboardBearerCredentials {
   request?: unknown;
 }
 
+export interface DashboardSessionCredentials {
+  token: string;
+  request?: unknown;
+}
+
+export interface DashboardPasswordLoginRequest {
+  mode: 'password' | 'custom';
+  username: string;
+  password: string;
+  request?: unknown;
+}
+
+export interface DashboardTokenLoginRequest {
+  mode: 'token';
+  token: string;
+  request?: unknown;
+}
+
+export type DashboardLoginRequest = DashboardPasswordLoginRequest | DashboardTokenLoginRequest;
+
+export interface DashboardAuthSession {
+  token: string;
+  expiresAt?: number;
+  authContext?: DashboardAuthContext;
+}
+
+export type DashboardAuthHandler = (
+  request: DashboardLoginRequest
+) => DashboardAuthSession | null | Promise<DashboardAuthSession | null>;
+
+export type DashboardSessionValidator = (
+  credentials: DashboardSessionCredentials
+) => DashboardAuthDecision | Promise<DashboardAuthDecision>;
+
+export type DashboardLogoutHandler = (
+  credentials: DashboardSessionCredentials
+) => void | Promise<void>;
+
 export interface DashboardNoAuthOptions {
   type: 'none';
 }
@@ -42,13 +81,22 @@ export interface DashboardNoAuthOptions {
 export interface DashboardBasicAuthOptions {
   type: 'basic';
   realm?: string;
-  validator: (credentials: DashboardBasicCredentials) => DashboardAuthDecision | Promise<DashboardAuthDecision>;
+  authHandler: DashboardAuthHandler;
+  validator?: DashboardSessionValidator;
+  sessionValidator?: DashboardSessionValidator;
+  authValidator?: DashboardSessionValidator;
+  logoutHandler?: DashboardLogoutHandler;
 }
 
 export interface DashboardBearerAuthOptions {
   type: 'bearer';
   realm?: string;
-  validator: (credentials: DashboardBearerCredentials) => DashboardAuthDecision | Promise<DashboardAuthDecision>;
+  loginMode?: 'token' | 'custom';
+  authHandler: DashboardAuthHandler;
+  validator?: DashboardSessionValidator;
+  sessionValidator?: DashboardSessionValidator;
+  authValidator?: DashboardSessionValidator;
+  logoutHandler?: DashboardLogoutHandler;
 }
 
 export type DashboardAuthOptions =
@@ -57,9 +105,6 @@ export type DashboardAuthOptions =
   | DashboardBearerAuthOptions;
 
 export interface DashboardOptions {
-  enabled?: boolean;
-  endpoint?: string;
-  auth?: DashboardAuthOptions;
   streamIntervalMs?: number;
   silencedJobs?: string[];
 }

@@ -9,22 +9,23 @@
     "server:dev": "vite build && node dist/server.js",
     "dashboard": "cd ../../packages/dashboard && VITE_API_TARGET=http://localhost:3100 npm run dev",
     "dev:dashboard": "concurrently \"npm run server:dev\" \"npm run dashboard\"",
-    "worker": "npm run gen:isolation && npm run build && node dist/worker.js",
+    "worker": "npm run generate:isolation && npm run build && node dist/worker.js",
     "dev": "npm run worker",
     "start": "npm run worker",
-    "gen:isolation": "queue gen isolation",
+    "generate:isolation": "vasto generate isolation",
+    "dashboard:publish": "queue dashboard:publish",
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@omni-queue/cli": "*",
-    "@omni-queue/core": "*",
-    "@omni-queue/dashboard-api": "*",
-    "@omni-queue/redis-store": "*",
-    "@omni-queue/plugins": "*",
+    "@vasto/core": "*",
+    "@vasto/dashboard-api": "*",
+    "@vasto/redis-store": "*",
+    "@vasto/plugins": "*",
     "express": "^4.21.2",
     "dotenv": "^17.3.1"
   },
   "devDependencies": {
+    "@vasto/cli": "*",
     "concurrently": "^9.1.0"
   }
 }

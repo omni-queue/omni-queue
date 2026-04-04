@@ -1,6 +1,6 @@
 # redis-isolation
 
-Redis-backed Omni Queue example with a dedicated API producer and a separate worker consumer.
+Redis-backed Vasto example with a dedicated API producer and a separate worker consumer.
 
 Isolation modes by queue:
 
@@ -13,15 +13,14 @@ Isolation modes by queue:
 - API server enqueues jobs into Redis.
 - Worker process consumes from Redis and executes jobs with inline/thread/process isolation.
 
-## Prerequisites
-
-- Redis running locally on `127.0.0.1:6379` (or set `REDIS_URL`)
-- Build workspace once from repo root:
+## Install from npm
 
 ```bash
+cd examples/redis-isolation
 npm install
-npm run build
 ```
+
+Redis is required (`127.0.0.1:6379` by default, or set `REDIS_URL`).
 
 ## Run
 
@@ -38,6 +37,8 @@ Start API server (Terminal 2):
 cd examples/redis-isolation
 npm run server
 ```
+
+Stop either process with `Ctrl+C`. The example now performs graceful shutdown (closes dashboard WebSocket/server handles, stops schedulers/workers, and closes Redis) before exit.
 
 ## API
 
@@ -105,7 +106,7 @@ curl -X POST http://localhost:3100/dlq/retry \
 
 - `PORT` (default: `3100`)
 - `REDIS_URL` (default: `redis://127.0.0.1:6379`)
-- `REDIS_PREFIX` (default: `omniq:redis-isolation`)
+- `REDIS_PREFIX` (default: `vasto:redis-isolation`)
 - `REDIS_USERNAME` (optional, ACL username)
 - `REDIS_PASSWORD` (optional, required if your Redis instance enforces auth)
 - `DASHBOARD_ENABLED` (`true`/`false`, default: `false`)
@@ -113,13 +114,16 @@ curl -X POST http://localhost:3100/dlq/retry \
 - `DASHBOARD_PORT` (default: `3210`)
 - `DASHBOARD_ROUTE_PREFIX` (default: `/dashboard`)
 - `DASHBOARD_AUTH_TYPE` (`none` | `basic` | `bearer`, default: `none`)
-- `DASHBOARD_BASIC_USERNAME` / `DASHBOARD_BASIC_PASSWORD` (required for `basic`)
-- `DASHBOARD_BEARER_TOKEN` (required for `bearer`)
+- `DASHBOARD_AUTH_LOGIN_MODE` (`token` | `custom`, only for `bearer`, default: `token`)
+- `DASHBOARD_AUTH_USERNAME` / `DASHBOARD_AUTH_PASSWORD` (required for `basic`, and also used by `bearer` + `custom` mode)
+- `DASHBOARD_BEARER_TOKEN` (required for `bearer` + `token` mode)
+
+Backward compatibility: `DASHBOARD_BASIC_USERNAME` / `DASHBOARD_BASIC_PASSWORD` are still accepted as fallbacks.
 
 Example:
 
 ```bash
-PORT=4000 REDIS_URL=redis://127.0.0.1:6379 REDIS_PREFIX=omniq:demo npm run server
+PORT=4000 REDIS_URL=redis://127.0.0.1:6379 REDIS_PREFIX=vasto:demo npm run server
 
 # If your Redis requires authentication:
 REDIS_PASSWORD=your-secret npm run worker
@@ -127,16 +131,31 @@ REDIS_PASSWORD=your-secret npm run worker
 # Enable Supervisor-owned dashboard with basic auth:
 DASHBOARD_ENABLED=true \
 DASHBOARD_AUTH_TYPE=basic \
-DASHBOARD_BASIC_USERNAME=admin \
-DASHBOARD_BASIC_PASSWORD=secret \
+DASHBOARD_AUTH_USERNAME=admin \
+DASHBOARD_AUTH_PASSWORD=secret \
+npm run worker
+
+# Enable bearer token login mode:
+DASHBOARD_ENABLED=true \
+DASHBOARD_AUTH_TYPE=bearer \
+DASHBOARD_AUTH_LOGIN_MODE=token \
+DASHBOARD_BEARER_TOKEN=replace-me \
+npm run worker
+
+# Enable bearer custom login mode (username/password -> backend-issued session token):
+DASHBOARD_ENABLED=true \
+DASHBOARD_AUTH_TYPE=bearer \
+DASHBOARD_AUTH_LOGIN_MODE=custom \
+DASHBOARD_AUTH_USERNAME=admin \
+DASHBOARD_AUTH_PASSWORD=secret \
 npm run worker
 ```
 
-When enabled, the worker starts the standalone dashboard server from `@omni-queue/dashboard-api` using the dashboard settings defined on `Supervisor`.
+When enabled, the worker starts the standalone dashboard server with the built-in login UI. The static dashboard shell is served publicly, while the API and WebSocket routes are protected by the configured auth handler + session validator.
 
 ## What this demonstrates
 
-- Shared Redis storage via `@omni-queue/redis-store`
+- Shared Redis storage via `@vasto/redis-store`
 - API producer pattern for pushing jobs over HTTP
 - Delayed and scheduled email dispatch over HTTP
 - Dead-letter inspection and retry over HTTP

@@ -1,0 +1,15 @@
+{
+  "name": "scheduling-lab",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vite build",
+    "dev": "npm run build && node dist/index.js",
+    "start": "npm run dev",
+    "check-types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@vasto/core": "*"
+  }
+}

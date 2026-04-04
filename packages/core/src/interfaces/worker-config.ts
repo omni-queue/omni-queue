@@ -1,4 +1,5 @@
 import { IsolationType } from '../types';
+import { QueueSandboxConfig } from './queue-config';
 
 export interface WorkerConfig {
   queues: string[];
@@ -12,6 +13,8 @@ export interface WorkerConfig {
   registryModule?: string;
   pluginsModule?: string;
   timeout?: number;
+  consumerId?: string;
+  sandbox?: QueueSandboxConfig;
 }
 
 export function defineWorkers(configs: Record<string, WorkerConfig>) {

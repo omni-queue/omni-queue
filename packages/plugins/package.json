@@ -1,13 +1,12 @@
 {
-  "name": "@omni-queue/plugins",
+  "name": "@vasto/plugins",
   "version": "0.1.0",
-  "private": true,
-  "description": "Reusable plugins for Omni-Queue",
+  "description": "Reusable plugins for Vasto",
   "keywords": [
     "queue",
     "job",
     "plugin",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -28,12 +27,15 @@
   "scripts": {
     "build": "tsup",
     "dev": "tsup --watch",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "test:watch": "vitest",
     "lint": "eslint src",
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/core": "*"
+    "@vasto/core": "*"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

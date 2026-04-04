@@ -1,7 +1,13 @@
-import type { Supervisor } from '@omni-queue/core';
+import type { Supervisor } from '@vasto/core';
 
 export async function buildOverview(supervisor: Supervisor) {
   const queueNames = supervisor.getQueueNames();
+  const schedules = await supervisor.listRepeatableSchedules();
+  const schedulesByQueue = schedules.reduce<Record<string, number>>((acc, schedule) => {
+    acc[schedule.queue] = (acc[schedule.queue] ?? 0) + 1;
+    return acc;
+  }, {});
+
   const queueStats = await Promise.all(
     queueNames.map(async (queueName) => {
       const config = supervisor.getQueueConfig(queueName);
@@ -25,6 +31,7 @@ export async function buildOverview(supervisor: Supervisor) {
         depth,
         load: depth,
         deferredCount: deferred.length,
+        repeatableCount: schedulesByQueue[queueName] ?? 0,
         dlqCount: dlq.length,
         completedCount: completed.length,
         recentCompletionTimestamps,
@@ -46,11 +53,12 @@ export async function buildOverview(supervisor: Supervisor) {
     (acc, queue) => {
       acc.depth += queue.depth;
       acc.deferred += queue.deferredCount;
+      acc.schedules += queue.repeatableCount;
       acc.dlq += queue.dlqCount;
       acc.completed += queue.completedCount;
       return acc;
     },
-    { depth: 0, deferred: 0, dlq: 0, completed: 0 }
+    { depth: 0, deferred: 0, schedules: 0, dlq: 0, completed: 0 }
   );
 
   const workers = supervisor.getWorkerDefinitions();

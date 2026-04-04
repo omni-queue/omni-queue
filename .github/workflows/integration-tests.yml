@@ -2,9 +2,25 @@ name: Integration Tests
 
 on:
   pull_request:
-    branches: ['**']
+    branches: [main]
+    paths:
+      - '.github/workflows/integration-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'packages/core/**'
+      - 'packages/redis-store/**'
+      - 'packages/postgres-store/**'
   push:
-    branches: [main, master]
+    branches: [main]
+    paths:
+      - '.github/workflows/integration-tests.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'tsconfig*.json'
+      - 'packages/core/**'
+      - 'packages/redis-store/**'
+      - 'packages/postgres-store/**'
   workflow_dispatch:
 
 jobs:
@@ -25,13 +41,13 @@ jobs:
       postgres:
         image: postgres:16-alpine
         env:
-          POSTGRES_USER: omni
-          POSTGRES_PASSWORD: omni
-          POSTGRES_DB: omni_queue_test
+          POSTGRES_USER: vasto
+          POSTGRES_PASSWORD: vasto
+          POSTGRES_DB: vasto_test
         ports:
           - 5432:5432
         options: >-
-          --health-cmd "pg_isready -U omni -d omni_queue_test"
+          --health-cmd "pg_isready -U vasto -d vasto_test"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -39,7 +55,7 @@ jobs:
     env:
       RUN_INTEGRATION_TESTS: 'true'
       REDIS_TEST_URL: redis://127.0.0.1:6379
-      PG_TEST_URL: postgres://omni:omni@127.0.0.1:5432/omni_queue_test
+      PG_TEST_URL: postgres://vasto:vasto@127.0.0.1:5432/vasto_test
 
     steps:
       - name: Checkout
@@ -51,16 +67,28 @@ jobs:
           node-version: 22
           cache: npm
 
-      - name: Install dependencies
-        run: npm ci
+      - name: Install local workspace dependencies
+        run: >-
+          npm ci
+          --workspace @vasto/core
+          --workspace @vasto/redis-store
+          --workspace @vasto/postgres-store
 
-      - name: Typecheck
-        run: npm run check-types
+      - name: Build local workspace packages
+        run: >-
+          npm run build
+          --workspace @vasto/core
+          --workspace @vasto/redis-store
+          --workspace @vasto/postgres-store
+
+      - name: Typecheck local workspace packages
+        run: >-
+          npm exec tsc --noEmit -p packages/core/tsconfig.json
+          && npm exec tsc --noEmit -p packages/redis-store/tsconfig.json
+          && npm exec tsc --noEmit -p packages/postgres-store/tsconfig.json
 
       - name: Redis integration tests
-        working-directory: packages/redis-store
-        run: npm run test:integration
+        run: npm run test:integration --workspace @vasto/redis-store
 
       - name: Postgres integration tests
-        working-directory: packages/postgres-store
-        run: npm run test:integration
+        run: npm run test:integration --workspace @vasto/postgres-store

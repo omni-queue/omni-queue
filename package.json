@@ -1,5 +1,5 @@
 {
-  "name": "omni-queue",
+  "name": "vasto",
   "version": "0.1.0",
   "private": true,
   "description": "A distributed job queue system with multiple storage backends",
@@ -9,9 +9,13 @@
   ],
   "scripts": {
     "build": "turbo run build",
-    "build:core": "turbo run build --filter=@omni-queue/core",
+    "build:core": "turbo run build --filter=@vasto/core",
+    "docs:dev": "npm run dev --workspace @vasto/docs",
+    "docs:build": "npm run build --workspace @vasto/docs",
+    "docs:preview": "npm run preview --workspace @vasto/docs",
     "dev": "turbo run dev",
     "test": "turbo run test",
+    "test:integration": "npm run test:integration --workspace @vasto/redis-store && npm run test:integration --workspace @vasto/postgres-store",
     "test:watch": "turbo run test:watch",
     "lint": "turbo run lint",
     "format": "prettier --write \"**/*.{ts,tsx,md,json}\"",
@@ -32,7 +36,8 @@
     "turbo": "^2.8.20",
     "typescript": "^5.9.3",
     "vite": "^7.1.10",
-    "vitest": "^4.1.1"
+    "vitest": "^4.1.1",
+    "@vitest/coverage-v8": "^4.1.1"
   },
   "engines": {
     "node": ">=18.0.0"

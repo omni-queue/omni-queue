@@ -1,8 +1,7 @@
 {
-  "name": "@omni-queue/core",
+  "name": "@vasto/core",
   "version": "0.1.0",
-  "private": true,
-  "description": "Core abstractions and interfaces for Omni-Queue",
+  "description": "Core abstractions and interfaces for Vasto",
   "keywords": [
     "queue",
     "job",
@@ -15,7 +14,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/binarygeotech/omni-queue.git",
+    "url": "https://github.com/binarygeotech/vasto.git",
     "directory": "packages/core"
   },
   "type": "module",
@@ -41,11 +40,15 @@
     "build": "tsup",
     "dev": "tsup --watch",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest",
     "lint": "eslint src",
     "clean": "rm -rf dist"
   },
   "dependencies": {
     "node-cron": "^4.2.1"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -48,3 +48,8 @@ Thumbs.db
 .cache/
 temp/
 tmp/
+
+examples/*/queue-data
+examples/*/dist
+examples/*/node_modules
+examples/*/public/vasto-dashboard

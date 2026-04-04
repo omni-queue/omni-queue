@@ -1,12 +1,12 @@
 # Phase 1.1: Delayed & Scheduled Jobs - Technical Design
 
 **Status**: Implemented (core path)  
-**Target**: Q2 2026  
+**Target**: Phase 1 delivery window  
 **Effort**: 3-4 weeks
 
 ## Overview
 
-Extend omni-queue to support:
+Extend vasto to support:
 1. **Delayed Jobs** - Execute after a specified delay (immediate feature)  
 2. **Scheduled Jobs** - Cron-like recurring execution
 
@@ -279,7 +279,7 @@ export class Supervisor {
 **How Redis stores delayed jobs**:
 
 ```typescript
-// In @omni-queue/redis-store
+// In @vasto/redis-store
 
 async enqueue(job: StoredJob): Promise<StoredJob> {
   const key = this.getQueueKey(job.queue);
@@ -481,14 +481,14 @@ async function demonstrateDelayedJobs() {
 
 ## Success Criteria
 
-- [ ] All unit tests pass (>90% coverage)
-- [ ] E2E test: Job with 1s delay executes after 1s
-- [ ] E2E test: Multiple delayed jobs in different queues
-- [ ] Performance: ScheduledJobPromoter polls <100 jobs in <50ms
-- [ ] Example works: `npm run delayed-jobs`
-- [ ] Documentation complete & examples provided
-- [ ] No breaking changes to existing API
-- [ ] Redis storage adapter fully implements interface
+- [x] All unit tests pass (>90% coverage)
+- [x] E2E test: Job with 1s delay executes after 1s
+- [x] E2E test: Multiple delayed jobs in different queues
+- [x] Performance: ScheduledJobPromoter polls <100 jobs in <50ms
+- [x] Example works: `npm run delayed-jobs`
+- [x] Documentation complete & examples provided
+- [x] No breaking changes to existing API
+- [x] Redis storage adapter fully implements interface
 
 ## Risks & Mitigation
 

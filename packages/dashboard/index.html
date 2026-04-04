@@ -3,7 +3,18 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Omni Queue Dashboard</title>
+    <title>Vasto Dashboard</title>
+    <!--
+      Runtime config — copy this <script> block into the host page served by your
+      framework adapter (before the dashboard JS bundle). All keys are optional.
+
+    <script>
+      window.__VASTO_DASHBOARD_CONFIG__ = {
+        transport: 'auto',         // 'auto' (default) | 'polling'
+        endpoint:  '/api/dashboard', // API base URL — must match adapter apiBase option
+      };
+    </script>
+    -->
   </head>
   <body>
     <div id="root"></div>

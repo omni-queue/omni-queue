@@ -1,4 +1,4 @@
-import type { CompletedJobRecord, StoredJob, Supervisor } from '@omni-queue/core';
+import type { CompletedJobRecord, StoredJob, Supervisor } from '@vasto/core';
 
 export type MonitoringTagSummary = {
   tag: string;

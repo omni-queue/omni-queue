@@ -1,14 +1,13 @@
 {
-  "name": "@omni-queue/redis-store",
+  "name": "@vasto/redis-store",
   "version": "0.1.0",
-  "private": true,
-  "description": "Redis storage adapter for Omni-Queue",
+  "description": "Redis storage adapter for Vasto",
   "keywords": [
     "queue",
     "job",
     "redis",
     "storage",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -36,10 +35,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
+    "@vasto/core": "*",
     "ioredis": "^5.3.2"
   },
   "devDependencies": {
     "@types/node": "^20.11.5"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

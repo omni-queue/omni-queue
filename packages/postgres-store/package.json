@@ -1,15 +1,14 @@
 {
-  "name": "@omni-queue/postgres-store",
+  "name": "@vasto/postgres-store",
   "version": "0.1.0",
-  "private": true,
-  "description": "PostgreSQL storage adapter for Omni-Queue",
+  "description": "PostgreSQL storage adapter for Vasto",
   "keywords": [
     "queue",
     "job",
     "postgres",
     "postgresql",
     "storage",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -37,10 +36,13 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
+    "@vasto/core": "*",
     "pg": "^8.13.3"
   },
   "devDependencies": {
     "@types/pg": "^8.11.11"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

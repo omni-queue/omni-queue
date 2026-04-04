@@ -1,14 +1,26 @@
+import http from 'node:http';
 import {
-  createDashboardExpressMiddleware,
-  startDashboardServer,
+  bindVastoWebSocket,
+  vastoAdapter,
   type DashboardApiOptions,
-  type StandaloneDashboardServerOptions,
-} from '@omni-queue/dashboard-api';
+  type DashboardWebSocketController,
+} from '@vasto/dashboard-api';
 
-export function createNextAdapter(options: DashboardApiOptions) {
-  return createDashboardExpressMiddleware(options);
+export function vastoNextAdapter(options: DashboardApiOptions) {
+  const app = vastoAdapter(options);
+
+  return (req: http.IncomingMessage, res: http.ServerResponse) => {
+    app(req as never, res as never, (() => undefined) as never);
+  };
 }
 
-export function startNextAdapter(options: StandaloneDashboardServerOptions) {
-  return startDashboardServer(options);
+export function bindVastoNextWebSocket(
+  server: http.Server,
+  options: DashboardApiOptions
+): DashboardWebSocketController {
+  return bindVastoWebSocket(server, options);
+}
+
+export function createNextAdapter(options: DashboardApiOptions) {
+  return vastoNextAdapter(options);
 }

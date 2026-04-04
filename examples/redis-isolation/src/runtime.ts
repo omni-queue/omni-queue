@@ -3,8 +3,8 @@ import {
     defineQueues,
     defineWorkers,
     resolveRuntimeModules,
-} from '@omni-queue/core';
-import { RedisStore } from '@omni-queue/redis-store';
+} from '@vasto/core';
+import { RedisStore } from '@vasto/redis-store';
 import {
     GenerateThumbnailJob,
     SendWelcomeEmailJob,
@@ -20,7 +20,7 @@ function getEnv(key: string, fallback?: string): string | undefined {
 
 export function createRedisStoreFromEnv(): RedisStore {
     const redisUrl = getEnv('REDIS_URL', 'redis://127.0.0.1:6379')!;
-    const redisPrefix = getEnv('REDIS_PREFIX', 'omniq:redis-isolation')!;
+    const redisPrefix = getEnv('REDIS_PREFIX', 'vasto:redis-isolation')!;
     const envUsername = getEnv('REDIS_USERNAME');
     const envPassword = getEnv('REDIS_PASSWORD');
 

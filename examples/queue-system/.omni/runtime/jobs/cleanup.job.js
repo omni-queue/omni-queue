@@ -1,4 +1,4 @@
-import { Job } from '@omni-queue/core';
+import { Job } from '@vasto/core';
 export class CleanupJob extends Job {
     static jobName = 'CleanupJob';
     jobName = CleanupJob.jobName;

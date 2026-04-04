@@ -1,19 +1,19 @@
-# `@omni-queue/redis-store`
+# `@vasto/redis-store`
 
-Redis storage adapter for [Omni-Queue](../../README.md).
+Redis storage adapter for [Vasto](../../README.md).
 
 Uses [ioredis](https://github.com/redis/ioredis) with a Lua-scripted atomic dequeue that handles visibility timeouts and expired-lease reclaim without external locks.
 
 ## Installation
 
 ```bash
-npm install @omni-queue/redis-store ioredis
+npm install @vasto/redis-store ioredis
 ```
 
 ## Usage
 
 ```ts
-import { RedisStore } from '@omni-queue/redis-store';
+import { RedisStore } from '@vasto/redis-store';
 
 const store = new RedisStore({
 	client: {
@@ -27,7 +27,7 @@ Or pass a pre-configured ioredis instance:
 
 ```ts
 import Redis from 'ioredis';
-import { RedisStore } from '@omni-queue/redis-store';
+import { RedisStore } from '@vasto/redis-store';
 
 const redis = new Redis({ host: 'localhost', port: 6379 });
 const store = new RedisStore({ client: redis });
@@ -36,7 +36,7 @@ const store = new RedisStore({ client: redis });
 Pass the store as a connection adapter to your queue config:
 
 ```ts
-import { defineQueues, defineWorkers } from '@omni-queue/core';
+import { defineQueues, defineWorkers } from '@vasto/core';
 
 const queues = defineQueues({
 	default: {
@@ -55,15 +55,15 @@ const storageAdapters = { redis: store };
 
 | Key | Type | Purpose |
 |---|---|---|
-| `omni:job:{id}` | string (JSON) | Full job payload |
-| `omni:queue:{name}:ready` | sorted set (score = createdAt) | Jobs waiting to run |
-| `omni:queue:{name}:leased` | sorted set (score = leaseUntil) | Inflight jobs |
-| `omni:dead:{id}` | string (JSON) | Dead-lettered job copy |
-| `omni:queue:{name}:dead` | sorted set (score = failedAt) | Dead-letter index |
+| `vasto:job:{id}` | string (JSON) | Full job payload |
+| `vasto:queue:{name}:ready` | sorted set (score = createdAt) | Jobs waiting to run |
+| `vasto:queue:{name}:leased` | sorted set (score = leaseUntil) | Inflight jobs |
+| `vasto:dead:{id}` | string (JSON) | Dead-lettered job copy |
+| `vasto:queue:{name}:dead` | sorted set (score = failedAt) | Dead-letter index |
 
 ## Configuration
 
 | Option | Type | Default | Description |
 |---|---|---|---|
 | `client` | `Redis \| RedisOptions` | — | ioredis instance or config |
-| `prefix` | `string` | `omni` | Key namespace prefix |
+| `prefix` | `string` | `vasto` | Key namespace prefix |

@@ -1,15 +1,14 @@
 {
-  "name": "@omni-queue/mongo-store",
+  "name": "@vasto/mongo-store",
   "version": "0.1.0",
-  "private": true,
-  "description": "MongoDB storage adapter for Omni-Queue",
+  "description": "MongoDB storage adapter for Vasto",
   "keywords": [
     "queue",
     "job",
     "mongo",
     "mongodb",
     "storage",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -36,7 +35,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/core": "*",
+    "@vasto/core": "*",
     "mongodb": "^6.18.0"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

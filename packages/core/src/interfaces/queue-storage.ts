@@ -63,18 +63,30 @@ export interface QueueCleanOptions {
   limit?: number;
 }
 
+export interface RateLimitConsumeRequest {
+  queueName: string;
+  consumerId: string;
+  queueCapacity: number;
+  queueRefillRate: number;
+  consumerCapacity?: number;
+  consumerRefillRate?: number;
+}
+
 export interface QueueStorage {
   enqueue(job: StoredJob): Promise<void>;
+  enqueueBatch?(jobs: StoredJob[]): Promise<void>;
   dequeue(options: LeaseOptions): Promise<StoredJob[]>;
-  ack(jobId: string): Promise<void>;
+  ack(jobId: string, queueName?: string): Promise<void>;
   fail(jobId: string, err: Error): Promise<void>;
   moveToDeadLetter(job: StoredJob): Promise<void>;
   getQueueDepth(queue: string): Promise<number>;
-  extendLease(jobId: string, leaseMs: number): Promise<void>;
+  extendLease(jobId: string, leaseMs: number, queueName?: string): Promise<void>;
   updateAttempts(id: string, attempts: number): Promise<void>;
 
   // Delayed/Scheduled job support (Phase 1.1)
   getDelayedJobs(queueName: string, beforeDate: number): Promise<StoredJob[]>;
+  promoteDelayedJobs?(queueName: string, beforeDate: number, limit?: number): Promise<StoredJob[]>;
+  getNextDelayedTimestamp?(queueName: string): Promise<number | undefined>;
   moveJobToQueue(queueName: string, jobId: string, toState: 'active' | 'deferred' | 'failed'): Promise<void>;
   queryDeferredJobs(query: DeferredJobsQuery): Promise<StoredJob[]>;
 
@@ -96,6 +108,10 @@ export interface QueueStorage {
   // Archive & audit (Phase 2.3)
   queryJobArchive?(query: JobArchiveQuery): Promise<CompletedJobRecord[]>;
   setArchiveRetentionPolicy?(policy: ArchiveRetentionPolicy): void;
+
+  // Optional distributed/global rate limiting primitive.
+  // Implementations should consume queue and consumer tokens atomically.
+  consumeRateLimitToken?(request: RateLimitConsumeRequest): Promise<boolean>;
 
   // Job administration (Phase 4.4.3)
   promoteJob?(queueName: string, jobId: string): Promise<boolean>;

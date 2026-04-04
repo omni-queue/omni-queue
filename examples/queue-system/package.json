@@ -12,25 +12,25 @@
     "dev:dashboard": "concurrently \"npm run server:dev\" \"npm run dashboard\"",
     "start": "npm run dev",
     "build": "vite build",
-    "test": "vitest run",
+    "test": "vitest run --passWithNoTests",
     "lint": "eslint src",
     "check-types": "tsc --noEmit",
     "queue:dev": "queue dev",
     "queue:start": "queue start",
     "queue:dashboard": "queue dashboard",
     "queue:workers:list": "queue workers:list",
-    "queue:gen:isolation": "queue gen isolation",
-    "omni:gen:isolation": "queue gen isolation"
+    "queue:generate:isolation": "vasto generate isolation",
+    "vasto:generate:isolation": "vasto generate isolation"
   },
   "dependencies": {
-    "@omni-queue/cli": "*",
-    "@omni-queue/core": "*",
-    "@omni-queue/dashboard-api": "*",
-    "@omni-queue/otel-plugin": "*",
-    "@omni-queue/plugins": "*",
+    "@vasto/core": "*",
+    "@vasto/dashboard-api": "*",
+    "@vasto/otel-plugin": "*",
+    "@vasto/plugins": "*",
     "express": "^4.21.2"
   },
   "devDependencies": {
+    "@vasto/cli": "*",
     "concurrently": "^9.1.0"
   }
 }

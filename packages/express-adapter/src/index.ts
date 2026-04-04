@@ -1,19 +1,16 @@
 import {
-  createDashboardExpressMiddleware,
-  startDashboardServer,
+  bindVastoWebSocket,
+  createDashboardMiddleware,
   type DashboardApiOptions,
-  type StandaloneDashboardServerOptions,
-} from '@omni-queue/dashboard-api';
+} from '@vasto/dashboard-api';
 
 export function createExpressAdapter(options: DashboardApiOptions) {
-  return createDashboardExpressMiddleware(options);
+  return createDashboardMiddleware(options);
 }
 
-export function startExpressAdapter(options: StandaloneDashboardServerOptions) {
-  return startDashboardServer(options);
+export function createExpressWebSocketBinding(
+  ...args: Parameters<typeof bindVastoWebSocket>
+) {
+  return bindVastoWebSocket(...args);
 }
 
-export {
-  createDashboardExpressMiddleware as createDefaultDashboardMiddleware,
-  startDashboardServer as startDefaultDashboardServer,
-};

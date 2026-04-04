@@ -1,4 +1,4 @@
-import type { CompletedJobRecord, QueueLifecycleEvent, StoredJob, Supervisor } from '@omni-queue/core';
+import type { CompletedJobRecord, QueueLifecycleEvent, StoredJob, Supervisor } from '@vasto/core';
 
 export type SloQueueSummary = {
   queueName: string;

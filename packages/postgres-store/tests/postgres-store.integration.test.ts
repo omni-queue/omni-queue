@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
-import type { StoredJob } from '@omni-queue/core';
+import type { StoredJob } from '@vasto/core';
 import { PostgresStore } from '../src/postgres-store';
 
 const runIntegration =
@@ -17,7 +17,7 @@ function createJob(overrides: Partial<StoredJob> = {}): StoredJob {
     id: overrides.id ?? randomUUID(),
     name: overrides.name ?? 'integration-job',
     payload: overrides.payload ?? { ok: true },
-    queue: overrides.queue ?? 'integration-queue',
+    queue: overrides.queue ?? 'integration',
     attempts: overrides.attempts ?? 0,
     state: overrides.state ?? 'queued',
     createdAt: overrides.createdAt ?? now,
@@ -30,8 +30,8 @@ integration('PostgresStore integration', () => {
   it('applies delayed gating and promotion with a live Postgres instance', async () => {
     const pool = new Pool({ connectionString: process.env.PG_TEST_URL! });
 
-    const tableName = `omni_queue_jobs_${randomUUID().replace(/-/g, '_')}`;
-    const deadLetterTableName = `omni_queue_dead_${randomUUID().replace(/-/g, '_')}`;
+    const tableName = `vasto_jobs_${randomUUID().replace(/-/g, '_')}`;
+    const deadLetterTableName = `vasto_dead_${randomUUID().replace(/-/g, '_')}`;
 
     const store = new PostgresStore({
       pool,

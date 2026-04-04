@@ -1,6 +1,6 @@
-# `@omni-queue/plugins`
+# `@vasto/plugins`
 
-Reusable plugins for Omni-Queue.
+Reusable plugins for Vasto.
 
 ## Included helpers
 
@@ -15,7 +15,7 @@ Reusable plugins for Omni-Queue.
 ## Usage
 
 ```ts
-import { LoggingPlugin, TimingPlugin } from '@omni-queue/plugins';
+import { LoggingPlugin, TimingPlugin } from '@vasto/plugins';
 
 const plugins = [
   LoggingPlugin(),

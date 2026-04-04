@@ -1,7 +1,6 @@
 import { Link, useParams } from 'react-router-dom';
 import { ChevronLeft, Clock, Zap, Box, BarChart3 } from 'lucide-react';
 import { useDashboardData } from '../contexts/DashboardDataContext';
-import { API_BASE } from '../types';
 
 export function WorkerDetailPage() {
   const { workerName } = useParams<{ workerName: string }>();

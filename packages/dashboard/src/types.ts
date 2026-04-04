@@ -6,6 +6,7 @@ export type QueueOverview = {
   depth: number;
   load?: number;
   deferredCount: number;
+  repeatableCount?: number;
   dlqCount: number;
   completedCount?: number;
 };
@@ -20,7 +21,7 @@ export type WorkerDefinition = {
 export type OverviewResponse = {
   status: string;
   generatedAt: number;
-  totals: { depth: number; load?: number; deferred: number; dlq: number; completed: number };
+  totals: { depth: number; load?: number; deferred: number; schedules?: number; dlq: number; completed: number };
   metrics?: {
     recentCompletionTimestamps: number[];
     maxRuntimeMs: number;
@@ -60,6 +61,26 @@ export type JobRow = {
   completedAt?: number;
   delayUntil?: number;
   progress?: number;
+  errorDetails?: {
+    error: string;
+    errorName?: string;
+    errorCode?: string;
+    errorStack?: string;
+  };
+  retriedAt?: number;
+  retriedJobId?: string;
+};
+
+export type RepeatableScheduleRow = {
+  id: string;
+  queue: string;
+  jobName: string;
+  payload?: unknown;
+  pattern?: string;
+  intervalMs?: number;
+  timezone?: string;
+  createdAt: number;
+  updatedAt: number;
 };
 
 export type BatchJobRow = {
@@ -129,6 +150,110 @@ export type WsMessage =
   | { type: 'overview'; data: OverviewResponse }
   | { type: string; data: unknown };
 
+export type DashboardTransport = 'auto' | 'polling';
+export type DashboardAuthType = 'none' | 'basic' | 'bearer';
+export type DashboardLoginMode = 'password' | 'token' | 'custom';
+
+export type DashboardAuthContext = {
+  role?: 'viewer' | 'operator' | 'admin';
+  scopes?: string[];
+  tenantId?: string;
+  allowedQueues?: string[];
+  tokenId?: string;
+};
+
+export type DashboardAuthConfigResponse = {
+  requiresAuth: boolean;
+  authType: DashboardAuthType;
+  loginMode: DashboardLoginMode | null;
+};
+
+export type DashboardAuthSessionResponse = {
+  authenticated: boolean;
+  authType: DashboardAuthType;
+  loginMode: DashboardLoginMode | null;
+  authContext: DashboardAuthContext | null;
+};
+
+export type DashboardLoginResponse = {
+  token: string;
+  expiresAt?: number;
+  authType: Exclude<DashboardAuthType, 'none'>;
+  loginMode: DashboardLoginMode | null;
+  authContext?: DashboardAuthContext | null;
+};
+
+export type DashboardLoginPayload =
+  | {
+      token: string;
+    }
+  | {
+      username: string;
+      password: string;
+    };
+
+type DashboardRuntimeConfig = {
+  endpoint?: string;
+  uiBase?: string;
+  transport?: string;
+};
+
+declare global {
+  interface Window {
+    __VASTO_DASHBOARD_CONFIG__?: DashboardRuntimeConfig;
+  }
+}
+
+function getRuntimeConfig(): DashboardRuntimeConfig | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  return window.__VASTO_DASHBOARD_CONFIG__;
+}
+
 export const API_BASE: string =
+  getRuntimeConfig()?.endpoint ||
   (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
-    ?.VITE_DASHBOARD_ENDPOINT ?? '/api/dashboard';
+    ?.VITE_DASHBOARD_ENDPOINT ||
+  '/api/dashboard';
+
+function normalizeUiBase(value: string | undefined): string {
+  const trimmed = value?.trim();
+  if (!trimmed || trimmed === '/') {
+    return '/';
+  }
+
+  const withLeadingSlash = trimmed.startsWith('/') ? trimmed : `/${trimmed}`;
+  return withLeadingSlash.replace(/\/+$/, '');
+}
+
+export const UI_BASE: string = normalizeUiBase(getRuntimeConfig()?.uiBase);
+
+function normalizeTransport(value: string | undefined): DashboardTransport {
+  const normalized = value?.trim().toLowerCase();
+  if (normalized === 'polling') {
+    return 'polling';
+  }
+  return 'auto';
+}
+
+function resolveTransportOverride(): string | undefined {
+  if (typeof window === 'undefined') {
+    return undefined;
+  }
+
+  const params = new URLSearchParams(window.location.search);
+  const queryTransport = params.get('transport') ?? undefined;
+  if (queryTransport) {
+    return queryTransport;
+  }
+
+  return getRuntimeConfig()?.transport;
+}
+
+export const DASHBOARD_TRANSPORT: DashboardTransport = normalizeTransport(
+  resolveTransportOverride() ||
+    (import.meta as ImportMeta & { env?: Record<string, string | undefined> }).env
+      ?.VITE_DASHBOARD_TRANSPORT
+);

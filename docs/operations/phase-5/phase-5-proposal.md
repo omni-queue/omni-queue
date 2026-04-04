@@ -1,7 +1,7 @@
 # Phase 5 Proposal: Production Readiness & Adoption
 
 ## Objective
-Position Omni-Queue for reliable production rollout in multi-team environments by strengthening reliability controls, security boundaries, and operational tooling.
+Position Vasto for reliable production rollout in multi-team environments by strengthening reliability controls, security boundaries, and operational tooling.
 
 ## Scope
 Phase 5 focuses on four tracks:
@@ -25,7 +25,7 @@ Phase 5 focuses on four tracks:
 
 #### Implementation Status (Completed)
 
-Milestone 5.1 is implemented in `@omni-queue/core` and surfaced in the dashboard stack.
+Milestone 5.1 is implemented in `@vasto/core` and surfaced in the dashboard stack.
 
 **1) Exactly-once / Idempotency guidance + helper APIs**
 - Queue configuration supports idempotency via `queueConfig.idempotency`.
@@ -53,7 +53,7 @@ Milestone 5.1 is implemented in `@omni-queue/core` and surfaced in the dashboard
   - `auto-snooze` re-enqueues delayed jobs with poison metadata.
 
 **4) Dashboard/API observability coverage**
-- Overview payload includes reliability snapshot (`openCircuits`, `halfOpenCircuits`, `backpressuredQueues`, per-queue states).
+- Overview payload includes reliability snapshot (`openCircuits`, `halfOpenCircuits`, `backpressuredQueues`, per states).
 - Metrics and queue pages render current reliability status for operators.
 
 **Usage Example**
@@ -63,7 +63,7 @@ import {
   createReliabilityProfile,
   createPoisonMessagePolicy,
   defineQueues,
-} from '@omni-queue/core';
+} from '@vasto/core';
 
 const profile = createReliabilityProfile({
   exactlyOnce: 'balanced',
@@ -116,7 +116,7 @@ Milestone 5.2 is implemented in dashboard auth contracts, request middleware, ro
 - Tokens are modeled by `DashboardApiToken` with:
   - `id`, `token`, `role`
   - optional `scopes`, `tenantId`, `allowedQueues`, `expiresAt`, `active`
-- Reusable helper APIs in `@omni-queue/dashboard-api`:
+- Reusable helper APIs in `@vasto/dashboard-api`:
   - `createScopedBearerAuth({ tokens, realm })`
   - `rotateScopedBearerTokens(currentTokens, updates)`
 - Rotation pattern:
@@ -139,7 +139,7 @@ Milestone 5.2 is implemented in dashboard auth contracts, request middleware, ro
 **Usage Example: scoped bearer auth**
 
 ```ts
-import { createScopedBearerAuth, rotateScopedBearerTokens } from '@omni-queue/dashboard-api';
+import { createScopedBearerAuth, rotateScopedBearerTokens } from '@vasto/dashboard-api';
 
 let tokens = [
   {
@@ -160,7 +160,7 @@ let tokens = [
   },
 ];
 
-const auth = createScopedBearerAuth({ tokens, realm: 'omni-queue-dashboard' });
+const auth = createScopedBearerAuth({ tokens, realm: 'vasto-dashboard' });
 
 // Rotation (blue/green token rollout)
 tokens = rotateScopedBearerTokens(tokens, [
@@ -199,7 +199,7 @@ tokens = rotateScopedBearerTokens(tokens, [
   - completed/failed/recovered counts (overall + per queue)
 - SLO metrics are now rendered in the Monitoring page:
   - KPI cards for latency, success rate, mean recovery, recovered incidents
-  - per-queue SLO table for queue-level diagnosis
+  - per SLO table for queue-level diagnosis
 - Tenant queue restrictions are honored for SLO and monitoring results.
 
 **2) Incident playbooks**
@@ -258,9 +258,9 @@ tokens = rotateScopedBearerTokens(tokens, [
 
 **3) CLI starter templates**
 - Extended the queue CLI with starter generators for:
-  - `queue generate:api-job`
-  - `queue generate:workflow`
-  - `queue generate:scheduled`
+  - `vasto generate api-job`
+  - `vasto generate workflow`
+  - `vasto generate scheduled`
 - Added test coverage for each generator in `packages/cli/src/queue.test.ts`.
 
 ### Milestone 5.5 — BullMQ Parity Closure (2-4 weeks)
@@ -279,6 +279,13 @@ tokens = rotateScopedBearerTokens(tokens, [
 **Implementation Notes**
 - Current baseline already provides per-job backoff hooks and queue-level rate limits.
 - Milestone 5.5 closes only the hard parity gaps that remain from the BullMQ comparison.
+
+#### Implementation Status (Completed)
+
+- **Track A delivered** in core with queue/worker sandbox contracts plus process-isolated enforcement through `worker-runtime.ts`, `isolation.ts`, `process-pool.ts`, `isolation-worker.ts`, and `sandbox.ts`.
+- **Track B delivered** in core with `Job.retryPolicy(error, context)`, queue-level retry rules, structured error propagation across isolation boundaries, and backward-compatible handling of existing `retries()` / `backoff()` hooks.
+- **Track C delivered** in core with `consumerId` on workers, `rateLimit.perConsumer` on queues, a core-native `RateLimitCoordinator`, and fairness coverage in runtime tests.
+- Validation completed with targeted core builds and focused Vitest suites: `retry-policy`, `sandbox-policy`, and `per-consumer-rate-limit`.
 
 #### Engineering Breakdown (Implementation-Ready)
 

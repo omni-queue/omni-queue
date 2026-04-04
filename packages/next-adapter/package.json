@@ -1,14 +1,13 @@
 {
-  "name": "@omni-queue/next-adapter",
+  "name": "@vasto/next-adapter",
   "version": "0.1.0",
-  "private": true,
-  "description": "Next.js adapter for Omni-Queue dashboard-api",
+  "description": "Next.js adapter for Vasto dashboard-api",
   "keywords": [
     "queue",
     "dashboard",
     "nextjs",
     "adapter",
-    "omni-queue"
+    "vasto"
   ],
   "author": "Okojie George",
   "license": "MIT",
@@ -35,6 +34,10 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@omni-queue/dashboard-api": "*"
+    "@vasto/dashboard-api": "*",
+    "express": "^4.21.2"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

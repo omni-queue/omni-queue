@@ -2,8 +2,8 @@ import type {
   DashboardApiToken,
   DashboardAuthContext,
   DashboardBearerAuthOptions,
-  DashboardBearerCredentials,
-} from '@omni-queue/core';
+  DashboardSessionCredentials,
+} from '@vasto/core';
 
 export type TokenAuthOptions = {
   tokens: DashboardApiToken[];
@@ -21,7 +21,7 @@ function toContext(token: DashboardApiToken): DashboardAuthContext {
 }
 
 export function createScopedBearerAuth(options: TokenAuthOptions): DashboardBearerAuthOptions {
-  const getActiveToken = (credentials: DashboardBearerCredentials): DashboardApiToken | null => {
+  const getActiveToken = (credentials: DashboardSessionCredentials): DashboardApiToken | null => {
     const now = Date.now();
     const match = options.tokens.find((token) => token.token === credentials.token);
     if (!match) {
@@ -41,8 +41,25 @@ export function createScopedBearerAuth(options: TokenAuthOptions): DashboardBear
 
   return {
     type: 'bearer',
+    loginMode: 'token',
     ...(options.realm ? { realm: options.realm } : {}),
-    validator: async (credentials) => {
+    authHandler: async (credentials) => {
+      if (credentials.mode !== 'token') {
+        return null;
+      }
+
+      const match = getActiveToken({ token: credentials.token, request: credentials.request });
+      if (!match) {
+        return null;
+      }
+
+      return {
+        token: match.token,
+        authContext: toContext(match),
+        ...(match.expiresAt != null ? { expiresAt: match.expiresAt } : {}),
+      };
+    },
+    sessionValidator: async (credentials) => {
       const match = getActiveToken(credentials);
       if (!match) {
         return false;

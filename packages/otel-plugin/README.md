@@ -1,6 +1,6 @@
-# `@omni-queue/otel-plugin`
+# `@vasto/otel-plugin`
 
-OpenTelemetry tracing plugin for Omni-Queue.
+OpenTelemetry tracing plugin for Vasto.
 
 ## Included exports
 
@@ -10,7 +10,7 @@ OpenTelemetry tracing plugin for Omni-Queue.
 ## Usage
 
 ```ts
-import { TracingPlugin } from '@omni-queue/otel-plugin';
+import { TracingPlugin } from '@vasto/otel-plugin';
 
 const plugins = [new TracingPlugin()];
 ```

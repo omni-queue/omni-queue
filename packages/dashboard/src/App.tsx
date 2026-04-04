@@ -1,5 +1,6 @@
 import { Navigate, Route, Routes } from 'react-router-dom';
 import { Layout } from './components/Layout';
+import { DashboardAuthProvider, useDashboardAuth } from './contexts/DashboardAuthContext';
 import { DashboardDataProvider, useDashboardData } from './contexts/DashboardDataContext';
 import { DashboardPage } from './pages/DashboardPage';
 import { JobDetailPage } from './pages/JobDetailPage';
@@ -15,6 +16,8 @@ import { SilencedJobsPage } from './pages/SilencedJobsPage';
 import { BatchesPage } from './pages/BatchesPage';
 import { MonitoringPage } from './pages/MonitoringPage';
 import { ArchivePage } from './pages/ArchivePage';
+import { SchedulesPage } from './pages/SchedulesPage';
+import { LoginPage } from './pages/LoginPage';
 
 function DashboardRoute() {
   const { overview } = useDashboardData();
@@ -31,12 +34,21 @@ function JobsRoute() {
   return <JobsPage queues={queues} />;
 }
 
+function SchedulesRoute() {
+  const { queues } = useDashboardData();
+  return <SchedulesPage queues={queues} />;
+}
+
 function QueueDetailRoute() {
   return <QueueDetailPage />;
 }
 
 function JobDetailRoute() {
-  return <JobDetailPage />;
+  return <JobDetailPage backTo="/jobs" backLabel="Back to jobs" />;
+}
+
+function FailedJobDetailRoute() {
+  return <JobDetailPage backTo="/failed" backLabel="Back to failed jobs" />;
 }
 
 function WorkerDetailRoute() {
@@ -81,7 +93,7 @@ function ArchiveRoute() {
   return <ArchivePage queues={queues} />;
 }
 
-export function App() {
+function DashboardRoutes() {
   return (
     <DashboardDataProvider>
       <Routes>
@@ -93,7 +105,9 @@ export function App() {
           <Route path="queues" element={<QueuesRoute />} />
           <Route path="queues/:queueName" element={<QueueDetailRoute />} />
           <Route path="jobs" element={<JobsRoute />} />
+          <Route path="schedules" element={<SchedulesRoute />} />
           <Route path="jobs/:jobId" element={<JobDetailRoute />} />
+          <Route path="failed/:jobId" element={<FailedJobDetailRoute />} />
           <Route path="completed" element={<CompletedJobsRoute />} />
           <Route path="silenced" element={<SilencedJobsRoute />} />
           <Route path="workers" element={<WorkersRoute />} />
@@ -105,6 +119,32 @@ export function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </DashboardDataProvider>
+  );
+}
+
+function AppShell() {
+  const { ready, requiresAuth, isAuthenticated } = useDashboardAuth();
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-slate-950 text-slate-200 flex items-center justify-center text-sm">
+        Loading dashboard…
+      </div>
+    );
+  }
+
+  if (requiresAuth && !isAuthenticated) {
+    return <LoginPage />;
+  }
+
+  return <DashboardRoutes />;
+}
+
+export function App() {
+  return (
+    <DashboardAuthProvider>
+      <AppShell />
+    </DashboardAuthProvider>
   );
 }
 

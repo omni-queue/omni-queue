@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import Redis from 'ioredis';
-import type { StoredJob } from '@omni-queue/core';
+import type { StoredJob } from '@vasto/core';
 import { RedisStore } from '../src/redis-store';
 
 const runIntegration =
@@ -17,7 +17,7 @@ function createJob(overrides: Partial<StoredJob> = {}): StoredJob {
     id: overrides.id ?? randomUUID(),
     name: overrides.name ?? 'integration-job',
     payload: overrides.payload ?? { ok: true },
-    queue: overrides.queue ?? 'integration-queue',
+    queue: overrides.queue ?? 'integration',
     attempts: overrides.attempts ?? 0,
     state: overrides.state ?? 'queued',
     createdAt: overrides.createdAt ?? now,
@@ -28,7 +28,7 @@ function createJob(overrides: Partial<StoredJob> = {}): StoredJob {
 
 integration('RedisStore integration', () => {
   it('handles delayed enqueue, promotion, and dequeue with a live Redis instance', async () => {
-    const prefix = `omniq:test:${randomUUID()}`;
+    const prefix = `vasto:test:${randomUUID()}`;
     const client = new Redis(process.env.REDIS_TEST_URL!);
     const store = new RedisStore({ client, prefix });
 
