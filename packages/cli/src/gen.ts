@@ -44,7 +44,7 @@ function generateIsolationWorkerShim(): string {
 		"import { pathToFileURL } from 'node:url';",
 		'',
 		'const require = createRequire(import.meta.url);',
-		"const workerPath = require.resolve('@vasto/core/libs/isolation-worker');",
+		"const workerPath = require.resolve('@vasto-queue/core/libs/isolation-worker');",
 		'await import(pathToFileURL(workerPath).href);',
 		'',
 	].join('\n');
@@ -116,7 +116,7 @@ export async function runGenerateIsolation(flagArgs: string[]) {
 		console.log(`  mkdir -p ${rel}`);
 		console.log('');
 		console.log(`  # ${rel}/main.ts`);
-		console.log("  import { defineIsolation } from '@vasto/core';");
+		console.log("  import { defineIsolation } from '@vasto-queue/core';");
 		console.log("  import { MyJob } from '../jobs/my-job';");
 		console.log('');
 		console.log('  export const { getRegistry, getPlugins } = defineIsolation({');

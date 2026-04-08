@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import Redis from 'ioredis';
-import type { StoredJob } from '@vasto/core';
+import type { StoredJob } from '@vasto-queue/core';
 import { RedisStore } from '../src/redis-store';
 
 const runIntegration =

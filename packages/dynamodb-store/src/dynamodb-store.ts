@@ -29,7 +29,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 type JobDoc = StoredJob & {
   priorityRank: number;

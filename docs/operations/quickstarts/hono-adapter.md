@@ -33,7 +33,7 @@ app.post('/webhooks/publish', async (c) => {
 
 ```ts
 import path from 'node:path';
-import { vastoHonoAdapter, bindVastoHonoWebSocket } from '@vasto/hono-adapter';
+import { vastoHonoAdapter, bindVastoHonoWebSocket } from '@vasto-queue/hono-adapter';
 
 const handler = vastoHonoAdapter({
   supervisor,

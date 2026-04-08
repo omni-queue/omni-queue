@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/postgres-store",
+  "name": "@vasto-queue/postgres-store",
   "version": "0.1.0",
   "description": "PostgreSQL storage adapter for Vasto",
   "keywords": [
@@ -36,7 +36,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vasto/core": "*",
+    "@vasto-queue/core": "*",
     "pg": "^8.13.3"
   },
   "devDependencies": {

@@ -3,5 +3,5 @@ import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
 const require = createRequire(import.meta.url);
-const workerPath = require.resolve('@vasto/core/libs/isolation-worker');
+const workerPath = require.resolve('@vasto-queue/core/libs/isolation-worker');
 await import(pathToFileURL(workerPath).href);

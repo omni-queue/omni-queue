@@ -12,7 +12,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 import { Pool, PoolOptions, RowDataPacket, createPool } from 'mysql2/promise';
 
 export interface MySqlStoreConfig {

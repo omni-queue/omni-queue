@@ -4,7 +4,7 @@ import {
   createExpressWebSocketBinding,
 } from './index';
 
-describe('@vasto/express-adapter exports', () => {
+describe('@vasto-queue/express-adapter exports', () => {
   it('exports adapter functions', () => {
     expect(createExpressAdapter).toBeTypeOf('function');
     expect(createExpressWebSocketBinding).toBeTypeOf('function');

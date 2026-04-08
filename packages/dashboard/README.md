@@ -1,10 +1,10 @@
-# @vasto/dashboard
+# @vasto-queue/dashboard
 
 Shadcn-style dashboard UI package for Vasto.
 
 ## Purpose
 
-This package hosts the dashboard frontend as a workspace package instead of an example-only app. It targets the Supervisor-owned dashboard APIs exposed from `@vasto/core`.
+This package hosts the dashboard frontend as a workspace package instead of an example-only app. It targets the Supervisor-owned dashboard APIs exposed from `@vasto-queue/core`.
 
 ## Expected backend endpoints
 

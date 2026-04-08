@@ -367,9 +367,9 @@ async function main(): Promise<void> {
         postgresConfigured: Boolean(process.env['POSTGRES_URL']),
       },
       dependencyVersions: {
-        '@vasto/core': workspacePackageVersion('core'),
-        '@vasto/redis-store': workspacePackageVersion('redis-store'),
-        '@vasto/postgres-store': workspacePackageVersion('postgres-store'),
+        '@vasto-queue/core': workspacePackageVersion('core'),
+        '@vasto-queue/redis-store': workspacePackageVersion('redis-store'),
+        '@vasto-queue/postgres-store': workspacePackageVersion('postgres-store'),
         bullmq: packageVersion('bullmq'),
         'bee-queue': packageVersion('bee-queue'),
         'pg-boss': packageVersion('pg-boss'),

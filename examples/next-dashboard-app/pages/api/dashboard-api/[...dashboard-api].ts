@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { vastoNextAdapter } from '@vasto/next-adapter';
+import { vastoNextAdapter } from '@vasto-queue/next-adapter';
 import { ensureSupervisorStarted, supervisor } from '../../../src/runtime';
 
 export default async function handler(req: unknown, res: unknown) {

@@ -3,7 +3,7 @@ import { MetricsCollector } from '../src/collector';
 import { exportDataDog, exportPrometheus, exportStatsD } from '../src/exporters';
 import { QueueDepthPoller } from '../src/depth-poller';
 
-describe('@vasto/metrics', () => {
+describe('@vasto-queue/metrics', () => {
   it('collects counters, gauges, and histograms', () => {
     const collector = new MetricsCollector();
 

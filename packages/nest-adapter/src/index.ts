@@ -4,7 +4,7 @@ import {
   vastoAdapter,
   type DashboardApiOptions,
   type DashboardWebSocketController,
-} from '@vasto/dashboard-api';
+} from '@vasto-queue/dashboard-api';
 
 export interface NestLikeApplication {
   use: (...args: unknown[]) => unknown;

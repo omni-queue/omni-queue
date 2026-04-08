@@ -1,6 +1,6 @@
 # next-dashboard-app
 
-Next.js + `@vasto/next-adapter` dashboard hosting sample.
+Next.js + `@vasto-queue/next-adapter` dashboard hosting sample.
 
 ## Install from npm
 
@@ -12,7 +12,7 @@ npm install
 To publish dashboard assets with the CLI:
 
 ```bash
-npx @vasto/cli dashboard:publish --out=./public/vasto-dashboard --base=/api/dashboard-api --api-base=/api/dashboard-api
+npx @vasto-queue/cli dashboard:publish --out=./public/vasto-dashboard --base=/api/dashboard-api --api-base=/api/dashboard-api
 ```
 
 ## Note
@@ -78,6 +78,6 @@ npm run worker
 - `QUEUE_DATA_DIR`: shared file queue directory. Default: `queue-data`
 - `RECOVER_REPEATABLES`: default `false` in this example. Set to `true` only when you intentionally want persisted interval/cron schedules to recover on startup.
 
-This sample uses `FileQueueStorage` from `@vasto/core` by default so server and worker share the same local storage directory out-of-the-box.
+This sample uses `FileQueueStorage` from `@vasto-queue/core` by default so server and worker share the same local storage directory out-of-the-box.
 
 If you see jobs enqueueing every few seconds in hybrid mode, old persisted repeatable schedules are likely present in `queue-data`. This sample disables repeatable recovery on startup by default (`RECOVER_REPEATABLES=false`), so those definitions are ignored unless you explicitly opt in.

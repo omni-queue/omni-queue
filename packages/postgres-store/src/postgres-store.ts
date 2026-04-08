@@ -12,7 +12,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 export interface PostgresStoreConfig {
   /**

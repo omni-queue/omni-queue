@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/workflow",
+  "name": "@vasto-queue/workflow",
   "version": "0.1.0",
   "description": "Workflow engine utilities for Vasto",
   "keywords": [
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vasto/core": "*"
+    "@vasto-queue/core": "*"
   },
   "publishConfig": {
     "access": "public"

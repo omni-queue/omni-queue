@@ -1,9 +1,9 @@
 import express from 'express';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
-import type { DashboardAuthContext } from '@vasto/core';
-import { JobManager, Supervisor } from '@vasto/core';
-import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto/express-adapter';
+import type { DashboardAuthContext } from '@vasto-queue/core';
+import { JobManager, Supervisor } from '@vasto-queue/core';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto-queue/express-adapter';
 import 'dotenv/config';
 import {
   GenerateThumbnailJob,

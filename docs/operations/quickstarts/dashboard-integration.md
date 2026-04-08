@@ -47,7 +47,7 @@ Then open `http://localhost:4173`.
 Generate static dashboard files into your app's public directory:
 
 ```bash
-npx @vasto/cli dashboard:publish --out=./public/vasto-dashboard --base=/secured-dashboard --api-base=/api/dashboard-api
+npx @vasto-queue/cli dashboard:publish --out=./public/vasto-dashboard --base=/secured-dashboard --api-base=/api/dashboard-api
 ```
 
 Use values matching your adapter mount configuration.
@@ -125,8 +125,8 @@ Supported transport values:
 
 ## Package boundaries
 
-- `@vasto/dashboard-api`: shared API/auth/websocket primitives used by framework adapters.
-- `@vasto/dashboard`: frontend UI package.
-- Adapter packages (`@vasto/*-adapter`): framework-specific integration layer.
+- `@vasto-queue/dashboard-api`: shared API/auth/websocket primitives used by framework adapters.
+- `@vasto-queue/dashboard`: frontend UI package.
+- Adapter packages (`@vasto-queue/*-adapter`): framework-specific integration layer.
 
-Queue runtime semantics remain in `@vasto/core`.
+Queue runtime semantics remain in `@vasto-queue/core`.

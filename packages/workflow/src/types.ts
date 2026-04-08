@@ -1,4 +1,4 @@
-import type { StoredJob } from '@vasto/core';
+import type { StoredJob } from '@vasto-queue/core';
 
 export type WorkflowNodeStatus = 'pending' | 'queued' | 'done' | 'failed';
 

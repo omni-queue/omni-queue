@@ -4,7 +4,7 @@ import {
   vastoAdapter,
   type DashboardApiOptions,
   type DashboardWebSocketController,
-} from '@vasto/dashboard-api';
+} from '@vasto-queue/dashboard-api';
 
 export interface FastifyLike {
   use?: (...args: unknown[]) => unknown;

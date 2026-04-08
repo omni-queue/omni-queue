@@ -1,4 +1,4 @@
-# `@vasto/fastify-adapter`
+# `@vasto-queue/fastify-adapter`
 
 Fastify integration adapter for Vasto dashboard API.
 
@@ -11,7 +11,7 @@ import path from 'node:path';
 import {
   bindVastoFastifyWebSocket,
   vastoFastifyAdapter,
-} from '@vasto/fastify-adapter';
+} from '@vasto-queue/fastify-adapter';
 
 await fastify.register(import('@fastify/middie'));
 fastify.use(
@@ -36,7 +36,7 @@ bindVastoFastifyWebSocket(fastify.server, {
 queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules` and copies them into the target directory. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto-queue/dashboard` in `node_modules` and copies them into the target directory. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
 
 ## Runtime configuration
 

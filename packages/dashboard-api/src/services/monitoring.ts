@@ -1,4 +1,4 @@
-import type { CompletedJobRecord, StoredJob, Supervisor } from '@vasto/core';
+import type { CompletedJobRecord, StoredJob, Supervisor } from '@vasto-queue/core';
 
 export type MonitoringTagSummary = {
   tag: string;

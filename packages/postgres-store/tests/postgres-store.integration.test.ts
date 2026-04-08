@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { describe, expect, it } from 'vitest';
 import { Pool } from 'pg';
-import type { StoredJob } from '@vasto/core';
+import type { StoredJob } from '@vasto-queue/core';
 import { PostgresStore } from '../src/postgres-store';
 
 const runIntegration =

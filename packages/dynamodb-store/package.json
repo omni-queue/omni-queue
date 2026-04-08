@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/dynamodb-store",
+  "name": "@vasto-queue/dynamodb-store",
   "version": "0.1.0",
   "description": "DynamoDB storage adapter for Vasto",
   "keywords": [
@@ -37,7 +37,7 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.891.0",
     "@aws-sdk/lib-dynamodb": "^3.891.0",
-    "@vasto/core": "*"
+    "@vasto-queue/core": "*"
   },
   "publishConfig": {
     "access": "public"

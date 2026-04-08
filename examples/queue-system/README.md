@@ -7,7 +7,7 @@ In-memory Vasto example demonstrating multi processing, plugins, and dashboard i
 - Multiple queues: `emails`, `reports`, `maintenance`
 - Worker isolation via thread runtime modules
 - Built-in plugins (`DAGPlugin`, `RateLimiterPlugin`) + OTel tracing plugin
-- Dashboard API + WebSocket mounting through `@vasto/express-adapter`
+- Dashboard API + WebSocket mounting through `@vasto-queue/express-adapter`
 
 ## Install from npm
 
@@ -19,7 +19,7 @@ npm install
 To publish dashboard assets with the CLI:
 
 ```bash
-npx @vasto/cli dashboard:publish --out=./public/vasto-dashboard --base=/dashboard --api-base=/api/dashboard
+npx @vasto-queue/cli dashboard:publish --out=./public/vasto-dashboard --base=/dashboard --api-base=/api/dashboard
 ```
 
 ## Run the server

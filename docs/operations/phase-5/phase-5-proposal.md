@@ -25,7 +25,7 @@ Phase 5 focuses on four tracks:
 
 #### Implementation Status (Completed)
 
-Milestone 5.1 is implemented in `@vasto/core` and surfaced in the dashboard stack.
+Milestone 5.1 is implemented in `@vasto-queue/core` and surfaced in the dashboard stack.
 
 **1) Exactly-once / Idempotency guidance + helper APIs**
 - Queue configuration supports idempotency via `queueConfig.idempotency`.
@@ -63,7 +63,7 @@ import {
   createReliabilityProfile,
   createPoisonMessagePolicy,
   defineQueues,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 const profile = createReliabilityProfile({
   exactlyOnce: 'balanced',
@@ -116,7 +116,7 @@ Milestone 5.2 is implemented in dashboard auth contracts, request middleware, ro
 - Tokens are modeled by `DashboardApiToken` with:
   - `id`, `token`, `role`
   - optional `scopes`, `tenantId`, `allowedQueues`, `expiresAt`, `active`
-- Reusable helper APIs in `@vasto/dashboard-api`:
+- Reusable helper APIs in `@vasto-queue/dashboard-api`:
   - `createScopedBearerAuth({ tokens, realm })`
   - `rotateScopedBearerTokens(currentTokens, updates)`
 - Rotation pattern:
@@ -139,7 +139,7 @@ Milestone 5.2 is implemented in dashboard auth contracts, request middleware, ro
 **Usage Example: scoped bearer auth**
 
 ```ts
-import { createScopedBearerAuth, rotateScopedBearerTokens } from '@vasto/dashboard-api';
+import { createScopedBearerAuth, rotateScopedBearerTokens } from '@vasto-queue/dashboard-api';
 
 let tokens = [
   {

@@ -1,4 +1,4 @@
-import type { CompletedJobRecord, QueueLifecycleEvent, StoredJob, Supervisor } from '@vasto/core';
+import type { CompletedJobRecord, QueueLifecycleEvent, StoredJob, Supervisor } from '@vasto-queue/core';
 
 export type SloQueueSummary = {
   queueName: string;

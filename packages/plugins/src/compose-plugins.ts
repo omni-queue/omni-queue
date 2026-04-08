@@ -1,4 +1,4 @@
-import type { Plugin } from '@vasto/core';
+import type { Plugin } from '@vasto-queue/core';
 
 export function composePlugins(
   ...plugins: Array<Plugin | Plugin[] | null | undefined | false>

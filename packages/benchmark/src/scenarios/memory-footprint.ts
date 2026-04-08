@@ -11,7 +11,7 @@
 import { Queue as BullMQQueue } from 'bullmq';
 import BeeQueue from 'bee-queue';
 import PgBoss from 'pg-boss';
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 import { buildReport, DEFAULT_OPTIONS, printReport, rssInMb, withTimeout } from '../harness.js';
 import type { ScenarioOptions, ScenarioReport, ScenarioResult } from '../types.js';
 import { createVastoFixture } from '../vasto-fixture.js';

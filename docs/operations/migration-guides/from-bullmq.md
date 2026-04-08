@@ -57,7 +57,7 @@ This baseline becomes the acceptance bar for your first migrated queue.
 In BullMQ, processors are often free functions attached to a queue. In Vasto, promote them into `Job` subclasses with a typed payload and explicit queue affinity.
 
 ```ts
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 export class SendEmailJob extends Job<{ userId: string }> {
   static jobName = 'send-email';

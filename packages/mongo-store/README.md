@@ -1,4 +1,4 @@
-# `@vasto/mongo-store`
+# `@vasto-queue/mongo-store`
 
 MongoDB storage adapter for [Vasto](../../README.md).
 
@@ -7,13 +7,13 @@ Uses the official MongoDB Node.js driver with atomic `findOneAndUpdate` leasing 
 ## Installation
 
 ```bash
-npm install @vasto/mongo-store mongodb
+npm install @vasto-queue/mongo-store mongodb
 ```
 
 ## Usage
 
 ```ts
-import { MongoStore } from '@vasto/mongo-store';
+import { MongoStore } from '@vasto-queue/mongo-store';
 
 const store = new MongoStore({
 	client: {},

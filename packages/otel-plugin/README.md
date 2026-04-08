@@ -1,4 +1,4 @@
-# `@vasto/otel-plugin`
+# `@vasto-queue/otel-plugin`
 
 OpenTelemetry tracing plugin for Vasto.
 
@@ -10,7 +10,7 @@ OpenTelemetry tracing plugin for Vasto.
 ## Usage
 
 ```ts
-import { TracingPlugin } from '@vasto/otel-plugin';
+import { TracingPlugin } from '@vasto-queue/otel-plugin';
 
 const plugins = [new TracingPlugin()];
 ```

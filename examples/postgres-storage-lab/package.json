@@ -10,7 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@vasto/core": "*",
-    "@vasto/postgres-store": "*"
+    "@vasto-queue/core": "*",
+    "@vasto-queue/postgres-store": "*"
   }
 }

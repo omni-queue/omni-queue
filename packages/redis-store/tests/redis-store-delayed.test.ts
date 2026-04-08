@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import type { StoredJob } from '@vasto/core';
+import type { StoredJob } from '@vasto-queue/core';
 
 vi.mock('ioredis', async () => {
   class MockRedis {

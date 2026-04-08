@@ -7,12 +7,12 @@ import type {
 	DashboardAuthOptions,
 	DashboardRole,
 	Supervisor,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 import {
 	vastoAdapter,
 	resolveDashboardConfig,
 	type DashboardApiOptions,
-} from '@vasto/dashboard-api';
+} from '@vasto-queue/dashboard-api';
 
 export interface ElysiaDashboardController {
 	plugin: Elysia;

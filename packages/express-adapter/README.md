@@ -1,15 +1,15 @@
-# `@vasto/express-adapter`
+# `@vasto-queue/express-adapter`
 
 Default framework adapter for Vasto dashboard integration.
 
-Built on top of `@vasto/dashboard-api` and intended for Express/Connect-compatible apps.
+Built on top of `@vasto-queue/dashboard-api` and intended for Express/Connect-compatible apps.
 
 This package does not start an HTTP server for you. Mount it into your existing Express app, optionally serve the built UI, and bind WebSocket upgrades on the server you own.
 
 ## Installation
 
 ```bash
-npm install @vasto/express-adapter
+npm install @vasto-queue/express-adapter
 ```
 
 ## Usage
@@ -20,7 +20,7 @@ import path from 'node:path';
 import {
   createExpressAdapter,
   createExpressWebSocketBinding,
-} from '@vasto/express-adapter';
+} from '@vasto-queue/express-adapter';
 
 const app = express();
 app.use(
@@ -49,7 +49,7 @@ Publish the UI assets into that folder with:
 queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto-queue/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
 
 ## Runtime configuration
 

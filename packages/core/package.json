@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/core",
+  "name": "@vasto-queue/core",
   "version": "0.1.0",
   "description": "Core abstractions and interfaces for Vasto",
   "keywords": [
@@ -14,7 +14,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/binarygeotech/vasto.git",
+    "url": "https://github.com/vastohq/vasto.git",
     "directory": "packages/core"
   },
   "type": "module",

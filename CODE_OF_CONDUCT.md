@@ -36,7 +36,7 @@ This Code of Conduct applies within all project spaces and when an individual is
 
 If you experience or witness unacceptable behavior, report it to the maintainers at:
 
-- security and conduct contact: maintainers@vasto.dev
+- security and conduct contact: maintainers@vasto-queue.dev
 
 All reports will be reviewed and investigated promptly and fairly.
 

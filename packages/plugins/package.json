@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/plugins",
+  "name": "@vasto-queue/plugins",
   "version": "0.1.0",
   "description": "Reusable plugins for Vasto",
   "keywords": [
@@ -33,7 +33,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vasto/core": "*"
+    "@vasto-queue/core": "*"
   },
   "publishConfig": {
     "access": "public"

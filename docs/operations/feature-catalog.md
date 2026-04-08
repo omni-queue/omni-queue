@@ -65,12 +65,12 @@ This catalog is the canonical, implementation-focused inventory of capabilities 
 
 Implemented adapters:
 
-- `@vasto/redis-store`
-- `@vasto/postgres-store`
-- `@vasto/mysql-store`
-- `@vasto/mongo-store`
-- `@vasto/dynamodb-store`
-- in-memory storage in `@vasto/core`
+- `@vasto-queue/redis-store`
+- `@vasto-queue/postgres-store`
+- `@vasto-queue/mysql-store`
+- `@vasto-queue/mongo-store`
+- `@vasto-queue/dynamodb-store`
+- in-memory storage in `@vasto-queue/core`
 
 Notable capabilities:
 
@@ -81,8 +81,8 @@ Notable capabilities:
 
 ## Dashboard and API
 
-- First-party dashboard UI package (`@vasto/dashboard`).
-- Dashboard API package (`@vasto/dashboard-api`) with HTTP server/request-handler/middleware integration patterns.
+- First-party dashboard UI package (`@vasto-queue/dashboard`).
+- Dashboard API package (`@vasto-queue/dashboard-api`) with HTTP server/request-handler/middleware integration patterns.
 - RBAC model (`viewer`, `operator`, `admin`) and scoped auth contracts.
 - Tenant-aware filtering strategy for operator-facing endpoints and streams.
 - Real-time monitoring and operational controls.
@@ -91,16 +91,16 @@ Notable capabilities:
 
 Official adapters:
 
-- Express (`@vasto/express-adapter`)
-- Next.js (`@vasto/next-adapter`)
-- Fastify (`@vasto/fastify-adapter`)
-- Nest (`@vasto/nest-adapter`)
-- Hono (`@vasto/hono-adapter`)
-- Elysia (`@vasto/elysia-adapter`) — HTTP/static integration with native Bun WebSocket live updates (`/ws`), plus optional polling fallback.
+- Express (`@vasto-queue/express-adapter`)
+- Next.js (`@vasto-queue/next-adapter`)
+- Fastify (`@vasto-queue/fastify-adapter`)
+- Nest (`@vasto-queue/nest-adapter`)
+- Hono (`@vasto-queue/hono-adapter`)
+- Elysia (`@vasto-queue/elysia-adapter`) — HTTP/static integration with native Bun WebSocket live updates (`/ws`), plus optional polling fallback.
 
 ## CLI and Developer Tooling
 
-Implemented CLI surfaces (`@vasto/cli`):
+Implemented CLI surfaces (`@vasto-queue/cli`):
 
 - `vasto init`
 - `vasto generate job`
@@ -119,8 +119,8 @@ Implemented CLI surfaces (`@vasto/cli`):
 
 ## Observability and Telemetry
 
-- Metrics package (`@vasto/metrics`) with exporters and runtime collection hooks.
-- OpenTelemetry plugin package (`@vasto/otel-plugin`).
+- Metrics package (`@vasto-queue/metrics`) with exporters and runtime collection hooks.
+- OpenTelemetry plugin package (`@vasto-queue/otel-plugin`).
 - Lifecycle event stream and replay-oriented operator visibility.
 
 ## Examples and executable references

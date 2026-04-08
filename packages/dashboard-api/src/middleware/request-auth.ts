@@ -1,4 +1,4 @@
-import type { DashboardAuthContext, DashboardAuthOptions } from '@vasto/core';
+import type { DashboardAuthContext, DashboardAuthOptions } from '@vasto-queue/core';
 import {
   authenticateDashboardRequest,
   hasDashboardPermissionForContext,

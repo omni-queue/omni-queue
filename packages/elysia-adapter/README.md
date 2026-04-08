@@ -1,4 +1,4 @@
-# @vasto/elysia-adapter
+# @vasto-queue/elysia-adapter
 
 Elysia integration adapter for Vasto dashboard hosting.
 
@@ -17,7 +17,7 @@ This adapter gives Elysia and Bun users a supported integration path today by pr
 ```ts
 import path from 'node:path';
 import { Elysia } from 'elysia';
-import { registerElysiaAdapter } from '@vasto/elysia-adapter';
+import { registerElysiaAdapter } from '@vasto-queue/elysia-adapter';
 
 const app = new Elysia();
 
@@ -56,4 +56,4 @@ Publish the UI assets into that folder with:
 queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto-queue/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.

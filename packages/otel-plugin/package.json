@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/otel-plugin",
+  "name": "@vasto-queue/otel-plugin",
   "version": "0.1.0",
   "description": "OpenTelemetry tracing plugin for Vasto",
   "keywords": [
@@ -35,7 +35,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vasto/core": "*",
+    "@vasto-queue/core": "*",
     "@opentelemetry/api": "^1.9.0"
   },
   "publishConfig": {

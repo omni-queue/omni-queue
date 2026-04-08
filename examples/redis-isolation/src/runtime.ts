@@ -3,8 +3,8 @@ import {
     defineQueues,
     defineWorkers,
     resolveRuntimeModules,
-} from '@vasto/core';
-import { RedisStore } from '@vasto/redis-store';
+} from '@vasto-queue/core';
+import { RedisStore } from '@vasto-queue/redis-store';
 import {
     GenerateThumbnailJob,
     SendWelcomeEmailJob,

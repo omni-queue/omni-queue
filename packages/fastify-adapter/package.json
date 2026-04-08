@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/fastify-adapter",
+  "name": "@vasto-queue/fastify-adapter",
   "version": "0.1.0",
   "description": "Fastify adapter for Vasto dashboard-api",
   "keywords": [
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vasto/dashboard-api": "*"
+    "@vasto-queue/dashboard-api": "*"
   },
   "peerDependencies": {
     "express": "^4.21.2",
