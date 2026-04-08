@@ -1,4 +1,4 @@
-import type { Job, Plugin, StoredJob } from '@vasto/core';
+import type { Job, Plugin, StoredJob } from '@vasto-queue/core';
 
 export interface HookPluginOptions {
   onEnqueue?(job: Job): Promise<void> | void;

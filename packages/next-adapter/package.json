@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/next-adapter",
+  "name": "@vasto-queue/next-adapter",
   "version": "0.1.0",
   "description": "Next.js adapter for Vasto dashboard-api",
   "keywords": [
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vasto/dashboard-api": "*",
+    "@vasto-queue/dashboard-api": "*",
     "express": "^4.21.2"
   },
   "publishConfig": {

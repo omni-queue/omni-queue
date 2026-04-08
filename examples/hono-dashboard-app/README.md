@@ -1,6 +1,6 @@
 # hono-dashboard-app
 
-Hono + `@vasto/hono-adapter` dashboard hosting sample.
+Hono + `@vasto-queue/hono-adapter` dashboard hosting sample.
 
 ## Install from npm
 
@@ -12,7 +12,7 @@ npm install
 To publish dashboard assets with the CLI:
 
 ```bash
-npx @vasto/cli dashboard:publish --out=./public/vasto-dashboard --base=/secured-dashboard --api-base=/api/dashboard-api
+npx @vasto-queue/cli dashboard:publish --out=./public/vasto-dashboard --base=/secured-dashboard --api-base=/api/dashboard-api
 ```
 
 ## Why worker is a separate script in production
@@ -72,6 +72,6 @@ npm run worker
 - `QUEUE_DATA_DIR`: default `queue-data`
 - `RECOVER_REPEATABLES`: default `false` in this example. Set to `true` only when you intentionally want persisted interval/cron schedules to recover on startup.
 
-This sample uses `FileQueueStorage` from `@vasto/core` by default so server and worker share the same local storage directory out-of-the-box.
+This sample uses `FileQueueStorage` from `@vasto-queue/core` by default so server and worker share the same local storage directory out-of-the-box.
 
 If you see jobs enqueueing every few seconds in hybrid mode, old persisted repeatable schedules are likely present in `queue-data`. This sample disables repeatable recovery on startup by default (`RECOVER_REPEATABLES=false`), so those definitions are ignored unless you explicitly opt in.

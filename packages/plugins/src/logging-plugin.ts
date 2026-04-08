@@ -1,4 +1,4 @@
-import type { Job, Plugin, StoredJob } from '@vasto/core';
+import type { Job, Plugin, StoredJob } from '@vasto-queue/core';
 
 export interface LoggingPluginLogger {
     debug?(message: string, meta?: Record<string, unknown>): void;

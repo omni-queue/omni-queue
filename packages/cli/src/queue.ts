@@ -360,7 +360,7 @@ function deriveDefaultPublishBase(cwd: string, outDir: string): string {
 function resolveDashboardDistDir(cwd: string): string {
 	const require = createRequire(import.meta.url);
 	try {
-		const dashboardPackageJson = require.resolve('@vasto/dashboard/package.json', {
+		const dashboardPackageJson = require.resolve('@vasto-queue/dashboard/package.json', {
 			paths: [cwd],
 		});
 		const distDir = path.join(path.dirname(dashboardPackageJson), 'dist');
@@ -372,7 +372,7 @@ function resolveDashboardDistDir(cwd: string): string {
 	}
 
 	throw new Error(
-		'Unable to locate dashboard dist assets from @vasto/dashboard. Install the package in this project before publishing assets.'
+		'Unable to locate dashboard dist assets from @vasto-queue/dashboard. Install the package in this project before publishing assets.'
 	);
 }
 
@@ -406,7 +406,7 @@ async function runQueueInit(flagArgs: string[]) {
 	ensureFile(
 		sampleJobPath,
 		[
-			"import type { Job } from '@vasto/core';",
+			"import type { Job } from '@vasto-queue/core';",
 			'',
 			'type SampleJobPayload = {',
 			"\tmessage: string;",
@@ -427,7 +427,7 @@ async function runQueueInit(flagArgs: string[]) {
 	ensureFile(
 		sampleDefinitionPath,
 		[
-			"import { defineIsolation } from '@vasto/core';",
+			"import { defineIsolation } from '@vasto-queue/core';",
 			"import { SampleJob } from '../jobs/sample-job';",
 			'',
 			'export const { getRegistry, getPlugins } = defineIsolation({',
@@ -491,7 +491,7 @@ async function runGenerateJob(flagArgs: string[]) {
 	fs.writeFileSync(
 		filePath,
 		[
-			"import type { Job } from '@vasto/core';",
+			"import type { Job } from '@vasto-queue/core';",
 			'',
 			`export type ${className}Payload = {`,
 			"\tinput: string;",
@@ -544,7 +544,7 @@ async function runGenerateApiJob(flagArgs: string[]) {
 	fs.writeFileSync(
 		filePath,
 		[
-			"import { Job } from '@vasto/core';",
+			"import { Job } from '@vasto-queue/core';",
 			'',
 			`export type ${className}Payload = {`,
 			"\trequestId: string;",
@@ -603,7 +603,7 @@ async function runGenerateWorkflow(flagArgs: string[]) {
 	fs.writeFileSync(
 		filePath,
 		[
-			"import { Job, type FlowNodeInput, type Supervisor } from '@vasto/core';",
+			"import { Job, type FlowNodeInput, type Supervisor } from '@vasto-queue/core';",
 			'',
 			`export class ${classBase}PrepareJob extends Job<{ workflowId: string }> {`,
 			`	static jobName = '${workflowName}-prepare';`,
@@ -666,7 +666,7 @@ async function runGenerateScheduledJob(flagArgs: string[]) {
 	fs.writeFileSync(
 		filePath,
 		[
-			"import { Job, type JobManager } from '@vasto/core';",
+			"import { Job, type JobManager } from '@vasto-queue/core';",
 			'',
 			`export class ${className} extends Job<{ triggeredBy: string }> {`,
 			`	static jobName = '${jobName}';`,

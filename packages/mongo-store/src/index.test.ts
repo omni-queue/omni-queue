@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { MongoStore } from './index';
 
-describe('@vasto/mongo-store exports', () => {
+describe('@vasto-queue/mongo-store exports', () => {
   it('exports MongoStore', () => {
     expect(MongoStore).toBeTypeOf('function');
   });

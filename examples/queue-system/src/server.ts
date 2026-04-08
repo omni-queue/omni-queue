@@ -7,10 +7,10 @@ import {
   defineQueues,
   defineWorkers,
   resolveRuntimeModules,
-} from '@vasto/core';
-import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto/express-adapter';
-import { TracingPlugin } from '@vasto/otel-plugin';
-import { DAGPlugin, RateLimiterPlugin } from '@vasto/plugins';
+} from '@vasto-queue/core';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto-queue/express-adapter';
+import { TracingPlugin } from '@vasto-queue/otel-plugin';
+import { DAGPlugin, RateLimiterPlugin } from '@vasto-queue/plugins';
 import { CleanupJob, GenerateReportJob, SendEmailJob } from './jobs/index.js';
 import { registerGracefulShutdown } from './graceful-shutdown.js';
 
@@ -84,7 +84,7 @@ async function main() {
   // Dispatch sample jobs
   await supervisor.jobManager.dispatch(
     new SendEmailJob({
-      to: 'ops@vasto.local',
+      to: 'ops@vasto-queue.local',
       subject: '[CRITICAL] Production alert',
       body: 'Immediate attention required.',
     }),
@@ -93,7 +93,7 @@ async function main() {
 
   await supervisor.jobManager.dispatch(
     new SendEmailJob({
-      to: 'dev@vasto.local',
+      to: 'dev@vasto-queue.local',
       subject: 'Weekly newsletter',
       body: 'Here is your weekly digest.',
     }),
@@ -102,7 +102,7 @@ async function main() {
 
   await supervisor.jobManager.dispatch(
     new SendEmailJob({
-      to: 'support@vasto.local',
+      to: 'support@vasto-queue.local',
       subject: 'Your ticket was updated',
       body: 'A reply was posted to your support ticket.',
     }),
@@ -111,7 +111,7 @@ async function main() {
 
   await supervisor.jobManager.dispatch(
     new SendEmailJob({
-      to: 'dev@vasto.local',
+      to: 'dev@vasto-queue.local',
       subject: 'Hello from Vasto',
       body: 'This is a class-based job dispatch test.',
     })
@@ -132,7 +132,7 @@ async function main() {
 
   await supervisor.jobManager.dispatchBatch('Daily operations batch', [
     new SendEmailJob({
-      to: 'batch@vasto.local',
+      to: 'batch@vasto-queue.local',
       subject: 'Batch welcome email',
       body: 'This job is part of a tracked batch.',
     }),

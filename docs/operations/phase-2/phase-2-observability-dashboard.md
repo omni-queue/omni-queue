@@ -8,7 +8,7 @@ Provide first-class operational visibility, metrics, and dashboard workflows for
 
 ### 2.1 Metrics Collection and Export
 
-- `@vasto/metrics` package
+- `@vasto-queue/metrics` package
 - Prometheus client integration
 - StatsD and DataDog exporters
 - Auto-collected runtime metrics (queue depth, duration, failures)

@@ -1,4 +1,4 @@
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 export class GenerateReportJob extends Job {
     static jobName = 'GenerateReportJob';
     jobName = GenerateReportJob.jobName;

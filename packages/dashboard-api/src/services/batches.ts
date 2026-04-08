@@ -1,4 +1,4 @@
-import type { BatchRecord, Supervisor } from '@vasto/core';
+import type { BatchRecord, Supervisor } from '@vasto-queue/core';
 
 function paginate<T>(items: T[], limit?: number, offset?: number): T[] {
   const start = Number.isFinite(offset) ? (offset as number) : 0;

@@ -39,10 +39,10 @@ Implement every method in `QueueStorage` and pass an instance in `storageAdapter
 
 ---
 
-## InMemoryQueueStorage <Badge type="tip" text="@vasto/core" />
+## InMemoryQueueStorage <Badge type="tip" text="@vasto-queue/core" />
 
 ```ts
-import { InMemoryQueueStorage } from '@vasto/core';
+import { InMemoryQueueStorage } from '@vasto-queue/core';
 
 new InMemoryQueueStorage()
 ```
@@ -51,10 +51,10 @@ No arguments. State is lost when the process exits. **Not for production.**
 
 ---
 
-## FileQueueStorage <Badge type="tip" text="@vasto/core" />
+## FileQueueStorage <Badge type="tip" text="@vasto-queue/core" />
 
 ```ts
-import { FileQueueStorage } from '@vasto/core';
+import { FileQueueStorage } from '@vasto-queue/core';
 
 new FileQueueStorage(dataDir?: string)
 ```
@@ -67,10 +67,10 @@ Uses `fs.renameSync` for atomic cross-process claim semantics. No `migrate()` ca
 
 ---
 
-## RedisQueueStorage <Badge type="tip" text="@vasto/redis-store" />
+## RedisQueueStorage <Badge type="tip" text="@vasto-queue/redis-store" />
 
 ```ts
-import { RedisQueueStorage } from '@vasto/redis-store';
+import { RedisQueueStorage } from '@vasto-queue/redis-store';
 
 new RedisQueueStorage(options)
 ```
@@ -85,10 +85,10 @@ new RedisQueueStorage(options)
 
 ---
 
-## PostgresQueueStorage <Badge type="tip" text="@vasto/postgres-store" />
+## PostgresQueueStorage <Badge type="tip" text="@vasto-queue/postgres-store" />
 
 ```ts
-import { PostgresQueueStorage } from '@vasto/postgres-store';
+import { PostgresQueueStorage } from '@vasto-queue/postgres-store';
 
 const storage = new PostgresQueueStorage({ connectionString: '...' });
 await storage.migrate(); // must be called before supervisor.start()
@@ -101,10 +101,10 @@ await storage.migrate(); // must be called before supervisor.start()
 
 ---
 
-## MySQLQueueStorage <Badge type="tip" text="@vasto/mysql-store" />
+## MySQLQueueStorage <Badge type="tip" text="@vasto-queue/mysql-store" />
 
 ```ts
-import { MySQLQueueStorage } from '@vasto/mysql-store';
+import { MySQLQueueStorage } from '@vasto-queue/mysql-store';
 
 const storage = new MySQLQueueStorage({ host, user, password, database });
 await storage.migrate();
@@ -112,10 +112,10 @@ await storage.migrate();
 
 ---
 
-## MongoQueueStorage <Badge type="tip" text="@vasto/mongo-store" />
+## MongoQueueStorage <Badge type="tip" text="@vasto-queue/mongo-store" />
 
 ```ts
-import { MongoQueueStorage } from '@vasto/mongo-store';
+import { MongoQueueStorage } from '@vasto-queue/mongo-store';
 
 new MongoQueueStorage({ uri: '...', dbName: '...' })
 ```
@@ -127,10 +127,10 @@ new MongoQueueStorage({ uri: '...', dbName: '...' })
 
 ---
 
-## DynamoDBQueueStorage <Badge type="tip" text="@vasto/dynamodb-store" />
+## DynamoDBQueueStorage <Badge type="tip" text="@vasto-queue/dynamodb-store" />
 
 ```ts
-import { DynamoDBQueueStorage } from '@vasto/dynamodb-store';
+import { DynamoDBQueueStorage } from '@vasto-queue/dynamodb-store';
 
 new DynamoDBQueueStorage({ region: '...', tableName: '...' })
 ```

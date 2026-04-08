@@ -57,7 +57,7 @@ Define the normalized event envelope and wire the event bridge plugin that route
 - [ ] Events for `job.enqueued`, `job.started`, `job.completed`, `job.failed` are visible in `system.events`.
 - [ ] Event type allowlist filtering works as configured.
 - [ ] No regression in normal job throughput (automated benchmark).
-- [ ] All new code passes `npm --workspace @vasto/core run build && npm --workspace @vasto/core run test`.
+- [ ] All new code passes `npm --workspace @vasto-queue/core run build && npm --workspace @vasto-queue/core run test`.
 
 ---
 
@@ -131,7 +131,7 @@ Add publisher workers for delivering events to external sinks (webhooks, streams
 - [ ] **7.3.4** Add event pipeline metrics
   - Counters: `event.dispatched`, `event.persisted`, `event.published`, `event.failed`, `event.dlq`
   - Gauges: `event.lag_ms` (time from `occurredAt` to `delivered_at`)
-  - Surface via `@vasto/metrics` (existing Prometheus/StatsD exporters)
+  - Surface via `@vasto-queue/metrics` (existing Prometheus/StatsD exporters)
 - [ ] **7.3.5** Write retry/DLQ + publish tests: `packages/core/tests/event-publish.test.ts`
   - Sink failures trigger retry with backoff
   - Exhausted retries are routed to DLQ
@@ -197,7 +197,7 @@ Enable tenant-aware event filtering, PII data minimization, and configurable ret
 ## Example Integration (Post-Phase 7.1)
 
 ```ts
-import { Supervisor, EventBridgePlugin } from '@vasto/core';
+import { Supervisor, EventBridgePlugin } from '@vasto-queue/core';
 
 const supervisor = new Supervisor({
   queues,
@@ -238,7 +238,7 @@ const page = await supervisor.queryEvents({
 ## Dependencies
 
 - Phase 5.5 sandbox/retry contracts already in place — event jobs can reuse retry policy hooks.
-- `@vasto/metrics` already ships Prometheus/StatsD exporters — add event metric keys directly.
+- `@vasto-queue/metrics` already ships Prometheus/StatsD exporters — add event metric keys directly.
 - Existing DLQ routing (Phase 1.4) already handles `maxAttempts` + DLQ queue wiring — no new infrastructure.
 - Dashboard WebSocket layer (Phase 2.2) already streams lifecycle events — Phase 7.3 replay endpoint can extend the same handler.
 

@@ -3,7 +3,7 @@ import type {
   DashboardAuthContext,
   DashboardBearerAuthOptions,
   DashboardSessionCredentials,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 export type TokenAuthOptions = {
   tokens: DashboardApiToken[];

@@ -11,7 +11,7 @@ afterEach(() => {
 	process.exitCode = undefined;
 });
 
-describe('@vasto/cli queue commands', () => {
+describe('@vasto-queue/cli queue commands', () => {
 	it('initializes project structure with queue scripts', async () => {
 		const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'vasto-init-'));
 		const projectDir = path.join(tempDir, 'app');

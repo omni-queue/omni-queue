@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/dashboard",
+  "name": "@vasto-queue/dashboard",
   "version": "0.1.0",
   "type": "module",
   "scripts": {

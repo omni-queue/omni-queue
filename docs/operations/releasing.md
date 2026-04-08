@@ -26,8 +26,8 @@ npm run test:integration
 For focused validation while iterating:
 
 ```bash
-npm --workspace @vasto/core run build
-npm --workspace @vasto/core run test -- <pattern>
+npm --workspace @vasto-queue/core run build
+npm --workspace @vasto-queue/core run test -- <pattern>
 ```
 
 CI reference:

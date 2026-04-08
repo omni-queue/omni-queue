@@ -5,7 +5,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 class ArchiveEmailJob extends Job<{ to: string; subject: string }> {
   static jobName = 'archive-email';

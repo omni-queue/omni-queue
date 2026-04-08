@@ -12,11 +12,11 @@
   },
   "dependencies": {
     "@hono/node-server": "^1.14.4",
-    "@vasto/core": "*",
-    "@vasto/hono-adapter": "*",
+    "@vasto-queue/core": "*",
+    "@vasto-queue/hono-adapter": "*",
     "hono": "^4.9.8"
   },
   "devDependencies": {
-    "@vasto/cli": "*"
+    "@vasto-queue/cli": "*"
   }
 }

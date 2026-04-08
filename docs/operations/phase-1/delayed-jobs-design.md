@@ -279,7 +279,7 @@ export class Supervisor {
 **How Redis stores delayed jobs**:
 
 ```typescript
-// In @vasto/redis-store
+// In @vasto-queue/redis-store
 
 async enqueue(job: StoredJob): Promise<StoredJob> {
   const key = this.getQueueKey(job.queue);

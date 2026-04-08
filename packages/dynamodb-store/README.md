@@ -1,4 +1,4 @@
-# `@vasto/dynamodb-store`
+# `@vasto-queue/dynamodb-store`
 
 DynamoDB storage adapter for [Vasto](../../README.md).
 
@@ -7,13 +7,13 @@ Uses AWS SDK v3 (`@aws-sdk/client-dynamodb` + `@aws-sdk/lib-dynamodb`) for queue
 ## Installation
 
 ```bash
-npm install @vasto/dynamodb-store @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
+npm install @vasto-queue/dynamodb-store @aws-sdk/client-dynamodb @aws-sdk/lib-dynamodb
 ```
 
 ## Usage
 
 ```ts
-import { DynamoDbStore } from '@vasto/dynamodb-store';
+import { DynamoDbStore } from '@vasto-queue/dynamodb-store';
 
 const store = new DynamoDbStore({
   region: 'us-east-1',

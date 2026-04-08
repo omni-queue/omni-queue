@@ -26,7 +26,7 @@ This section documents Vasto's public surface area. For a walkthrough approach, 
 ## Package layout
 
 ```
-@vasto/core
+@vasto-queue/core
   src/contracts/job.ts         — Job base class
   src/interfaces/
     queue-config.ts            — QueueConfig, defineQueues()

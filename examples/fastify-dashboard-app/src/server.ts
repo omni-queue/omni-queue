@@ -9,8 +9,8 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
-import { bindVastoFastifyWebSocket, vastoFastifyAdapter } from '@vasto/fastify-adapter';
+} from '@vasto-queue/core';
+import { bindVastoFastifyWebSocket, vastoFastifyAdapter } from '@vasto-queue/fastify-adapter';
 
 function normalizeBasePath(value: string): string {
   const trimmed = value.trim();

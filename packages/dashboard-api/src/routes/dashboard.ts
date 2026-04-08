@@ -5,7 +5,7 @@ import type {
   DashboardLoginRequest,
   QueueAdminJobStatus,
   Supervisor,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 import { checkAuth, getAllowedQueues, hasDashboardPermission } from '../middleware/request-auth';
 import {
   authenticateDashboardLogin,

@@ -1,10 +1,10 @@
-# @vasto/dashboard-api
+# @vasto-queue/dashboard-api
 
 HTTP bindings for Vasto dashboard APIs.
 
 ## Purpose
 
-`@vasto/core` only stores dashboard configuration on `Supervisor`. This package turns that configuration into:
+`@vasto-queue/core` only stores dashboard configuration on `Supervisor`. This package turns that configuration into:
 
 - shared dashboard primitives for provider adapters:
   - dashboard config + WS path resolution helpers (`resolveDashboardConfig`, `resolveDashboardWsPaths`)
@@ -13,18 +13,18 @@ HTTP bindings for Vasto dashboard APIs.
 
 It does not create an Express app, start a server, or serve static UI files directly. Those responsibilities belong to the provider adapter.
 
-Default provider adapter package: `@vasto/express-adapter`.
+Default provider adapter package: `@vasto-queue/express-adapter`.
 
 ## Example
 
 ```ts
 import express from 'express';
 import path from 'node:path';
-import { Supervisor } from '@vasto/core';
+import { Supervisor } from '@vasto-queue/core';
 import {
   createExpressAdapter,
   createExpressWebSocketBinding,
-} from '@vasto/express-adapter';
+} from '@vasto-queue/express-adapter';
 
 const supervisor = new Supervisor({
   queues,
@@ -74,7 +74,7 @@ createExpressWebSocketBinding(server, {
 
 // publish assets first:
 // queue dashboard:publish --out=./public/vasto-dashboard
-// (resolved from installed @vasto/dashboard in node_modules)
+// (resolved from installed @vasto-queue/dashboard in node_modules)
 ```
 
 The dashboard UI now handles login itself. Serve the static shell publicly (`protectUiWithAuth: false`), then protect the API and WebSocket endpoints with `authHandler` + `sessionValidator`.

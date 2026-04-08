@@ -1,4 +1,4 @@
-# `@vasto/plugins`
+# `@vasto-queue/plugins`
 
 Reusable plugins for Vasto.
 
@@ -15,7 +15,7 @@ Reusable plugins for Vasto.
 ## Usage
 
 ```ts
-import { LoggingPlugin, TimingPlugin } from '@vasto/plugins';
+import { LoggingPlugin, TimingPlugin } from '@vasto-queue/plugins';
 
 const plugins = [
   LoggingPlugin(),

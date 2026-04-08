@@ -10,7 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@vasto/core": "*",
-    "@vasto/mongo-store": "*"
+    "@vasto-queue/core": "*",
+    "@vasto-queue/mongo-store": "*"
   }
 }

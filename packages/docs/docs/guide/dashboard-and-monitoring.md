@@ -10,8 +10,8 @@ Vasto ships a first-party web dashboard that you mount into any existing HTTP ap
 
 ## How it works
 
-1. **`@vasto/dashboard`** — the frontend SPA (built and published separately)
-2. **`@vasto/dashboard-api`** — HTTP handlers, WebSocket relay, and auth middleware
+1. **`@vasto-queue/dashboard`** — the frontend SPA (built and published separately)
+2. **`@vasto-queue/dashboard-api`** — HTTP handlers, WebSocket relay, and auth middleware
 3. **Framework adapters** — thin wrappers that bind 1 and 2 to your specific framework
 
 The dashboard reads live state from the supervisor and updates in real time via WebSocket.
@@ -31,7 +31,7 @@ This copies the built SPA into a `public/vasto-dashboard` directory (or the path
 ::: code-group
 
 ```ts [Hono]
-import { vastoHonoAdapter, bindVastoHonoWebSocket } from '@vasto/hono-adapter';
+import { vastoHonoAdapter, bindVastoHonoWebSocket } from '@vasto-queue/hono-adapter';
 import path from 'node:path';
 
 const handler = vastoHonoAdapter({
@@ -45,7 +45,7 @@ bindVastoHonoWebSocket(server, { supervisor, apiBase: '/api/vasto' });
 ```
 
 ```ts [Express]
-import { vastoExpressAdapter } from '@vasto/express-adapter';
+import { vastoExpressAdapter } from '@vasto-queue/express-adapter';
 import path from 'node:path';
 
 app.use(
@@ -58,7 +58,7 @@ app.use(
 ```
 
 ```ts [Fastify]
-import { vastoFastifyAdapter } from '@vasto/fastify-adapter';
+import { vastoFastifyAdapter } from '@vasto-queue/fastify-adapter';
 import path from 'node:path';
 
 await app.register(vastoFastifyAdapter, {
@@ -69,7 +69,7 @@ await app.register(vastoFastifyAdapter, {
 ```
 
 ```ts [NestJS]
-import { VastoNestModule } from '@vasto/nestjs-adapter';
+import { VastoNestModule } from '@vasto-queue/nestjs-adapter';
 
 @Module({
   imports: [
@@ -84,7 +84,7 @@ export class AppModule {}
 ```
 
 ```ts [Elysia]
-import { vastoElysiaAdapter } from '@vasto/elysia-adapter';
+import { vastoElysiaAdapter } from '@vasto-queue/elysia-adapter';
 import path from 'node:path';
 
 app.use(

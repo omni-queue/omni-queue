@@ -10,7 +10,7 @@
 
 import { Worker as BullMQWorker, Queue as BullMQQueue } from 'bullmq';
 import PgBoss from 'pg-boss';
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 import {
   buildReport,
   DEFAULT_OPTIONS,

@@ -15,7 +15,7 @@
   ],
   "plugins": [
     {
-      "module": "@vasto/otel-plugin",
+      "module": "@vasto-queue/otel-plugin",
       "export": "TracingPlugin",
       "constructorArgs": "{ tracerName: 'runtime-inside-isolation' }"
     }

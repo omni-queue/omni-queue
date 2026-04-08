@@ -3,7 +3,7 @@
 **A TypeScript-first queue runtime inspired by BullMQ and Laravel Horizon's operational excellence.**
 
 [![CI](https://github.com/vasto/vasto/actions/workflows/ci.yml/badge.svg)](https://github.com/vasto/vasto/actions)
-[![npm](https://img.shields.io/npm/v/@vasto/core)](https://www.npmjs.com/package/@vasto/core)
+[![npm](https://img.shields.io/npm/v/@vasto-queue/core)](https://www.npmjs.com/package/@vasto-queue/core)
 [![Docs](https://img.shields.io/badge/docs-vastohq.github.io%2Fvasto-blue)](https://vastohq.github.io/vasto/)
 
 Vasto is a TypeScript-first job queue system that gives you flexible worker isolation, pluggable storage backends, and an auto-scaling supervisor — all out of the box.
@@ -14,7 +14,7 @@ Vasto is a TypeScript-first job queue system that gives you flexible worker isol
 - **First-party dashboard** — monitoring, metrics, and failed-job management included
 
 ```typescript
-import { InMemoryQueueStorage, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
+import { InMemoryQueueStorage, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto-queue/core';
 
 class SendEmailJob {
   static jobName = 'SendEmailJob';
@@ -61,7 +61,7 @@ await supervisor.start();
 ## Installation
 
 ```bash
-npm install @vasto/core
+npm install @vasto-queue/core
 ```
 
 ## Quick Start
@@ -73,7 +73,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 // 1. Define a job
 class SendEmailJob {
@@ -170,14 +170,14 @@ await jobManager.schedule(new MyJob(payload), {
 ### In-memory (development / testing)
 
 ```typescript
-import { InMemoryQueueStorage } from '@vasto/core';
+import { InMemoryQueueStorage } from '@vasto-queue/core';
 const storage = new InMemoryQueueStorage();
 ```
 
 ### File (cross-process local development)
 
 ```typescript
-import { FileQueueStorage } from '@vasto/core';
+import { FileQueueStorage } from '@vasto-queue/core';
 const storage = new FileQueueStorage('./queue-data');
 ```
 
@@ -186,14 +186,14 @@ Jobs are persisted as JSON files in the given directory. Uses `fs.renameSync` fo
 ### Redis
 
 ```typescript
-import { RedisStore } from '@vasto/redis-store';
+import { RedisStore } from '@vasto-queue/redis-store';
 const storage = new RedisStore({ client: { host: 'localhost', port: 6379 } });
 ```
 
 ### Postgres
 
 ```typescript
-import { PostgresStore } from '@vasto/postgres-store';
+import { PostgresStore } from '@vasto-queue/postgres-store';
 const storage = new PostgresStore({ pool: { connectionString: process.env.DATABASE_URL } });
 await storage.migrate(); // create tables
 ```
@@ -203,7 +203,7 @@ await storage.migrate(); // create tables
 ## Plugin System
 
 ```typescript
-import type { Plugin } from '@vasto/core';
+import type { Plugin } from '@vasto-queue/core';
 
 const LogPlugin: Plugin = {
   name: 'LogPlugin',
@@ -237,24 +237,24 @@ const LogPlugin: Plugin = {
 
 | Package | Description |
 |---------|-------------|
-| [`@vasto/core`](packages/core) | Core runtime: supervisor, job manager, in-memory and file storage |
-| [`@vasto/cli`](packages/cli) | Project scaffolding, job generators, monitoring, and DLQ commands |
-| [`@vasto/metrics`](packages/metrics) | Metrics collector, exporters, and auto-collection plugin |
-| [`@vasto/redis-store`](packages/redis-store) | Redis (ioredis) storage adapter |
-| [`@vasto/postgres-store`](packages/postgres-store) | Postgres (`pg`) storage adapter |
-| [`@vasto/mysql-store`](packages/mysql-store) | MySQL storage adapter |
-| [`@vasto/mongo-store`](packages/mongo-store) | MongoDB storage adapter |
-| [`@vasto/dynamodb-store`](packages/dynamodb-store) | DynamoDB storage adapter |
-| [`@vasto/dashboard-api`](packages/dashboard-api) | Shared dashboard API primitives (routes, auth, websocket binding, config resolution) |
-| [`@vasto/dashboard`](packages/dashboard) | First-party dashboard frontend |
-| [`@vasto/express-adapter`](packages/express-adapter) | Express adapter (`createExpressAdapter`, `createExpressWebSocketBinding`) |
-| [`@vasto/next-adapter`](packages/next-adapter) | Next.js integration |
-| [`@vasto/fastify-adapter`](packages/fastify-adapter) | Fastify integration |
-| [`@vasto/nest-adapter`](packages/nest-adapter) | Nest integration |
-| [`@vasto/hono-adapter`](packages/hono-adapter) | Hono integration |
-| [`@vasto/elysia-adapter`](packages/elysia-adapter) | Elysia/Bun integration |
-| [`@vasto/otel-plugin`](packages/otel-plugin) | OpenTelemetry tracing plugin |
-| [`@vasto/plugins`](packages/plugins) | Built-in plugins: DAG, rate-limiter |
+| [`@vasto-queue/core`](packages/core) | Core runtime: supervisor, job manager, in-memory and file storage |
+| [`@vasto-queue/cli`](packages/cli) | Project scaffolding, job generators, monitoring, and DLQ commands |
+| [`@vasto-queue/metrics`](packages/metrics) | Metrics collector, exporters, and auto-collection plugin |
+| [`@vasto-queue/redis-store`](packages/redis-store) | Redis (ioredis) storage adapter |
+| [`@vasto-queue/postgres-store`](packages/postgres-store) | Postgres (`pg`) storage adapter |
+| [`@vasto-queue/mysql-store`](packages/mysql-store) | MySQL storage adapter |
+| [`@vasto-queue/mongo-store`](packages/mongo-store) | MongoDB storage adapter |
+| [`@vasto-queue/dynamodb-store`](packages/dynamodb-store) | DynamoDB storage adapter |
+| [`@vasto-queue/dashboard-api`](packages/dashboard-api) | Shared dashboard API primitives (routes, auth, websocket binding, config resolution) |
+| [`@vasto-queue/dashboard`](packages/dashboard) | First-party dashboard frontend |
+| [`@vasto-queue/express-adapter`](packages/express-adapter) | Express adapter (`createExpressAdapter`, `createExpressWebSocketBinding`) |
+| [`@vasto-queue/next-adapter`](packages/next-adapter) | Next.js integration |
+| [`@vasto-queue/fastify-adapter`](packages/fastify-adapter) | Fastify integration |
+| [`@vasto-queue/nest-adapter`](packages/nest-adapter) | Nest integration |
+| [`@vasto-queue/hono-adapter`](packages/hono-adapter) | Hono integration |
+| [`@vasto-queue/elysia-adapter`](packages/elysia-adapter) | Elysia/Bun integration |
+| [`@vasto-queue/otel-plugin`](packages/otel-plugin) | OpenTelemetry tracing plugin |
+| [`@vasto-queue/plugins`](packages/plugins) | Built-in plugins: DAG, rate-limiter |
 
 ---
 

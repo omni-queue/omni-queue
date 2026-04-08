@@ -1,5 +1,5 @@
-import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
-import { MongoStore } from '@vasto/mongo-store';
+import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto-queue/core';
+import { MongoStore } from '@vasto-queue/mongo-store';
 
 class MongoEmailJob extends Job<{ to: string; subject: string }> {
   static jobName = 'mongo-email';

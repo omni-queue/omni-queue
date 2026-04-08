@@ -16,7 +16,7 @@ import {
   JobRegistry,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 import { FileQueueStorage } from './storage/file-queue-storage.js';
 import { SendEmailJob } from './jobs/index.js';
 

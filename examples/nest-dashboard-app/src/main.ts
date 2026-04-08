@@ -11,8 +11,8 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
-import { bindVastoNestWebSocket, vastoNestAdapter } from '@vasto/nest-adapter';
+} from '@vasto-queue/core';
+import { bindVastoNestWebSocket, vastoNestAdapter } from '@vasto-queue/nest-adapter';
 
 function normalizeBasePath(value: string): string {
   const trimmed = value.trim();

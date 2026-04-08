@@ -1,4 +1,4 @@
-# @vasto/core
+# @vasto-queue/core
 
 Core runtime package for Vasto.
 
@@ -62,7 +62,7 @@ import {
 	Supervisor,
 	defineQueues,
 	defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 class ExampleJob extends Job<{ value: string }> {
 	static jobName = 'example-job';

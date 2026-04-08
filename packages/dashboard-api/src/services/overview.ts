@@ -1,4 +1,4 @@
-import type { Supervisor } from '@vasto/core';
+import type { Supervisor } from '@vasto-queue/core';
 
 export async function buildOverview(supervisor: Supervisor) {
   const queueNames = supervisor.getQueueNames();

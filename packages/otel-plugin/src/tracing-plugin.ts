@@ -1,4 +1,4 @@
-import type { Plugin, StoredJob } from '@vasto/core';
+import type { Plugin, StoredJob } from '@vasto-queue/core';
 import { context, trace, Span, SpanStatusCode, type Tracer } from '@opentelemetry/api';
 
 export interface TracingPluginOptions {

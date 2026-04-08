@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/nest-adapter",
+  "name": "@vasto-queue/nest-adapter",
   "version": "0.1.0",
   "description": "NestJS adapter for Vasto dashboard-api",
   "keywords": [
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vasto/dashboard-api": "*"
+    "@vasto-queue/dashboard-api": "*"
   },
   "publishConfig": {
     "access": "public"

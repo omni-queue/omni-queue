@@ -16,7 +16,7 @@ export default defineConfig({
     ssr: true,
     rollupOptions: {
       input: { index: 'src/index.ts' },
-      external: (id: string) => nodeExternals.has(id) || id.startsWith('node:') || id.startsWith('@vasto/'),
+      external: (id: string) => nodeExternals.has(id) || id.startsWith('node:') || id.startsWith('@vasto-queue/'),
       output: { format: 'es', entryFileNames: '[name].js' }
     }
   }

@@ -10,9 +10,9 @@ import {
   defineWorkers,
   type Job,
   type JobConstructor,
-} from '@vasto/core';
-import { RedisStore } from '@vasto/redis-store';
-import { PostgresStore } from '@vasto/postgres-store';
+} from '@vasto-queue/core';
+import { RedisStore } from '@vasto-queue/redis-store';
+import { PostgresStore } from '@vasto-queue/postgres-store';
 import type { LibraryName } from './types.js';
 
 type VastoBackend = 'memory' | 'redis' | 'postgres';

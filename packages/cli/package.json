@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/cli",
+  "name": "@vasto-queue/cli",
   "version": "0.1.0",
   "description": "CLI for Vasto runtime operations",
   "type": "module",

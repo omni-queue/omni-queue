@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { DynamoDbStore } from './index';
 
-describe('@vasto/dynamodb-store exports', () => {
+describe('@vasto-queue/dynamodb-store exports', () => {
   it('exports DynamoDbStore', () => {
     expect(DynamoDbStore).toBeTypeOf('function');
   });

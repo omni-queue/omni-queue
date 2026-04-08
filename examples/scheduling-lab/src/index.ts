@@ -5,7 +5,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 class ReminderJob extends Job<{ channel: string; message: string }> {
   static jobName = 'reminder-job';

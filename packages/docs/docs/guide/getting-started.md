@@ -16,15 +16,15 @@ outline: deep
 ::: code-group
 
 ```sh [npm]
-npm install @vasto/core
+npm install @vasto-queue/core
 ```
 
 ```sh [pnpm]
-pnpm add @vasto/core
+pnpm add @vasto-queue/core
 ```
 
 ```sh [yarn]
-yarn add @vasto/core
+yarn add @vasto-queue/core
 ```
 
 :::
@@ -34,7 +34,7 @@ yarn add @vasto/core
 Every job is a class that extends `Job`, declares a unique `static jobName`, and implements `handle()`.
 
 ```ts
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 interface EmailPayload {
   to: string;
@@ -69,7 +69,7 @@ import {
   InMemoryQueueStorage,
   JobRegistry,
   Supervisor,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 import { SendEmailJob } from './jobs/send-email-job';
 
 // 1. Declare queue and worker configs

@@ -1,5 +1,5 @@
-import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
-import { DynamoDbStore } from '@vasto/dynamodb-store';
+import { Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto-queue/core';
+import { DynamoDbStore } from '@vasto-queue/dynamodb-store';
 
 class DynamoEmailJob extends Job<{ to: string; subject: string }> {
   static jobName = 'dynamodb-email';

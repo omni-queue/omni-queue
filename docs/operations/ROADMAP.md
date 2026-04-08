@@ -52,7 +52,7 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 ## Phase 2: Observability & Dashboard
 
 ### 2.1 Metrics Collection & Export **[DONE]**
-- [x] @vasto/metrics package
+- [x] @vasto-queue/metrics package
 - [x] Prometheus client integration
 - [x] StatsD & DataDog exporters
 - [x] Auto-collected metrics (queue depth, duration, failures)
@@ -90,17 +90,17 @@ Cover essential BullMQ-style queueing workflows while keeping Vasto's typed and 
 ## Phase 4: Ecosystem & Integration
 
 ### 4.1 Official Adapters **[DONE]**
-- [x] @vasto/mysql-store
-- [x] @vasto/postgres-store
-- [x] @vasto/mongo-store
-- [x] @vasto/dynamodb-store
+- [x] @vasto-queue/mysql-store
+- [x] @vasto-queue/postgres-store
+- [x] @vasto-queue/mongo-store
+- [x] @vasto-queue/dynamodb-store
 
 ### 4.2 Framework Integrations **[DONE]**
-- [x] @vasto/express-adapter (default via dashboard-api)
-- [x] @vasto/next-adapter
-- [x] @vasto/fastify-adapter
-- [x] @vasto/nest-adapter
-- [x] @vasto/hono-adapter
+- [x] @vasto-queue/express-adapter (default via dashboard-api)
+- [x] @vasto-queue/next-adapter
+- [x] @vasto-queue/fastify-adapter
+- [x] @vasto-queue/nest-adapter
+- [x] @vasto-queue/hono-adapter
 
 ### 4.3 CLI Tooling **[DONE]**
 - [x] `vasto init`

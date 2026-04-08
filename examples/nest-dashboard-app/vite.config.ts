@@ -21,7 +21,7 @@ export default defineConfig({
     ssr: true,
     rollupOptions: {
       input: { main: 'src/main.ts', worker: 'src/worker.ts' },
-      external: (id: string) => nodeExternals.has(id) || id.startsWith('node:') || id.startsWith('@vasto/'),
+      external: (id: string) => nodeExternals.has(id) || id.startsWith('node:') || id.startsWith('@vasto-queue/'),
       output: { format: 'es', entryFileNames: '[name].js' }
     }
   }

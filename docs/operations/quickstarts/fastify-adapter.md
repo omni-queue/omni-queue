@@ -35,7 +35,7 @@ import path from 'node:path';
 import {
   bindVastoFastifyWebSocket,
   vastoFastifyAdapter,
-} from '@vasto/fastify-adapter';
+} from '@vasto-queue/fastify-adapter';
 
 await fastify.register(import('@fastify/middie'));
 fastify.use(

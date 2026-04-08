@@ -1,4 +1,4 @@
-import type { Plugin, QueueConfig, StoredJob } from '@vasto/core';
+import type { Plugin, QueueConfig, StoredJob } from '@vasto-queue/core';
 import { TokenBucket } from './token-bucket';
 
 export function RateLimiterPlugin(queueConfigs: Record<string, QueueConfig>): Plugin {
