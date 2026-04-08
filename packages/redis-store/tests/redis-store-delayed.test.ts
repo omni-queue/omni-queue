@@ -5,35 +5,69 @@ vi.mock('ioredis', async () => {
   class MockRedis {
     private strings = new Map<string, string>();
     private zsets = new Map<string, Map<string, number>>();
+    // private commands = new Map<string, (args: unknown[]) => Promise<unknown>>();
+
+    defineCommand(name: string, config: { numberOfKeys: number; lua: string }): void {
+      // Store command implementation for unit tests
+      // For vastoDequeue, delegate to eval logic
+      const commandName = name;
+      const { numberOfKeys } = config;
+      const self = this;
+
+      if (name === 'vastoDequeue') {
+        (this as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>)[commandName] = async (
+          ...args: unknown[]
+        ) => {
+          // Extract parameters: readyKey, leasedKey, jobPrefix, now, leaseUntil, batchSize, reclaimLimit
+          const readyKey = args[0] as string;
+          const leasedKey = args[1] as string;
+          const jobPrefix = args[2] as string;
+          const now = args[3] as number;
+          const leaseUntil = args[4] as number;
+          const batchSize = args[5] as number;
+          // reclaimLimit = args[6] - not used in our simple mock
+
+          return self.eval(config.lua, numberOfKeys, readyKey, leasedKey, jobPrefix, now, leaseUntil, batchSize);
+        };
+      } else {
+        // Other commands
+        (this as unknown as Record<string, (...args: unknown[]) => Promise<unknown>>)[commandName] = async (
+          ..._args: unknown[]
+        ) => {
+          // Mock Lua script execution - just return empty results for unknown commands
+          return [];
+        };
+      }
+    }
 
     pipeline() {
       const commands: Array<{ op: string; args: unknown[] }> = [];
       const self = this;
 
-      const chain = {
+      return {
         set(key: string, value: string) {
           commands.push({ op: 'set', args: [key, value] });
-          return chain;
+          return this;
         },
         get(key: string) {
           commands.push({ op: 'get', args: [key] });
-          return chain;
+          return this;
         },
         del(key: string) {
           commands.push({ op: 'del', args: [key] });
-          return chain;
+          return this;
         },
         zadd(key: string, score: number, member: string) {
           commands.push({ op: 'zadd', args: [key, score, member] });
-          return chain;
+          return this;
         },
         zrem(key: string, member: string) {
           commands.push({ op: 'zrem', args: [key, member] });
-          return chain;
+          return this;
         },
         zrange(key: string, start: number, end: number) {
           commands.push({ op: 'zrange', args: [key, start, end] });
-          return chain;
+          return this;
         },
         async exec() {
           const results: Array<[Error | null, unknown]> = [];
@@ -50,8 +84,6 @@ vi.mock('ioredis', async () => {
           return results;
         },
       };
-
-      return chain;
     }
 
     async set(key: string, value: string): Promise<'OK'> {
@@ -140,6 +172,7 @@ vi.mock('ioredis', async () => {
       }
 
       const ids = (await this.zrange(readyKey, 0, Number(batchSize) - 1)) ?? [];
+      const jobs: string[] = [];
       for (const id of ids) {
         await this.zrem(readyKey, id);
         await this.zadd(leasedKey, Number(leaseUntil), id);
@@ -151,9 +184,10 @@ vi.mock('ioredis', async () => {
         job.state = 'leased';
         job.updatedAt = Number(now);
         await this.set(`${jobPrefix}${id}`, JSON.stringify(job));
+        jobs.push(JSON.stringify(job));
       }
 
-      return ids;
+      return jobs;
     }
 
     async quit(): Promise<'OK'> {

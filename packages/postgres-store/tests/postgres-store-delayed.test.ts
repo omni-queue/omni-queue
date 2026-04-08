@@ -11,6 +11,7 @@ type JobRow = {
   max_attempts: number | null;
   idempotency_key: string | null;
   delay_until: number | null;
+  priority: string | null;
   scheduled_cron: string | null;
   last_scheduled_at: number | null;
   lease_until: Date | null;
@@ -22,10 +23,95 @@ vi.mock('pg', async () => {
   class MockPool {
     private rows = new Map<string, JobRow>();
 
-    async query(text: string, params: unknown[] = []): Promise<{ rows: JobRow[] }> {
-      const sql = text.replace(/\s+/g, ' ').trim();
+    async query(textOrConfig: string | { text: string; values?: unknown[] }, params: unknown[] = []): Promise<{ rows: JobRow[] }> {
+      let sql: string;
+      let values: unknown[];
 
-      if (sql.includes('INSERT INTO') && sql.includes('(id, name, payload, queue')) {
+      if (typeof textOrConfig === 'string') {
+        sql = textOrConfig;
+        values = params;
+      } else {
+        sql = textOrConfig.text;
+        values = textOrConfig.values ?? [];
+      }
+
+      sql = sql.replace(/\s+/g, ' ').trim();
+
+      // Handle CTE-based dequeue with candidates and updated
+      if (sql.startsWith('WITH candidates AS')) {
+        // Extract parameters: $1=queue, $2=batchSize, $3=leaseUntil, $4=nowMs
+        const [queue, batchSize, leaseUntil] = values as [string, number, Date, number];
+        const now = Date.now();
+
+        const selected = [...this.rows.values()]
+          .filter((row) => {
+            if (queue && row.queue !== queue) return false;
+
+            const queuedAndReady = row.state === 'queued' && row.delay_until == null;
+            const leasedExpired =
+              row.state === 'leased' && row.lease_until != null && row.lease_until.getTime() < now;
+
+            return queuedAndReady || leasedExpired;
+          })
+          .sort((a, b) => {
+            // Sort by bucket (queued=0, leased=1), then by priority, then by created_at
+            const aBucket = a.state === 'queued' ? 0 : 1;
+            const bBucket = b.state === 'queued' ? 0 : 1;
+            if (aBucket !== bBucket) return aBucket - bBucket;
+
+            const priorityOrder = { critical: 0, high: 1, normal: 2, low: 3 };
+            const aPrio = priorityOrder[(a.priority ?? 'normal') as keyof typeof priorityOrder] ?? 2;
+            const bPrio = priorityOrder[(b.priority ?? 'normal') as keyof typeof priorityOrder] ?? 2;
+            if (aPrio !== bPrio) return aPrio - bPrio;
+
+            return a.created_at - b.created_at;
+          })
+          .slice(0, batchSize);
+
+        for (const row of selected) {
+          row.state = 'leased';
+          row.lease_until = leaseUntil;
+          row.updated_at = now;
+        }
+
+        return { rows: selected };
+      }
+
+      if (sql.includes('INSERT INTO') && sql.includes('(id, name, payload, queue, created_at, updated_at)')) {
+        // Minimal INSERT path
+        const [id, name, payload, queue, createdAt, updatedAt] = values as [
+          string,
+          string,
+          string,
+          string,
+          number,
+          number,
+        ];
+
+        const row: JobRow = {
+          id,
+          name,
+          payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
+          queue,
+          state: 'queued',
+          attempts: 0,
+          max_attempts: null,
+          idempotency_key: null,
+          priority: 'normal',
+          delay_until: null,
+          scheduled_cron: null,
+          last_scheduled_at: null,
+          lease_until: null,
+          created_at: createdAt,
+          updated_at: updatedAt,
+        };
+
+        this.rows.set(id, row);
+        return { rows: [] };
+      }
+
+      if (sql.includes('INSERT INTO') && sql.includes('(id, name, payload, queue') && sql.includes('state')) {
+        // Full INSERT path
         const [
           id,
           name,
@@ -40,7 +126,7 @@ vi.mock('pg', async () => {
           lastScheduledAt,
           createdAt,
           updatedAt,
-        ] = params as [
+        ] = values as [
           string,
           string,
           string,
@@ -59,7 +145,7 @@ vi.mock('pg', async () => {
         const row: JobRow = {
           id,
           name,
-          payload: JSON.parse(payload),
+          payload: typeof payload === 'string' ? JSON.parse(payload) : payload,
           queue,
           state,
           attempts,
@@ -69,6 +155,7 @@ vi.mock('pg', async () => {
           scheduled_cron: scheduledCron,
           last_scheduled_at: lastScheduledAt,
           lease_until: null,
+          priority: 'normal',
           created_at: createdAt,
           updated_at: updatedAt,
         };
@@ -78,7 +165,7 @@ vi.mock('pg', async () => {
       }
 
       if (sql.startsWith('SELECT *') && sql.includes("state = 'queued'") && sql.includes('delay_until <= $2')) {
-        const [queueName, beforeDate] = params as [string, number];
+        const [queueName, beforeDate] = values as [string, number];
 
         const rows = [...this.rows.values()]
           .filter(
@@ -98,7 +185,7 @@ vi.mock('pg', async () => {
       }
 
       if (sql.startsWith('UPDATE') && sql.includes('SET state = \'queued\', delay_until = NULL')) {
-        const [jobId, queueName] = params as [string, string];
+        const [jobId, queueName] = values as [string, string];
         const row = this.rows.get(jobId);
         if (row && row.queue === queueName) {
           row.state = 'queued';
@@ -109,7 +196,7 @@ vi.mock('pg', async () => {
       }
 
       if (sql.startsWith('UPDATE') && sql.includes("SET state = 'failed'")) {
-        const [jobId, queueName] = params as [string, string];
+        const [jobId, queueName] = values as [string, string];
         const row = this.rows.get(jobId);
         if (row && row.queue === queueName) {
           row.state = 'failed';
@@ -119,7 +206,7 @@ vi.mock('pg', async () => {
       }
 
       if (sql.startsWith('UPDATE') && sql.includes("SET state = 'leased'") && sql.includes('RETURNING *')) {
-        const [batchSize, leaseUntil, queue] = params as [number, Date, string?];
+        const [batchSize, leaseUntil, queue] = values as [number, Date, string?];
         const now = Date.now();
 
         const selected = [...this.rows.values()]
@@ -145,9 +232,9 @@ vi.mock('pg', async () => {
       }
 
       if (sql.startsWith('SELECT *') && sql.includes('WHERE delay_until IS NOT NULL')) {
-        const limit = Number(params[params.length - 2] ?? 100);
-        const offset = Number(params[params.length - 1] ?? 0);
-        const coreParams = params.slice(0, -2);
+        const limit = Number(values[values.length - 2] ?? 100);
+        const offset = Number(values[values.length - 1] ?? 0);
+        const coreParams = values.slice(0, -2);
 
         let cursor = 0;
         let queueName: string | undefined;
@@ -191,7 +278,7 @@ vi.mock('pg', async () => {
       }
 
       if (sql.includes('SELECT COUNT(*) AS count')) {
-        const [queue] = params as [string];
+        const [queue] = values as [string];
         const count = [...this.rows.values()].filter(
           (row) => row.queue === queue && (row.state === 'queued' || row.state === 'leased')
         ).length;
@@ -200,7 +287,7 @@ vi.mock('pg', async () => {
       }
 
       if (sql.startsWith('DELETE FROM')) {
-        const [jobId] = params as [string];
+        const [jobId] = values as [string];
         this.rows.delete(jobId);
         return { rows: [] };
       }

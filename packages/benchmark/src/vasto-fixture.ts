@@ -8,7 +8,6 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-  type Job,
   type JobConstructor,
 } from '@vasto-queue/core';
 import { RedisStore } from '@vasto-queue/redis-store';
