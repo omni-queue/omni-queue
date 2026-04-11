@@ -1,0 +1,7 @@
+.vitepress/dist
+dist
+node_modules
+*.log
+*.tsbuildinfo
+docs/.vitepress/dist
+docs/.vitepress/cache

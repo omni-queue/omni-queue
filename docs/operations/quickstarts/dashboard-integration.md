@@ -75,6 +75,26 @@ npm run worker
 - UI: `http://localhost:3040/secured-dashboard`
 - API base: `http://localhost:3040/api/dashboard-api`
 
+## Dashboard showcase
+
+The screenshots below shows few of Vasto dashboard.
+
+### Overview
+
+![Dashboard overview placeholder](../../assets/screenshots/dashboard-overview.png)
+
+### Jobs and queue state
+
+![Dashboard jobs placeholder](../../assets/screenshots/dashboard-jobs.png)
+
+### Monitoring
+
+![Vasto dashboard monitoring](../../assets/screenshots/dashboard-monitoring.png)
+
+### Failed jobs diagnostics
+
+![Dashboard failed jobs placeholder](../../assets/screenshots/dashboard-failed.png)
+
 ## Configuration contract
 
 Common environment variables used by adapter examples:

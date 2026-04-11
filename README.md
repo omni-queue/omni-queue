@@ -40,21 +40,36 @@ await supervisor.start();
 
 ## Table of Contents
 
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [CLI Starters](#cli-starters)
-- [Dispatch Options](#dispatch-options)
-- [Storage Backends](#storage-backends)
-- [Plugin System](#plugin-system)
-- [Key Differentiators](#key-differentiators)
-- [Packages](#packages)
-- [Running Tests](#running-tests)
-- [Examples](#examples)
-- [Adoption Paths](#adoption-paths)
-- [Documentation](#documentation)
-- [Roadmap](#roadmap)
-- [Contributing](#contributing)
-- [License](#license)
+- [Vasto](#vasto)
+  - [Table of Contents](#table-of-contents)
+  - [Installation](#installation)
+  - [Quick Start](#quick-start)
+  - [CLI Starters](#cli-starters)
+  - [Dispatch Options](#dispatch-options)
+    - [Immediate dispatch](#immediate-dispatch)
+    - [Delayed dispatch](#delayed-dispatch)
+    - [Priority dispatch](#priority-dispatch)
+    - [Scheduled dispatch](#scheduled-dispatch)
+  - [Storage Backends](#storage-backends)
+    - [In-memory (development / testing)](#in-memory-development--testing)
+    - [File (cross-process local development)](#file-cross-process-local-development)
+    - [Redis](#redis)
+    - [Postgres](#postgres)
+  - [Plugin System](#plugin-system)
+  - [Key Differentiators](#key-differentiators)
+  - [Packages](#packages)
+  - [Running Tests](#running-tests)
+  - [Examples](#examples)
+  - [Dashboard Showcase](#dashboard-showcase)
+    - [Overview](#overview)
+    - [Jobs and Queue State](#jobs-and-queue-state)
+    - [Monitoring](#monitoring)
+    - [Failed Jobs and Diagnostics](#failed-jobs-and-diagnostics)
+  - [Adoption Paths](#adoption-paths)
+  - [Documentation](#documentation)
+  - [Roadmap](#roadmap)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ---
 
@@ -300,6 +315,28 @@ npm run test:integration
 | [`examples/nest-dashboard-app`](examples/nest-dashboard-app) | Nest dashboard adapter app with controller dispatch and mounted dashboard middleware |
 
 For guided setup flows, see [docs/operations/quickstarts/README.md](docs/operations/quickstarts/README.md).
+
+---
+
+## Dashboard Showcase
+
+The screenshots below shows few of Vasto dashboard.
+
+### Overview
+
+![Vasto dashboard overview](docs/assets/screenshots/dashboard-overview.png)
+
+### Jobs and Queue State
+
+![Vasto dashboard jobs](docs/assets/screenshots/dashboard-jobs.png)
+
+### Monitoring
+
+![Vasto dashboard monitoring](docs/assets/screenshots/dashboard-monitoring.png)
+
+### Failed Jobs and Diagnostics
+
+![Vasto dashboard failed jobs](docs/assets/screenshots/dashboard-failed.png)
 
 ---
 

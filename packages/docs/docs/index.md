@@ -2,7 +2,7 @@
 layout: home
 
 hero:
-  name: Vasto
+  name: Vasto Queue
   text: TypeScript-first job queue runtime
   tagline: Flexible worker isolation, pluggable storage backends, and a production-grade supervisor — all in one package.
   actions:

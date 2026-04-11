@@ -125,6 +125,24 @@ vastoHonoAdapter({
 | Workers | Running worker count, concurrency, and isolation mode |
 | Circuit breaker | Backpressure and circuit state per queue |
 
+## Dashboard screenshots
+
+### Overview
+
+![Dashboard overview](/assets/screenshots/dashboard-overview.png)
+
+### Jobs
+
+![Dashboard jobs](/assets/screenshots/dashboard-jobs.png)
+
+### Failed jobs
+
+![Dashboard failed jobs](/assets/screenshots/dashboard-failed.png)
+
+### Monitoring
+
+![Dashboard monitoring](/assets/screenshots/dashboard-monitoring.png)
+
 ## Production rollout checklist
 
 ::: details Expand checklist
