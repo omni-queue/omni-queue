@@ -25,6 +25,14 @@ It is organized to help three common audiences:
 - [Adapter quickstarts](quickstarts/README.md)
 - [Dashboard integration guide](quickstarts/dashboard-integration.md)
 
+## Dashboard showcase
+
+Placeholder screenshots used across docs (replace with real images when ready):
+
+![Dashboard overview placeholder](../assets/screenshots/dashboard-overview-placeholder.svg)
+![Dashboard jobs placeholder](../assets/screenshots/dashboard-jobs-placeholder.svg)
+![Dashboard failed jobs placeholder](../assets/screenshots/dashboard-failed-placeholder.svg)
+
 ### Production readiness
 
 - [Roadmap](ROADMAP.md)
