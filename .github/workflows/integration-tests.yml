@@ -68,11 +68,7 @@ jobs:
           cache: npm
 
       - name: Install local workspace dependencies
-        run: >-
-          npm ci
-          --workspace @vasto-queue/core
-          --workspace @vasto-queue/redis-store
-          --workspace @vasto-queue/postgres-store
+        run: npm ci --workspaces --include-workspace-root
 
       - name: Build local workspace packages
         run: >-
