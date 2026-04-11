@@ -1,20 +1,31 @@
-# Changelog
+---
+'@vasto-queue/express-adapter': major
+'@vasto-queue/fastify-adapter': major
+'@vasto-queue/dynamodb-store': major
+'@vasto-queue/elysia-adapter': major
+'@vasto-queue/postgres-store': major
+'@vasto-queue/dashboard-api': major
+'@vasto-queue/hono-adapter': major
+'@vasto-queue/nest-adapter': major
+'@vasto-queue/next-adapter': major
+'@vasto-queue/mongo-store': major
+'@vasto-queue/mysql-store': major
+'@vasto-queue/otel-plugin': major
+'@vasto-queue/redis-store': major
+'@vasto-queue/dashboard': major
+'@vasto-queue/workflow': major
+'@vasto-queue/metrics': major
+'@vasto-queue/plugins': major
+'@vasto-queue/core': major
+'@vasto-queue/cli': major
+---
 
-All notable changes to this project will be documented in this file.
-
-The format is based on Keep a Changelog and this project aims to follow Semantic Versioning.
-
-- Keep a Changelog: https://keepachangelog.com/en/1.1.0/
-- Semantic Versioning: https://semver.org/spec/v2.0.0.html
-
-## [Unreleased]
-
-### Initial Release
+Initial Release
 
 ### Added
 
 - Initial public release of the Vasto queue ecosystem under the `@vasto-queue/*` namespace.
-- Core runtime in `@vasto-queue/core` with queue orchestration, worker lifecycle management, retries, scheduling, and lifecycle hooks.
+- Core runtime in `@vasto-queue/core` with queue orchestration, worker lifecycle management, retries, and scheduling primitives.
 - First-party CLI in `@vasto-queue/cli` for project scaffolding, job generation, monitoring helpers, and dashboard publishing.
 - First-party dashboard stack:
 	- `@vasto-queue/dashboard` for the frontend UI.
@@ -43,12 +54,7 @@ The format is based on Keep a Changelog and this project aims to follow Semantic
 - OpenTelemetry plugin via `@vasto-queue/otel-plugin`.
 - Workflow and plugin support packages via `@vasto-queue/workflow` and `@vasto-queue/plugins`.
 
-### Project Setup and Governance
+### Notes
 
-- Contribution and community health docs (`CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`, `SECURITY.md`, `.github/SUPPORT.md`).
-- GitHub issue forms for bug report, feature request, and support request.
-- Pull request template and CODEOWNERS.
-
-### Changed
-
-- README documentation hub now links to contribution and security policies.
+- This release establishes the baseline public API and package lineup for future semver-tracked updates.
+- Versioning and changelog generation are managed through Changesets for subsequent releases.
