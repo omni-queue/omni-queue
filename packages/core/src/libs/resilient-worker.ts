@@ -10,8 +10,8 @@ import { sleep } from '../utils';
 export class ResilientWorker {
   private running = false;
   private idleBackoffMs = 1;
-  private idleTimer?: ReturnType<typeof setTimeout>;
-  private idleResolve?: () => void;
+  private idleTimer: ReturnType<typeof setTimeout> | undefined;
+  private idleResolve: (() => void) | undefined;
   private rateLimits = new RateLimitCoordinator();
   private backpressureActive = new Map<string, boolean>();
   private circuitState = new Map<
