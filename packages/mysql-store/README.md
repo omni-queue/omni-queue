@@ -1,4 +1,4 @@
-# `@vasto/mysql-store`
+# `@vasto-queue/mysql-store`
 
 MySQL storage adapter for [Vasto](../../README.md).
 
@@ -7,13 +7,13 @@ Uses `mysql2` with transactional dequeue and `FOR UPDATE SKIP LOCKED` for concur
 ## Installation
 
 ```bash
-npm install @vasto/mysql-store mysql2
+npm install @vasto-queue/mysql-store mysql2
 ```
 
 ## Usage
 
 ```ts
-import { MySqlStore } from '@vasto/mysql-store';
+import { MySqlStore } from '@vasto-queue/mysql-store';
 
 const store = new MySqlStore({
 	pool: {

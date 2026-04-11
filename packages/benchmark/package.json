@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/benchmark",
+  "name": "@vasto-queue/benchmark",
   "version": "0.1.0",
   "description": "Performance benchmarks for Vasto against popular job queue libraries",
   "private": true,
@@ -19,9 +19,9 @@
     "run:memory": "node --loader ts-node/esm src/runner.ts --scenario memory-footprint"
   },
   "dependencies": {
-    "@vasto/core": "*",
-    "@vasto/postgres-store": "*",
-    "@vasto/redis-store": "*"
+    "@vasto-queue/core": "*",
+    "@vasto-queue/postgres-store": "*",
+    "@vasto-queue/redis-store": "*"
   },
   "devDependencies": {
     "bullmq": "^5.28.6",

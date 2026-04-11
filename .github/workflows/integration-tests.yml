@@ -68,27 +68,23 @@ jobs:
           cache: npm
 
       - name: Install local workspace dependencies
-        run: >-
-          npm ci
-          --workspace @vasto/core
-          --workspace @vasto/redis-store
-          --workspace @vasto/postgres-store
+        run: npm ci --workspaces --include-workspace-root
 
       - name: Build local workspace packages
         run: >-
           npm run build
-          --workspace @vasto/core
-          --workspace @vasto/redis-store
-          --workspace @vasto/postgres-store
+          --workspace @vasto-queue/core
+          --workspace @vasto-queue/redis-store
+          --workspace @vasto-queue/postgres-store
 
       - name: Typecheck local workspace packages
         run: >-
-          npm exec tsc --noEmit -p packages/core/tsconfig.json
-          && npm exec tsc --noEmit -p packages/redis-store/tsconfig.json
-          && npm exec tsc --noEmit -p packages/postgres-store/tsconfig.json
+          npm exec -- tsc --noEmit -p packages/core/tsconfig.json
+          && npm exec -- tsc --noEmit -p packages/redis-store/tsconfig.json
+          && npm exec -- tsc --noEmit -p packages/postgres-store/tsconfig.json
 
       - name: Redis integration tests
-        run: npm run test:integration --workspace @vasto/redis-store
+        run: npm run test:integration --workspace @vasto-queue/redis-store
 
       - name: Postgres integration tests
-        run: npm run test:integration --workspace @vasto/postgres-store
+        run: npm run test:integration --workspace @vasto-queue/postgres-store

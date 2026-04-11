@@ -1,4 +1,4 @@
-import type { ArchiveRetentionPolicy, CompletedJobRecord, JobArchiveQuery, Supervisor } from '@vasto/core';
+import type { ArchiveRetentionPolicy, CompletedJobRecord, JobArchiveQuery, Supervisor } from '@vasto-queue/core';
 
 export type ArchiveQueryInput = {
   queueName?: string;

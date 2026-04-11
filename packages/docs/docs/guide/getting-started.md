@@ -1,6 +1,6 @@
 ---
 title: Getting Started
-description: Install Vasto and run your first job in minutes.
+description: Install Vasto Queue and run your first job in minutes.
 outline: deep
 ---
 
@@ -9,22 +9,22 @@ outline: deep
 ## Prerequisites
 
 - Node.js **20** or higher
-- TypeScript (recommended — Vasto is fully typed)
+- TypeScript (recommended — Vasto Queue is fully typed)
 
 ## Installation
 
 ::: code-group
 
 ```sh [npm]
-npm install @vasto/core
+npm install @vasto-queue/core
 ```
 
 ```sh [pnpm]
-pnpm add @vasto/core
+pnpm add @vasto-queue/core
 ```
 
 ```sh [yarn]
-yarn add @vasto/core
+yarn add @vasto-queue/core
 ```
 
 :::
@@ -34,7 +34,7 @@ yarn add @vasto/core
 Every job is a class that extends `Job`, declares a unique `static jobName`, and implements `handle()`.
 
 ```ts
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 interface EmailPayload {
   to: string;
@@ -57,7 +57,7 @@ export class SendEmailJob extends Job<EmailPayload> {
 ```
 
 ::: tip Class-based registry
-The `static jobName` is how Vasto resolves the correct class at execution time. It must be globally unique.
+The `static jobName` is how Vasto Queue resolves the correct class at execution time. It must be globally unique.
 :::
 
 ## Create the runtime
@@ -69,7 +69,7 @@ import {
   InMemoryQueueStorage,
   JobRegistry,
   Supervisor,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 import { SendEmailJob } from './jobs/send-email-job';
 
 // 1. Declare queue and worker configs
@@ -126,7 +126,7 @@ await supervisor.start();
 
 <div class="tip custom-block" style="padding-top: 8px">
 
-Now that you have the basics, explore what Vasto can do:
+Now that you have the basics, explore what Vasto Queue can do:
 
 - [Core Concepts](/guide/core-concepts) — understand Supervisor, JobManager, and the registry
 - [Workers and Isolation](/guide/workers-and-isolation) — choose between inline, thread, and process workers

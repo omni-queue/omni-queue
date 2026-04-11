@@ -5,14 +5,14 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 import {
   MetricsCollector,
   QueueMetricsPlugin,
   exportDataDog,
   exportPrometheus,
   exportStatsD,
-} from '@vasto/metrics';
+} from '@vasto-queue/metrics';
 
 class MetricsEmailJob extends Job<{ to: string }> {
   static jobName = 'metrics-email';

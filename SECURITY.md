@@ -6,7 +6,7 @@ Please do not open public GitHub issues for security vulnerabilities.
 
 Report vulnerabilities privately to:
 
-- maintainers@vasto.dev
+- maintainers@vasto-queue.dev
 
 Include as much detail as possible:
 

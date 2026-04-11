@@ -10,8 +10,8 @@ import { sleep } from '../utils';
 export class ResilientWorker {
   private running = false;
   private idleBackoffMs = 1;
-  private idleTimer?: ReturnType<typeof setTimeout>;
-  private idleResolve?: () => void;
+  private idleTimer: ReturnType<typeof setTimeout> | undefined;
+  private idleResolve: (() => void) | undefined;
   private rateLimits = new RateLimitCoordinator();
   private backpressureActive = new Map<string, boolean>();
   private circuitState = new Map<
@@ -81,9 +81,16 @@ export class ResilientWorker {
           return false;
         }
 
+        const baseBatchSize = queueConfig.batchSize || 1;
+        const perConsumerCapacity = queueConfig.rateLimit?.perConsumer?.capacity;
+        const effectiveBatchSize =
+          perConsumerCapacity !== undefined
+            ? Math.min(baseBatchSize, Math.max(1, perConsumerCapacity))
+            : baseBatchSize;
+
         const jobs = await storage.dequeue({
           queue: queueName,
-          batchSize: queueConfig.batchSize || 1,
+          batchSize: effectiveBatchSize,
           leaseMs: queueConfig.visibilityTimeout || 30000,
         });
 

@@ -10,6 +10,6 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@vasto/core": "*"
+    "@vasto-queue/core": "*"
   }
 }

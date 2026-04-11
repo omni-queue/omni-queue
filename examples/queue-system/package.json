@@ -23,14 +23,14 @@
     "vasto:generate:isolation": "vasto generate isolation"
   },
   "dependencies": {
-    "@vasto/core": "*",
-    "@vasto/dashboard-api": "*",
-    "@vasto/otel-plugin": "*",
-    "@vasto/plugins": "*",
+    "@vasto-queue/core": "*",
+    "@vasto-queue/dashboard-api": "*",
+    "@vasto-queue/otel-plugin": "*",
+    "@vasto-queue/plugins": "*",
     "express": "^4.21.2"
   },
   "devDependencies": {
-    "@vasto/cli": "*",
+    "@vasto-queue/cli": "*",
     "concurrently": "^9.1.0"
   }
 }

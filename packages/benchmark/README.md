@@ -18,7 +18,7 @@ Vasto is benchmarked on the matching backend where possible: in-memory for basel
 # From the monorepo root, install all workspace deps
 npm install
 
-# Build @vasto/core, @vasto/redis-store, and @vasto/postgres-store first
+# Build @vasto-queue/core, @vasto-queue/redis-store, and @vasto-queue/postgres-store first
 npm run build:core
 ```
 

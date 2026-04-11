@@ -1,4 +1,4 @@
-import type { JobNode, Plugin, StoredJob } from '@vasto/core';
+import type { JobNode, Plugin, StoredJob } from '@vasto-queue/core';
 
 export class DAGPlugin implements Plugin {
   private jobNodes = new Map<string, JobNode>();

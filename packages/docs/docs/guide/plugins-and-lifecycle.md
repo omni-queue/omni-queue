@@ -37,7 +37,7 @@ interface Plugin {
 ## A minimal logging plugin
 
 ```ts
-import type { Plugin } from '@vasto/core';
+import type { Plugin } from '@vasto-queue/core';
 
 export const LogPlugin: Plugin = {
   name: 'LogPlugin',
@@ -119,7 +119,7 @@ Progress is emitted through `onProgress(jobId, queueName, progress)` on all atta
 ## A metrics plugin example
 
 ```ts
-import type { Plugin } from '@vasto/core';
+import type { Plugin } from '@vasto-queue/core';
 
 export function createMetricsPlugin(metrics: MetricsClient): Plugin {
   return {

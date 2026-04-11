@@ -8,8 +8,8 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
-import { registerElysiaAdapter } from '@vasto/elysia-adapter';
+} from '@vasto-queue/core';
+import { registerElysiaAdapter } from '@vasto-queue/elysia-adapter';
 import { ElysiaEmailJob } from './jobs';
 
 function normalizeBasePath(value: string): string {

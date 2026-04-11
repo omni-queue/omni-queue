@@ -12,13 +12,13 @@ Vasto is built around four cooperating objects. Understanding how they relate ma
 
 All work starts with a job class. A job:
 
-- extends `Job<TPayload>` from `@vasto/core`
+- extends `Job<TPayload>` from `@vasto-queue/core`
 - declares a **unique** `static jobName` string used for registry lookup
 - implements `handle(payload)` where the actual work happens
 - optionally overrides `queue()`, `retries()`, `backoff()`, `isolation()`, and `tags()`
 
 ```ts
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 export class ResizeImageJob extends Job<{ imageId: string; width: number }> {
   static jobName = 'ResizeImageJob';
@@ -42,7 +42,7 @@ If a job class does not declare `static jobName`, registration will throw. If tw
 `JobRegistry` is a name → class map. The runtime uses it to look up which class to instantiate when dequeuing a stored job.
 
 ```ts
-import { JobRegistry } from '@vasto/core';
+import { JobRegistry } from '@vasto-queue/core';
 
 const registry = new JobRegistry();
 registry.register(ResizeImageJob);
@@ -59,7 +59,7 @@ Every job class must be registered **before** `supervisor.start()` is called.
 These are thin helper functions that return plain typed objects. There is no magic — they exist only to provide type inference on the config shape.
 
 ```ts
-import { defineQueues, defineWorkers } from '@vasto/core';
+import { defineQueues, defineWorkers } from '@vasto-queue/core';
 
 const queues = defineQueues({
   emails: {
@@ -103,8 +103,8 @@ The value of `connection` must match a key in the `storageAdapters` map passed t
 `Supervisor` is the top-level orchestrator. It owns worker lifecycle, scaling, queue health, scheduling recovery, and (optionally) the dashboard.
 
 ```ts
-import { Supervisor } from '@vasto/core';
-import { RedisQueueStorage } from '@vasto/redis-store';
+import { Supervisor } from '@vasto-queue/core';
+import { RedisQueueStorage } from '@vasto-queue/redis-store';
 
 const supervisor = new Supervisor({
   queues,

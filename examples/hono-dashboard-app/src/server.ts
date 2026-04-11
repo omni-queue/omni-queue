@@ -11,8 +11,8 @@ import {
   type SupervisorMode,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
-import { bindVastoHonoWebSocket, vastoHonoAdapter } from '@vasto/hono-adapter';
+} from '@vasto-queue/core';
+import { bindVastoHonoWebSocket, vastoHonoAdapter } from '@vasto-queue/hono-adapter';
 
 function normalizeBasePath(value: string): string {
   const trimmed = value.trim();

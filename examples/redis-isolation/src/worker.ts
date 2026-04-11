@@ -4,11 +4,11 @@ import type {
     DashboardAuthSession,
     DashboardLoginRequest,
     DashboardSessionCredentials,
-} from '@vasto/core';
-import { Supervisor } from '@vasto/core';
+} from '@vasto-queue/core';
+import { Supervisor } from '@vasto-queue/core';
 import express from 'express';
 import path from 'node:path';
-import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto/express-adapter';
+import { createExpressAdapter, createExpressWebSocketBinding } from '@vasto-queue/express-adapter';
 import type http from 'node:http';
 import { createConsumerWorkers, createQueues, createRedisStoreFromEnv, createRegistry } from './runtime';
 import { registerGracefulShutdown } from './graceful-shutdown';

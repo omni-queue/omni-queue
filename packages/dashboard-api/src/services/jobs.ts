@@ -1,4 +1,4 @@
-import type { CompletedJobRecord, StoredJob, Supervisor } from '@vasto/core';
+import type { CompletedJobRecord, StoredJob, Supervisor } from '@vasto-queue/core';
 
 export type DashboardJobFilterStatus = 'dlq' | 'pending-deferred' | 'promoted-deferred' | 'deferred' | 'ready' | 'active' | 'completed';
 export type DashboardJobSource = 'dlq' | 'pending-deferred' | 'promoted-deferred' | 'ready' | 'active' | 'completed';

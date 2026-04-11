@@ -1,6 +1,6 @@
 import type http from 'node:http';
 import { describe, expect, it } from 'vitest';
-import type { DashboardAuthOptions } from '@vasto/core';
+import type { DashboardAuthOptions } from '@vasto-queue/core';
 import {
   authenticateDashboardLogin,
   authenticateDashboardRequest,

@@ -1,4 +1,4 @@
-# `@vasto/hono-adapter`
+# `@vasto-queue/hono-adapter`
 
 Hono integration adapter for Vasto dashboard API.
 
@@ -10,7 +10,7 @@ Use `vastoHonoAdapter(options)` with your Hono Node bridge/middleware integratio
 
 ```ts
 import path from 'node:path';
-import { vastoHonoAdapter } from '@vasto/hono-adapter';
+import { vastoHonoAdapter } from '@vasto-queue/hono-adapter';
 
 const handler = vastoHonoAdapter({
   supervisor,
@@ -28,7 +28,7 @@ If you own the underlying Node server, use `bindVastoHonoWebSocket()` to attach 
 queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules` and copies them into the target directory. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto-queue/dashboard` in `node_modules` and copies them into the target directory. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
 
 ## Runtime configuration
 

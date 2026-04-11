@@ -10,7 +10,7 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@vasto/core": "*",
-    "@vasto/dynamodb-store": "*"
+    "@vasto-queue/core": "*",
+    "@vasto-queue/dynamodb-store": "*"
   }
 }

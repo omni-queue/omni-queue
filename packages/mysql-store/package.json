@@ -1,5 +1,5 @@
 {
-  "name": "@vasto/mysql-store",
+  "name": "@vasto-queue/mysql-store",
   "version": "0.1.0",
   "description": "MySQL storage adapter for Vasto",
   "keywords": [
@@ -34,7 +34,7 @@
     "clean": "rm -rf dist"
   },
   "dependencies": {
-    "@vasto/core": "*",
+    "@vasto-queue/core": "*",
     "mysql2": "^3.14.4"
   },
   "publishConfig": {

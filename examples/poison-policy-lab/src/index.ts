@@ -5,7 +5,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 class AlwaysFailJob extends Job<{ id: string; queueName: string }> {
   static jobName = 'always-fail';

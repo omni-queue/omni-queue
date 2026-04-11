@@ -24,7 +24,7 @@ export default defineConfig({
           return true;
         }
 
-        return id.startsWith('@vasto/');
+        return id.startsWith('@vasto-queue/');
       },
       output: {
         format: 'es',

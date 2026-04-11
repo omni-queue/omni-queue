@@ -2,7 +2,7 @@ import {
   bindVastoWebSocket,
   createDashboardMiddleware,
   type DashboardApiOptions,
-} from '@vasto/dashboard-api';
+} from '@vasto-queue/dashboard-api';
 
 export function createExpressAdapter(options: DashboardApiOptions) {
   return createDashboardMiddleware(options);

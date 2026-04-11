@@ -11,7 +11,7 @@ outline: deep
 The base class all job classes must extend.
 
 ```ts
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 export class MyJob extends Job<{ id: string }> {
   static jobName = 'MyJob';
@@ -44,7 +44,7 @@ export class MyJob extends Job<{ id: string }> {
 ## JobRegistry <Badge type="tip" text="class" />
 
 ```ts
-import { JobRegistry } from '@vasto/core';
+import { JobRegistry } from '@vasto-queue/core';
 
 const registry = new JobRegistry();
 ```
@@ -63,7 +63,7 @@ const registry = new JobRegistry();
 Identity helpers that return typed config objects. Required only for TypeScript inference.
 
 ```ts
-import { defineQueues, defineWorkers } from '@vasto/core';
+import { defineQueues, defineWorkers } from '@vasto-queue/core';
 
 const queues = defineQueues({ /* Record<string, QueueConfig> */ });
 const workers = defineWorkers({ /* Record<string, WorkerConfig> */ });
@@ -127,7 +127,7 @@ interface WorkerConfig {
 ## Supervisor <Badge type="tip" text="class" />
 
 ```ts
-import { Supervisor } from '@vasto/core';
+import { Supervisor } from '@vasto-queue/core';
 
 const supervisor = new Supervisor({
   queues,

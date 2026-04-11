@@ -11,7 +11,7 @@ import type {
   QueueStorage,
   ReadyJobsQuery,
   StoredJob,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 /** Numeric sort weight (lower = dequeued first). */
 const PRIORITY_SCORES: Record<JobPriority, number> = {

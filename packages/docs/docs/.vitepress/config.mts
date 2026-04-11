@@ -1,12 +1,12 @@
 import { defineConfig } from 'vitepress';
 
 export default defineConfig({
-  title: 'Vasto',
+  title: 'Vasto Queue',
   description: 'TypeScript-first queue runtime documentation',
   base: '/vasto/',
   ignoreDeadLinks: true,
   themeConfig: {
-    siteTitle: 'Vasto Docs',
+    siteTitle: 'Vasto Queue Docs',
     nav: [
       { text: 'Guide', link: '/guide/getting-started' },
       { text: 'API Reference', link: '/api/' },
@@ -64,7 +64,7 @@ export default defineConfig({
     },
     footer: {
       message: 'Released under the MIT License.',
-      copyright: 'Copyright 2026 Vasto contributors'
+      copyright: 'Copyright 2026 VastoHQ'
     }
   }
 });

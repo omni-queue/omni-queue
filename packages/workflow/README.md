@@ -1,4 +1,4 @@
-# `@vasto/workflow`
+# `@vasto-queue/workflow`
 
 Workflow and DAG orchestration helpers for Vasto.
 
@@ -11,7 +11,7 @@ Workflow and DAG orchestration helpers for Vasto.
 ## Usage
 
 ```ts
-import { WorkflowEngine } from '@vasto/workflow';
+import { WorkflowEngine } from '@vasto-queue/workflow';
 
 const engine = new WorkflowEngine(storage);
 await engine.run(nodes);

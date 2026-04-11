@@ -1,4 +1,4 @@
-# `@vasto/postgres-store`
+# `@vasto-queue/postgres-store`
 
 PostgreSQL storage adapter for [Vasto](../../README.md).
 
@@ -7,13 +7,13 @@ Uses `pg` under the hood with `FOR UPDATE SKIP LOCKED` for safe, concurrent job 
 ## Installation
 
 ```bash
-npm install @vasto/postgres-store pg
+npm install @vasto-queue/postgres-store pg
 ```
 
 ## Usage
 
 ```ts
-import { PostgresStore } from '@vasto/postgres-store';
+import { PostgresStore } from '@vasto-queue/postgres-store';
 
 const store = new PostgresStore({
   pool: {
@@ -32,7 +32,7 @@ await store.migrate();
 Pass the store as a connection adapter to your queue config:
 
 ```ts
-import { defineQueues, defineWorkers } from '@vasto/core';
+import { defineQueues, defineWorkers } from '@vasto-queue/core';
 
 const queues = defineQueues({
   default: {

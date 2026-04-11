@@ -9,7 +9,7 @@ import type {
   DashboardRole,
   DashboardSessionCredentials,
   DashboardSessionValidator,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 type DashboardPermission = 'read' | 'operate' | 'admin';
 

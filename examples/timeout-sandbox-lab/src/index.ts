@@ -5,7 +5,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 class SlowTimeoutJob extends Job<{ id: string }> {
   static jobName = 'slow-timeout';

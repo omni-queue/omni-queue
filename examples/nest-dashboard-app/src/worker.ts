@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { FileQueueStorage, Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto/core';
+import { FileQueueStorage, Job, JobRegistry, Supervisor, defineQueues, defineWorkers } from '@vasto-queue/core';
 
 class NestEmailJob extends Job<{ to: string; subject: string; body: string }> {
   static jobName = 'nest-email';

@@ -1,4 +1,4 @@
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 export interface CleanupPayload {
   path: string;

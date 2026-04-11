@@ -155,7 +155,7 @@ When enabled, the worker starts the standalone dashboard server with the built-i
 
 ## What this demonstrates
 
-- Shared Redis storage via `@vasto/redis-store`
+- Shared Redis storage via `@vasto-queue/redis-store`
 - API producer pattern for pushing jobs over HTTP
 - Delayed and scheduled email dispatch over HTTP
 - Dead-letter inspection and retry over HTTP

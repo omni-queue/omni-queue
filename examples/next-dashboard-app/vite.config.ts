@@ -26,7 +26,7 @@ export default defineConfig({
         worker: 'src/worker.ts',
         home: 'pages/index.tsx'
       },
-      external: (id: string) => nodeExternals.has(id) || id.startsWith('node:') || id.startsWith('next/') || id.startsWith('@vasto/'),
+      external: (id: string) => nodeExternals.has(id) || id.startsWith('node:') || id.startsWith('next/') || id.startsWith('@vasto-queue/'),
       output: { format: 'es', entryFileNames: '[name].js' }
     }
   }

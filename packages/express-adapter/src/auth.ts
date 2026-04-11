@@ -1,8 +1,8 @@
-import type { DashboardAuthContext, DashboardAuthOptions } from '@vasto/core';
+import type { DashboardAuthContext, DashboardAuthOptions } from '@vasto-queue/core';
 import {
   authenticateDashboardRequest,
   hasDashboardPermissionForContext,
-} from '@vasto/dashboard-api';
+} from '@vasto-queue/dashboard-api';
 import type { Request, Response } from 'express';
 
 type DashboardPermission = 'read' | 'operate' | 'admin';

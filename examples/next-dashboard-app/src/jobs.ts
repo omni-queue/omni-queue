@@ -1,4 +1,4 @@
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 export class NextEmailJob extends Job<{ to: string; subject: string; body: string }> {
   static jobName = 'next-email';

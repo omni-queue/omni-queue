@@ -12,22 +12,22 @@ Every queue config has a `connection` key that maps to a storage adapter in `sto
 
 | Adapter | Package | Persistence | Distributed | Best for |
 |---|---|---|---|---|
-| `InMemoryQueueStorage` | `@vasto/core` | None | No | Unit tests, local dev |
-| `FileQueueStorage` | `@vasto/core` | JSON files | Multi-process | Local dev without infra |
-| `RedisQueueStorage` | `@vasto/redis-store` | Optional | Yes | Production default, low latency |
-| `PostgresQueueStorage` | `@vasto/postgres-store` | Full | Yes | SQL-centric stacks |
-| `MySQLQueueStorage` | `@vasto/mysql-store` | Full | Yes | MySQL ecosystem |
-| `MongoQueueStorage` | `@vasto/mongo-store` | Full | Yes | Document/cloud workloads |
-| `DynamoDBQueueStorage` | `@vasto/dynamodb-store` | Full | Yes | AWS-native deployments |
+| `InMemoryQueueStorage` | `@vasto-queue/core` | None | No | Unit tests, local dev |
+| `FileQueueStorage` | `@vasto-queue/core` | JSON files | Multi-process | Local dev without infra |
+| `RedisQueueStorage` | `@vasto-queue/redis-store` | Optional | Yes | Production default, low latency |
+| `PostgresQueueStorage` | `@vasto-queue/postgres-store` | Full | Yes | SQL-centric stacks |
+| `MySQLQueueStorage` | `@vasto-queue/mysql-store` | Full | Yes | MySQL ecosystem |
+| `MongoQueueStorage` | `@vasto-queue/mongo-store` | Full | Yes | Document/cloud workloads |
+| `DynamoDBQueueStorage` | `@vasto-queue/dynamodb-store` | Full | Yes | AWS-native deployments |
 
 ---
 
 ## In-Memory
 
-Built into `@vasto/core`. No installation required. State is lost when the process exits.
+Built into `@vasto-queue/core`. No installation required. State is lost when the process exits.
 
 ```ts
-import { InMemoryQueueStorage } from '@vasto/core';
+import { InMemoryQueueStorage } from '@vasto-queue/core';
 
 const supervisor = new Supervisor({
   // ...
@@ -45,10 +45,10 @@ In-memory storage has no persistence and no cross-process sharing. Use it for te
 
 ## File
 
-Also built into `@vasto/core`. Persists jobs as JSON files on disk. Uses `fs.renameSync` for atomic cross-process claim semantics, so multiple processes can share the same data directory safely.
+Also built into `@vasto-queue/core`. Persists jobs as JSON files on disk. Uses `fs.renameSync` for atomic cross-process claim semantics, so multiple processes can share the same data directory safely.
 
 ```ts
-import { FileQueueStorage } from '@vasto/core';
+import { FileQueueStorage } from '@vasto-queue/core';
 
 const supervisor = new Supervisor({
   // ...
@@ -69,17 +69,17 @@ const supervisor = new Supervisor({
 ::: code-group
 
 ```sh [npm]
-npm install @vasto/redis-store
+npm install @vasto-queue/redis-store
 ```
 
 ```sh [pnpm]
-pnpm add @vasto/redis-store
+pnpm add @vasto-queue/redis-store
 ```
 
 :::
 
 ```ts
-import { RedisQueueStorage } from '@vasto/redis-store';
+import { RedisQueueStorage } from '@vasto-queue/redis-store';
 
 const supervisor = new Supervisor({
   // ...
@@ -101,17 +101,17 @@ Redis is the recommended default for distributed production workloads. It has th
 ::: code-group
 
 ```sh [npm]
-npm install @vasto/postgres-store
+npm install @vasto-queue/postgres-store
 ```
 
 ```sh [pnpm]
-pnpm add @vasto/postgres-store
+pnpm add @vasto-queue/postgres-store
 ```
 
 :::
 
 ```ts
-import { PostgresQueueStorage } from '@vasto/postgres-store';
+import { PostgresQueueStorage } from '@vasto-queue/postgres-store';
 
 const storage = new PostgresQueueStorage({
   connectionString: process.env.DATABASE_URL,
@@ -135,17 +135,17 @@ Postgres and MySQL adapters require a schema migration step before the first `su
 ::: code-group
 
 ```sh [npm]
-npm install @vasto/mysql-store
+npm install @vasto-queue/mysql-store
 ```
 
 ```sh [pnpm]
-pnpm add @vasto/mysql-store
+pnpm add @vasto-queue/mysql-store
 ```
 
 :::
 
 ```ts
-import { MySQLQueueStorage } from '@vasto/mysql-store';
+import { MySQLQueueStorage } from '@vasto-queue/mysql-store';
 
 const storage = new MySQLQueueStorage({
   host: process.env.MYSQL_HOST,
@@ -163,17 +163,17 @@ await storage.migrate();
 ::: code-group
 
 ```sh [npm]
-npm install @vasto/mongo-store
+npm install @vasto-queue/mongo-store
 ```
 
 ```sh [pnpm]
-pnpm add @vasto/mongo-store
+pnpm add @vasto-queue/mongo-store
 ```
 
 :::
 
 ```ts
-import { MongoQueueStorage } from '@vasto/mongo-store';
+import { MongoQueueStorage } from '@vasto-queue/mongo-store';
 
 const supervisor = new Supervisor({
   // ...
@@ -193,17 +193,17 @@ const supervisor = new Supervisor({
 ::: code-group
 
 ```sh [npm]
-npm install @vasto/dynamodb-store
+npm install @vasto-queue/dynamodb-store
 ```
 
 ```sh [pnpm]
-pnpm add @vasto/dynamodb-store
+pnpm add @vasto-queue/dynamodb-store
 ```
 
 :::
 
 ```ts
-import { DynamoDBQueueStorage } from '@vasto/dynamodb-store';
+import { DynamoDBQueueStorage } from '@vasto-queue/dynamodb-store';
 
 const supervisor = new Supervisor({
   // ...
@@ -238,12 +238,12 @@ const supervisor = new Supervisor({
 });
 ```
 
-- Package: `@vasto/mongo-store`
+- Package: `@vasto-queue/mongo-store`
 - Document-model fit for JSON-first environments
 
 ## DynamoDB
 
-- Package: `@vasto/dynamodb-store`
+- Package: `@vasto-queue/dynamodb-store`
 - Cloud-native key-value storage on AWS
 
 ## Decision Tips

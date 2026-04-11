@@ -13,7 +13,7 @@ vasto generate api-job --name=send-email -=elysia-api
 ```ts
 import path from 'node:path';
 import { Elysia } from 'elysia';
-import { registerElysiaAdapter } from '@vasto/elysia-adapter';
+import { registerElysiaAdapter } from '@vasto-queue/elysia-adapter';
 
 const app = new Elysia();
 
@@ -33,7 +33,7 @@ app.listen(3000);
 ## Notes
 
 - publish the UI assets with `vasto dashboard:publish --out=./public/vasto-dashboard`
-- `dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules`
+- `dashboard:publish` resolves assets from installed `@vasto-queue/dashboard` in `node_modules`
 - live updates use native WebSocket transport at `<apiBase>/ws` (for example `/api/vasto/ws`)
 - for built assets, force polling with runtime config (no rebuild):
 

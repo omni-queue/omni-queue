@@ -11,11 +11,11 @@ outline: deep
 ::: code-group
 
 ```sh [npm]
-npm install -g @vasto/cli
+npm install -g @vasto-queue/cli
 ```
 
 ```sh [pnpm]
-pnpm add -g @vasto/cli
+pnpm add -g @vasto-queue/cli
 ```
 
 :::

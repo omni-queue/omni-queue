@@ -14,8 +14,8 @@
 - For process/thread isolation examples, follow [examples/queue-system/src/index.ts](../examples/queue-system/src/index.ts) and [examples/redis-isolation](../examples/redis-isolation) instead of inventing a different wiring pattern.
 
 ## Dashboard and integration boundaries
-- `@vasto/dashboard-api` turns Supervisor-owned dashboard config into HTTP server / request handler / Express middleware. Keep auth and route behavior there, not in `core`.
-- `@vasto/dashboard` is a standalone frontend package that talks to dashboard-api endpoints; it should not reach into core internals directly.
+- `@vasto-queue/dashboard-api` turns Supervisor-owned dashboard config into HTTP server / request handler / Express middleware. Keep auth and route behavior there, not in `core`.
+- `@vasto-queue/dashboard` is a standalone frontend package that talks to dashboard-api endpoints; it should not reach into core internals directly.
 - Framework adapters are thin integration layers. If a change affects queue semantics, implement it in `core` first, then surface it through adapters if needed.
 
 ## Project-specific conventions
@@ -28,8 +28,8 @@
 - Install/build all workspaces: `npm install && npm run build`
 - Full monorepo test sweep: `npm test`
 - Type check workspace root: `npm run check-types`
-- Target only core while iterating: `npm --workspace @vasto/core run build`
-- Run focused core tests: `npm --workspace @vasto/core run test -- <pattern>`
+- Target only core while iterating: `npm --workspace @vasto-queue/core run build`
+- Run focused core tests: `npm --workspace @vasto-queue/core run test -- <pattern>`
 - Dashboard UI local dev: `cd packages/dashboard && npm run dev`
 - End-to-end Redis isolation flow: `cd examples/redis-isolation && npm run dev:dashboard`
 - If thread/process isolation wiring changes, regenerate example isolation artifacts with `vasto generate isolation`.

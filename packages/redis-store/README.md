@@ -1,4 +1,4 @@
-# `@vasto/redis-store`
+# `@vasto-queue/redis-store`
 
 Redis storage adapter for [Vasto](../../README.md).
 
@@ -7,13 +7,13 @@ Uses [ioredis](https://github.com/redis/ioredis) with a Lua-scripted atomic dequ
 ## Installation
 
 ```bash
-npm install @vasto/redis-store ioredis
+npm install @vasto-queue/redis-store ioredis
 ```
 
 ## Usage
 
 ```ts
-import { RedisStore } from '@vasto/redis-store';
+import { RedisStore } from '@vasto-queue/redis-store';
 
 const store = new RedisStore({
 	client: {
@@ -27,7 +27,7 @@ Or pass a pre-configured ioredis instance:
 
 ```ts
 import Redis from 'ioredis';
-import { RedisStore } from '@vasto/redis-store';
+import { RedisStore } from '@vasto-queue/redis-store';
 
 const redis = new Redis({ host: 'localhost', port: 6379 });
 const store = new RedisStore({ client: redis });
@@ -36,7 +36,7 @@ const store = new RedisStore({ client: redis });
 Pass the store as a connection adapter to your queue config:
 
 ```ts
-import { defineQueues, defineWorkers } from '@vasto/core';
+import { defineQueues, defineWorkers } from '@vasto-queue/core';
 
 const queues = defineQueues({
 	default: {

@@ -1,4 +1,4 @@
-# `@vasto/next-adapter`
+# `@vasto-queue/next-adapter`
 
 Next.js integration adapter for Vasto dashboard API.
 
@@ -8,7 +8,7 @@ Use the exported Node handler in a Pages Router API catch-all route and host it 
 
 ```ts
 import path from 'node:path';
-import { vastoNextAdapter } from '@vasto/next-adapter';
+import { vastoNextAdapter } from '@vasto-queue/next-adapter';
 
 export default vastoNextAdapter({
   supervisor,
@@ -39,4 +39,4 @@ Publish the UI assets into that folder with:
 queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto-queue/dashboard` in `node_modules`. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.

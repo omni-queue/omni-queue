@@ -7,7 +7,7 @@ import {
   hasDashboardPermissionForContext,
   type DashboardApiOptions,
   type DashboardWebSocketController,
-} from '@vasto/dashboard-api';
+} from '@vasto-queue/dashboard-api';
 
 function getAllowedQueues(context: { allowedQueues?: string[] }): Set<string> | null {
   if (!context.allowedQueues || context.allowedQueues.length === 0) {

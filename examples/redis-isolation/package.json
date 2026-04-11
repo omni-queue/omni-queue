@@ -17,15 +17,15 @@
     "check-types": "tsc --noEmit"
   },
   "dependencies": {
-    "@vasto/core": "*",
-    "@vasto/dashboard-api": "*",
-    "@vasto/redis-store": "*",
-    "@vasto/plugins": "*",
+    "@vasto-queue/core": "*",
+    "@vasto-queue/dashboard-api": "*",
+    "@vasto-queue/redis-store": "*",
+    "@vasto-queue/plugins": "*",
     "express": "^4.21.2",
     "dotenv": "^17.3.1"
   },
   "devDependencies": {
-    "@vasto/cli": "*",
+    "@vasto-queue/cli": "*",
     "concurrently": "^9.1.0"
   }
 }

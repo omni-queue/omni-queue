@@ -4,7 +4,7 @@ Postgres-backed storage example.
 
 ## What this example demonstrates
 
-- Using `@vasto/postgres-store` as the queue backend
+- Using `@vasto-queue/postgres-store` as the queue backend
 - Running `store.migrate()` on startup
 - Wiring Postgres storage into `Supervisor`
 - Dispatching and reading completed jobs from a database-backed queue

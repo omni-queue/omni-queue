@@ -72,7 +72,7 @@ import {
   Supervisor,
   defineQueues,
   defineWorkers,
-} from '@vasto/core';
+} from '@vasto-queue/core';
 
 class SendEmailJob extends Job<{ to: string; subject: string; body: string }> {
   static jobName = 'send-email';
@@ -143,7 +143,7 @@ await supervisor.jobManager.schedule(reportJob, {
 ## 4) Workflow / DAG execution
 
 ```ts
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 class DownloadAssetJob extends Job<{ assetId: string }> {
   static jobName = 'download-asset';
@@ -181,7 +181,7 @@ const latestFlowState = supervisor.getFlow(flow.id);
 ## 5) Retries, backoff, and retry policy
 
 ```ts
-import { Job } from '@vasto/core';
+import { Job } from '@vasto-queue/core';
 
 class PaymentCaptureJob extends Job<{ paymentId: string }> {
   static jobName = 'payment-capture';

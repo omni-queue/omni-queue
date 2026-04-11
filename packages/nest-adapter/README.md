@@ -1,4 +1,4 @@
-# `@vasto/nest-adapter`
+# `@vasto-queue/nest-adapter`
 
 NestJS integration adapter for Vasto dashboard API.
 
@@ -11,7 +11,7 @@ import path from 'node:path';
 import {
   bindVastoNestWebSocket,
   vastoNestAdapter,
-} from '@vasto/nest-adapter';
+} from '@vasto-queue/nest-adapter';
 
 app.use(
   vastoNestAdapter({
@@ -35,7 +35,7 @@ bindVastoNestWebSocket(app.getHttpServer(), {
 queue dashboard:publish --out=./public/vasto-dashboard
 ```
 
-`dashboard:publish` resolves assets from installed `@vasto/dashboard` in `node_modules` and copies them into the target directory. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
+`dashboard:publish` resolves assets from installed `@vasto-queue/dashboard` in `node_modules` and copies them into the target directory. A `dashboard-config.example.js` file is also generated in the output directory — see its inline comments for all available runtime config keys.
 
 ## Runtime configuration
 

@@ -39,7 +39,7 @@ import path from 'node:path';
 import {
   bindVastoNestWebSocket,
   vastoNestAdapter,
-} from '@vasto/nest-adapter';
+} from '@vasto-queue/nest-adapter';
 
 app.use(
   vastoNestAdapter({
