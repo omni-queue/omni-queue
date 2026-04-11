@@ -16,7 +16,7 @@ type DeferredJob = {
 export class ProcessPool {
     private workerModule: string;
     private size: number;
-    private sandbox?: QueueSandboxConfig;
+    private sandbox: QueueSandboxConfig | undefined;
     private workers: ChildProcess[] = [];
     private idle: ChildProcess[] = [];
     private queue: DeferredJob[] = [];
@@ -40,8 +40,8 @@ export class ProcessPool {
                 task,
                 resolve,
                 reject,
-                timeoutMs: options?.timeoutMs,
-                timeoutSignal: options?.timeoutSignal,
+                ...(options?.timeoutMs !== undefined ? { timeoutMs: options.timeoutMs } : {}),
+                ...(options?.timeoutSignal !== undefined ? { timeoutSignal: options.timeoutSignal } : {}),
             });
             this.schedule();
         });

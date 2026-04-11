@@ -77,8 +77,11 @@ jobs:
           --workspace @vasto-queue/redis-store
           --workspace @vasto-queue/postgres-store
 
-      - name: Typecheck
-        run: npm run check-types
+      - name: Typecheck local workspace packages
+        run: >-
+          npm exec -- tsc --noEmit -p packages/core/tsconfig.json
+          && npm exec -- tsc --noEmit -p packages/redis-store/tsconfig.json
+          && npm exec -- tsc --noEmit -p packages/postgres-store/tsconfig.json
 
       - name: Redis integration tests
         run: npm run test:integration --workspace @vasto-queue/redis-store
